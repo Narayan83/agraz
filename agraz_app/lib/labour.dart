@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'api_service.dart';
+
 class LaborManagementPage extends StatefulWidget {
   const LaborManagementPage({super.key});
 
@@ -14,10 +16,13 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _wageController = TextEditingController();
   final TextEditingController _hoursController = TextEditingController();
+  final TextEditingController _numberOfLaboursController =
+      TextEditingController(text: '1');
+  final TextEditingController _narrationController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   String _selectedShift = 'Morning';
   String _selectedCategory = 'Plucking';
-  final List<String> _shifts = ['Morning', 'Afternoon', 'Night'];
+  final List<String> _shifts = ['Morning', 'Afternoon', 'Night', 'Full Day'];
   final List<String> _categories = [
     'Plucking',
     'Cutting',
@@ -30,6 +35,9 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
   String _searchQuery = '';
+  bool _loading = true;
+  bool _submitting = false;
+  final ApiService _api = ApiService();
 
   static const Color _primaryGreen = Color(0xFF2E7D32);
   static const Color _darkGreen = Color(0xFF1B5E20);
@@ -45,6 +53,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _animController.forward();
+    _loadLabors();
   }
 
   @override
@@ -53,7 +62,21 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     _nameController.dispose();
     _wageController.dispose();
     _hoursController.dispose();
+    _numberOfLaboursController.dispose();
+    _narrationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadLabors() async {
+    setState(() => _loading = true);
+    final rows = await _api.fetchLabors();
+    if (!mounted) return;
+    setState(() {
+      _laborers
+        ..clear()
+        ..addAll(rows.map(Laborer.fromJson));
+      _loading = false;
+    });
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -83,61 +106,123 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     }
   }
 
-  void _addLaborer() {
-    if (_nameController.text.isEmpty ||
-        _wageController.text.isEmpty ||
-        _hoursController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please fill all fields'),
-          backgroundColor: Colors.red.shade600,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _laborers.add(
-        Laborer(
-          name: _nameController.text,
-          wage: double.parse(_wageController.text),
-          hours: double.parse(_hoursController.text),
-          date: _selectedDate,
-          shift: _selectedShift,
-          category: _selectedCategory,
-        ),
-      );
-      _nameController.clear();
-      _wageController.clear();
-      _hoursController.clear();
-      _searchQuery = '';
-    });
-
+  void _showSnack(String message, {bool error = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Laborer added successfully'),
-        backgroundColor: _primaryGreen,
+        content: Text(message),
+        backgroundColor: error ? Colors.red.shade600 : _primaryGreen,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
-  void _removeLaborer(int index) {
+  Future<void> _addLaborer() async {
+    final name = _nameController.text.trim();
+    final wageText = _wageController.text.trim();
+    final hoursText = _hoursController.text.trim();
+    final countText = _numberOfLaboursController.text.trim();
+    final narration = _narrationController.text.trim();
+
+    if (name.isEmpty ||
+        wageText.isEmpty ||
+        hoursText.isEmpty ||
+        countText.isEmpty ||
+        narration.isEmpty) {
+      _showSnack('Please fill all fields including narration', error: true);
+      return;
+    }
+
+    final wage = double.tryParse(wageText);
+    final hours = double.tryParse(hoursText);
+    final numberOfLabours = int.tryParse(countText);
+
+    if (wage == null || wage <= 0) {
+      _showSnack('Enter a valid hourly wage', error: true);
+      return;
+    }
+    if (hours == null || hours <= 0) {
+      _showSnack('Enter valid hours worked', error: true);
+      return;
+    }
+    if (numberOfLabours == null || numberOfLabours < 1) {
+      _showSnack('Number of labours must be at least 1', error: true);
+      return;
+    }
+
+    setState(() => _submitting = true);
+    final result = await _api.createLabor({
+      'name': name,
+      'wage': wage,
+      'hours': hours,
+      'number_of_labours': numberOfLabours,
+      'shift': _selectedShift,
+      'category': _selectedCategory,
+      'narration': narration,
+      'date': _selectedDate.toIso8601String(),
+    });
+    if (!mounted) return;
+    setState(() => _submitting = false);
+
+    if (result['success'] != true) {
+      _showSnack(result['message']?.toString() ?? 'Failed to add laborer',
+          error: true);
+      return;
+    }
+
+    final data = result['data'];
+    final created = data is Map
+        ? Laborer.fromJson(Map<String, dynamic>.from(data))
+        : Laborer(
+            name: name,
+            wage: wage,
+            hours: hours,
+            numberOfLabours: numberOfLabours,
+            date: _selectedDate,
+            shift: _selectedShift,
+            category: _selectedCategory,
+            narration: narration,
+          );
+
+    setState(() {
+      _laborers.insert(0, created);
+      _nameController.clear();
+      _wageController.clear();
+      _hoursController.clear();
+      _numberOfLaboursController.text = '1';
+      _narrationController.clear();
+      _searchQuery = '';
+    });
+
+    _showSnack('Laborer added successfully');
+  }
+
+  Future<void> _removeLaborer(int index) async {
+    final laborer = _laborers[index];
+    if (laborer.id != null) {
+      final ok = await _api.deleteLabor(laborer.id!);
+      if (!ok) {
+        _showSnack('Failed to delete laborer', error: true);
+        return;
+      }
+    }
     setState(() => _laborers.removeAt(index));
   }
 
   double get _totalLaborCost {
-    final filtered = _filteredLaborers;
-    return filtered.fold(0, (sum, l) => sum + (l.wage * l.hours));
+    return _filteredLaborers.fold(0, (sum, l) => sum + l.totalCost);
+  }
+
+  int get _totalLabourHeadcount {
+    return _filteredLaborers.fold(0, (sum, l) => sum + l.numberOfLabours);
   }
 
   List<Laborer> get _filteredLaborers {
     if (_searchQuery.isEmpty) return _laborers;
     return _laborers
-        .where((l) => l.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+        .where((l) =>
+            l.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            l.narration.toLowerCase().contains(_searchQuery.toLowerCase()))
         .toList();
   }
 
@@ -152,18 +237,22 @@ class _LaborManagementPageState extends State<LaborManagementPage>
             children: [
               _buildHeader(),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                  child: Column(
-                    children: [
-                      _buildAddFormCard(),
-                      const SizedBox(height: 16),
-                      _buildSummaryCard(),
-                      const SizedBox(height: 16),
-                      _buildLaborerList(),
-                    ],
-                  ),
-                ),
+                child: _loading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: _primaryGreen),
+                      )
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                        child: Column(
+                          children: [
+                            _buildAddFormCard(),
+                            const SizedBox(height: 16),
+                            _buildSummaryCard(),
+                            const SizedBox(height: 16),
+                            _buildLaborerList(),
+                          ],
+                        ),
+                      ),
               ),
             ],
           ),
@@ -214,7 +303,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                   color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(Icons.engineering_rounded, color: Colors.white, size: 26),
+                child: const Icon(Icons.engineering_rounded,
+                    color: Colors.white, size: 26),
               ),
               const SizedBox(width: 14),
               Column(
@@ -284,7 +374,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                   controller: _wageController,
                   label: 'Hourly Wage',
                   icon: Icons.currency_rupee_rounded,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                 ),
               ),
               const SizedBox(width: 12),
@@ -293,10 +384,18 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                   controller: _hoursController,
                   label: 'Hours Worked',
                   icon: Icons.access_time_rounded,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          _buildTextField(
+            controller: _numberOfLaboursController,
+            label: 'Number of Labours',
+            icon: Icons.groups_rounded,
+            keyboardType: TextInputType.number,
           ),
           const SizedBox(height: 12),
           Row(
@@ -322,6 +421,13 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          _buildTextField(
+            controller: _narrationController,
+            label: 'Narration *',
+            icon: Icons.description_rounded,
+            maxLines: 3,
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -330,14 +436,16 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                   onTap: () => _selectDate(context),
                   borderRadius: BorderRadius.circular(14),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 14),
                     decoration: BoxDecoration(
                       color: _fieldBg,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.calendar_today_rounded, color: _primaryGreen, size: 20),
+                        const Icon(Icons.calendar_today_rounded,
+                            color: _primaryGreen, size: 20),
                         const SizedBox(width: 10),
                         Text(
                           DateFormat('dd MMM yyyy').format(_selectedDate),
@@ -356,23 +464,35 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               SizedBox(
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _addLaborer,
+                  onPressed: _submitting ? null : _addLaborer,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryGreen,
                     foregroundColor: Colors.white,
+                    disabledBackgroundColor: _primaryGreen.withValues(alpha: 0.6),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 22),
                   ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.add_rounded, size: 20),
-                      SizedBox(width: 6),
-                      Text('Add', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                    ],
-                  ),
+                  child: _submitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Row(
+                          children: [
+                            Icon(Icons.add_rounded, size: 20),
+                            SizedBox(width: 6),
+                            Text('Add',
+                                style: TextStyle(
+                                    fontSize: 15, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
                 ),
               ),
             ],
@@ -383,16 +503,25 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   }
 
   Widget _buildSummaryCard() {
-    final count = _filteredLaborers.length;
+    final entries = _filteredLaborers.length;
     return _card(
       child: Row(
         children: [
           Expanded(
             child: _summaryItem(
               Icons.group_rounded,
-              '$count',
-              'Laborers',
+              '$entries',
+              'Entries',
               const Color(0xFF42A5F5),
+            ),
+          ),
+          Container(width: 1, height: 40, color: Colors.grey.shade200),
+          Expanded(
+            child: _summaryItem(
+              Icons.groups_rounded,
+              '$_totalLabourHeadcount',
+              'Labours',
+              const Color(0xFF7E57C2),
             ),
           ),
           Container(width: 1, height: 40, color: Colors.grey.shade200),
@@ -425,7 +554,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
         Text(
           value,
           style: const TextStyle(
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
             color: _darkGreen,
           ),
@@ -444,11 +573,15 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       return _card(
         child: Column(
           children: [
-            Icon(Icons.people_alt_outlined, size: 56, color: Colors.grey.shade400),
+            Icon(Icons.people_alt_outlined,
+                size: 56, color: Colors.grey.shade400),
             const SizedBox(height: 12),
             Text(
               'No laborers added yet',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700),
             ),
             const SizedBox(height: 4),
             Text(
@@ -477,8 +610,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                 style: const TextStyle(fontSize: 14, color: _darkGreen),
                 decoration: const InputDecoration(
                   border: InputBorder.none,
-                  prefixIcon: Icon(Icons.search_rounded, color: _primaryGreen, size: 20),
-                  prefixIconConstraints: BoxConstraints(minWidth: 36, minHeight: 0),
+                  prefixIcon: Icon(Icons.search_rounded,
+                      color: _primaryGreen, size: 20),
+                  prefixIconConstraints:
+                      BoxConstraints(minWidth: 36, minHeight: 0),
                   hintText: 'Search laborers',
                   hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
                   contentPadding: EdgeInsets.symmetric(vertical: 12),
@@ -495,14 +630,15 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   }
 
   Widget _laborerCard(Laborer laborer, int index) {
-    final cost = laborer.wage * laborer.hours;
+    final cost = laborer.totalCost;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 350),
       builder: (context, value, child) {
         return Opacity(
           opacity: value,
-          child: Transform.translate(offset: Offset(0, 15 * (1 - value)), child: child),
+          child: Transform.translate(
+              offset: Offset(0, 15 * (1 - value)), child: child),
         );
       },
       child: Container(
@@ -528,7 +664,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                 color: _primaryGreen.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(Icons.person_rounded, color: _primaryGreen, size: 24),
+              child: const Icon(Icons.person_rounded,
+                  color: _primaryGreen, size: 24),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -545,21 +682,37 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: _primaryGreen.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      '${laborer.category} · ${laborer.shift}',
-                      style: TextStyle(fontSize: 11, color: _primaryGreen, fontWeight: FontWeight.w600),
+                      '${laborer.category} · ${laborer.shift} · ×${laborer.numberOfLabours}',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: _primaryGreen,
+                          fontWeight: FontWeight.w600),
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '₹${laborer.wage.toStringAsFixed(2)}/hr × ${laborer.hours}h = ₹${cost.toStringAsFixed(2)}',
+                    '₹${laborer.wage.toStringAsFixed(2)}/hr × ${laborer.hours}h × ${laborer.numberOfLabours} = ₹${cost.toStringAsFixed(2)}',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                   ),
+                  if (laborer.narration.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      laborer.narration,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                          color: Colors.grey.shade600),
+                    ),
+                  ],
                   const SizedBox(height: 2),
                   Text(
                     DateFormat('dd MMM yyyy').format(laborer.date),
@@ -569,7 +722,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               ),
             ),
             IconButton(
-              icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade500, size: 24),
+              icon: Icon(Icons.delete_outline_rounded,
+                  color: Colors.red.shade500, size: 24),
               onPressed: () => _removeLaborer(index),
             ),
           ],
@@ -583,6 +737,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     required String label,
     required IconData icon,
     TextInputType? keyboardType,
+    int maxLines = 1,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -592,8 +747,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: TextField(
         controller: controller,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _darkGreen),
+        style: const TextStyle(
+            fontSize: 14, fontWeight: FontWeight.w500, color: _darkGreen),
         keyboardType: keyboardType,
+        maxLines: maxLines,
         decoration: InputDecoration(
           border: InputBorder.none,
           prefixIcon: Icon(icon, color: _primaryGreen, size: 20),
@@ -601,6 +758,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
           labelText: label,
           labelStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          alignLabelWithHint: maxLines > 1,
         ),
       ),
     );
@@ -630,9 +788,13 @@ class _LaborManagementPageState extends State<LaborManagementPage>
           labelStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
         ),
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _darkGreen),
-        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _primaryGreen),
-        items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
+        style: const TextStyle(
+            fontSize: 14, fontWeight: FontWeight.w500, color: _darkGreen),
+        icon: const Icon(Icons.keyboard_arrow_down_rounded,
+            color: _primaryGreen),
+        items: items
+            .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+            .toList(),
       ),
     );
   }
@@ -644,7 +806,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       builder: (context, value, child) {
         return Opacity(
           opacity: value,
-          child: Transform.translate(offset: Offset(0, 20 * (1 - value)), child: child),
+          child: Transform.translate(
+              offset: Offset(0, 20 * (1 - value)), child: child),
         );
       },
       child: Container(
@@ -667,19 +830,61 @@ class _LaborManagementPageState extends State<LaborManagementPage>
 }
 
 class Laborer {
+  final int? id;
   final String name;
   final double wage;
   final double hours;
+  final int numberOfLabours;
   final DateTime date;
   final String shift;
   final String category;
+  final String narration;
 
   Laborer({
+    this.id,
     required this.name,
     required this.wage,
     required this.hours,
+    required this.numberOfLabours,
     required this.date,
     required this.shift,
     required this.category,
+    required this.narration,
   });
+
+  double get totalCost => wage * hours * numberOfLabours;
+
+  factory Laborer.fromJson(Map<String, dynamic> json) {
+    DateTime parseDate(dynamic v) {
+      if (v is String && v.isNotEmpty) {
+        return DateTime.tryParse(v) ?? DateTime.now();
+      }
+      return DateTime.now();
+    }
+
+    double toDouble(dynamic v) {
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v) ?? 0;
+      return 0;
+    }
+
+    int toInt(dynamic v) {
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      if (v is String) return int.tryParse(v) ?? 1;
+      return 1;
+    }
+
+    return Laborer(
+      id: json['id'] is int ? json['id'] as int : int.tryParse('${json['id']}'),
+      name: json['name']?.toString() ?? '',
+      wage: toDouble(json['wage']),
+      hours: toDouble(json['hours']),
+      numberOfLabours: toInt(json['number_of_labours']),
+      date: parseDate(json['date']),
+      shift: json['shift']?.toString() ?? '',
+      category: json['category']?.toString() ?? '',
+      narration: json['narration']?.toString() ?? '',
+    );
+  }
 }

@@ -209,5 +209,71 @@ class ApiService {
     }
   }
 
-  // You can add more API methods here for other operations
+  Future<Map<String, dynamic>> createLabor(Map<String, dynamic> data) async {
+    try {
+      final headers = await authJsonHeaders();
+      final response = await http.post(
+        Uri.parse('$BASE_URL/api/labors'),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+      final decoded = response.body.isNotEmpty
+          ? jsonDecode(response.body)
+          : <String, dynamic>{};
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          'success': true,
+          'data': decoded is Map ? (decoded['data'] ?? decoded) : decoded,
+          'message': decoded is Map
+              ? (decoded['message'] ?? 'Laborer added successfully')
+              : 'Laborer added successfully',
+        };
+      }
+      final err = decoded is Map
+          ? (decoded['error']?.toString() ?? 'Failed to add laborer')
+          : 'Failed to add laborer';
+      return {'success': false, 'message': err};
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to add laborer: $e'};
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchLabors({String? mobile}) async {
+    try {
+      final uri = Uri.parse('$BASE_URL/api/labors').replace(
+        queryParameters: {
+          'limit': '100',
+          if (mobile != null && mobile.isNotEmpty) 'mobile': mobile,
+        },
+      );
+      final headers = await authGetHeaders();
+      final response = await http.get(uri, headers: headers);
+      if (response.statusCode != 200) return [];
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map && decoded['data'] is List) {
+        return (decoded['data'] as List)
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching labors: $e');
+      return [];
+    }
+  }
+
+  Future<bool> deleteLabor(int id) async {
+    try {
+      final headers = await authGetHeaders();
+      final response = await http.delete(
+        Uri.parse('$BASE_URL/api/labors/$id'),
+        headers: headers,
+      );
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      print('Error deleting labor: $e');
+      return false;
+    }
+  }
 }

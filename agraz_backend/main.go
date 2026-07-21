@@ -27,6 +27,7 @@ func init() {
 		&models.UserRoleMapping{},
 		&models.ServiceRegistration{},
 		&models.Vendor{},
+		&models.Labor{},
 		&models.EcomCategory{},
 		&models.EcomSubCategory{},
 		&models.EcomProduct{},
@@ -58,6 +59,7 @@ func main() {
 	handler.SetUserRoleMappingDB(initializers.DB)
 	handler.SetEmployeeDB(initializers.DB)
 	handler.SetIncomeExpenseDB(initializers.DB)
+	handler.SetLaborDB(initializers.DB)
 	handler.SetServiceRegistrationDB(initializers.DB)
 	handler.SetEcomDB(initializers.DB)
 	handler.SetVendorDB(initializers.DB)
@@ -95,6 +97,13 @@ func main() {
 	api.Post("/income_expense", handler.CreateIncomeExpenseMobile)
 	api.Put("/income_expense/:id", handler.UpdateIncomeExpense)
 	api.Delete("/income_expense/:id", handler.DeleteIncomeExpense)
+
+	// Labor management (public JSON API for Flutter app)
+	api.Get("/labors", handler.GetLabors)
+	api.Get("/labors/:id", handler.GetLabor)
+	api.Post("/labors", handler.CreateLabor)
+	api.Put("/labors/:id", handler.UpdateLabor)
+	api.Delete("/labors/:id", handler.DeleteLabor)
 
 	// Public storefront catalog (no JWT; same data admin manages)
 	api.Get("/store/categories", handler.GetStoreCategories)
