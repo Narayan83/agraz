@@ -1,0 +1,215 @@
+.role-permissions-page {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.status-msg {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.status-msg.success { background-color: #ECFDF5; color: #10B981; }
+.status-msg.error { background-color: #FEF2F2; color: #DC2626; }
+
+.permissions-container {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.role-selector-card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 100px;
+  overflow: hidden;
+}
+
+.role-selector-card .card-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--bg-main);
+}
+
+.role-list {
+  padding: 0.75rem;
+}
+
+.role-item {
+  display: flex;
+  align-items: center;
+  padding: 0.875rem 1rem;
+  border-radius: 12px;
+  color: var(--text-main);
+  transition: var(--transition);
+  cursor: pointer;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.role-item:hover {
+  background-color: var(--bg-main);
+}
+
+.role-item.active {
+  background-color: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.active-chevron {
+  margin-left: auto;
+}
+
+.tree-card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.tree-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.role-highlight {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.legend {
+  display: flex;
+  gap: 1rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.tree-body {
+  padding: 1rem 0;
+}
+
+.permission-node {
+  display: flex;
+  align-items: center;
+  padding: 0.875rem 1.5rem;
+  border-bottom: 1px solid rgba(0,0,0,0.02);
+  transition: var(--transition);
+  gap: 1rem;
+}
+
+.permission-node:hover {
+  background-color: rgb(37 99 235 / 0.04);
+}
+
+.permission-node.has-children {
+  background-color: rgba(0,0,0,0.01);
+}
+
+.node-toggle {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.node-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.node-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--text-main);
+}
+
+.node-url {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.node-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.action-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+}
+
+.action-checkbox:hover {
+  background-color: var(--bg-main);
+}
+
+.action-checkbox.checked {
+  background-color: white;
+  border-color: var(--border);
+}
+
+.action-checkbox.checked.can_view { color: var(--primary); border-color: #bfdbfe; background: var(--primary-light); }
+.action-checkbox.checked.can_create { color: #10B981; border-color: #D1FAE5; background: #ECFDF5; }
+.action-checkbox.checked.can_update { color: #F59E0B; border-color: #FEF3C7; background: #FFFBEB; }
+.action-checkbox.checked.can_delete { color: #EF4444; border-color: #FEE2E2; background: #FEF2F2; }
+
+.tree-loader, .empty-tree {
+  padding: 5rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.loader-box {
+  padding: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 1024px) {
+  .permissions-container {
+    grid-template-columns: 1fr;
+  }
+  .role-selector-card {
+    position: static;
+  }
+}

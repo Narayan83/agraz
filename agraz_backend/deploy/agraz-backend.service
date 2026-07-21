@@ -1,0 +1,18 @@
+[Unit]
+Description=Agraz Go API
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/agraz
+EnvironmentFile=/opt/agraz/.env
+ExecStart=/opt/agraz/agraz_backend
+Restart=on-failure
+RestartSec=5
+User=www-data
+Group=www-data
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

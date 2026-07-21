@@ -1,0 +1,26 @@
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.app-placeholder {
+  padding: 2rem;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-placeholder h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+}
+
+.app-placeholder p {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}

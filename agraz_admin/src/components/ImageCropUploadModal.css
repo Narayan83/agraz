@@ -1,0 +1,170 @@
+.ecom-crop-modal .modal-header {
+  position: sticky;
+  top: 0;
+  background: rgba(255, 255, 255, 0.95);
+  z-index: 1;
+}
+
+.ecom-crop-shell {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
+}
+
+.ecom-crop-frame {
+  position: relative;
+  flex-shrink: 0;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  border: 1px dashed rgba(37, 99, 235, 0.35);
+  background: rgba(241, 245, 249, 0.6);
+}
+
+.ecom-crop-image {
+  position: absolute;
+  left: 0;
+  top: 0;
+  user-select: none;
+  pointer-events: none;
+}
+
+.ecom-crop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  cursor: grab;
+  touch-action: none;
+}
+
+.ecom-crop-overlay:active {
+  cursor: grabbing;
+}
+
+.ecom-crop-shades {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.ecom-crop-shade {
+  position: absolute;
+}
+
+/* Inner square crop chrome (non-interactive) */
+.ecom-crop-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.ecom-crop-edge {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(37, 99, 235, 0.75);
+}
+
+.ecom-crop-corner {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-color: rgba(255, 255, 255, 0.98);
+  border-style: solid;
+  border-width: 0;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.65)) drop-shadow(0 0 2px rgba(37, 99, 235, 0.55));
+}
+
+.ecom-crop-corner--tl {
+  border-top-width: 3px;
+  border-left-width: 3px;
+  border-top-left-radius: calc(var(--radius-xl) - 4px);
+}
+
+.ecom-crop-corner--tr {
+  border-top-width: 3px;
+  border-right-width: 3px;
+  border-top-right-radius: calc(var(--radius-xl) - 4px);
+}
+
+.ecom-crop-corner--bl {
+  border-bottom-width: 3px;
+  border-left-width: 3px;
+  border-bottom-left-radius: calc(var(--radius-xl) - 4px);
+}
+
+.ecom-crop-corner--br {
+  border-bottom-width: 3px;
+  border-right-width: 3px;
+  border-bottom-right-radius: calc(var(--radius-xl) - 4px);
+}
+
+.ecom-crop-handle {
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  appearance: none;
+  cursor: inherit;
+}
+
+.ecom-crop-handle:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.9);
+  outline-offset: 2px;
+}
+
+.ecom-crop-controls {
+  box-sizing: border-box;
+  flex: 1 1 280px;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.ecom-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ecom-slider-row label {
+  font-weight: 900;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.78rem;
+}
+
+.ecom-slider-row input[type="range"] {
+  width: 100%;
+}
+
+.ecom-crop-zoom-val {
+  font-weight: 900;
+  color: var(--text-main);
+  min-width: 52px;
+  text-align: right;
+}
+
+.ecom-crop-error {
+  color: #dc2626;
+  font-weight: 800;
+}
+
+.ecom-inline-busy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 900;
+}
+
+.ecom-loader-spin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}

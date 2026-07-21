@@ -1,0 +1,147 @@
+.header {
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 998;
+  background: var(--header-surface);
+  border-bottom: 1px solid var(--header-border);
+  box-shadow: 0 1px 0 rgb(17 24 39 / 0.04);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.sidebar-toggle {
+  color: var(--text-muted);
+  padding: 0.5rem;
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-toggle:hover {
+  background-color: var(--primary-light);
+  color: var(--primary);
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--muted);
+  border-radius: 9999px;
+  padding: 0.4rem 0.875rem;
+  color: var(--text-muted);
+  width: min(380px, 42vw);
+  max-width: 100%;
+  border: 1px solid transparent;
+  transition: var(--transition);
+}
+
+.search-bar:focus-within {
+  background-color: var(--card);
+  border-color: var(--input);
+  box-shadow: 0 0 0 3px rgb(0 134 116 / 0.2);
+  color: var(--primary);
+}
+
+.search-bar input {
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 0.8125rem;
+  width: 100%;
+  color: var(--text-main);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-shrink: 0;
+}
+
+.icon-btn {
+  color: var(--text-muted);
+  position: relative;
+  transition: var(--transition);
+  padding: 0.5rem;
+  border-radius: var(--radius-md);
+}
+
+.icon-btn:hover {
+  color: var(--primary);
+  background-color: var(--primary-light);
+}
+
+.badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--primary);
+  border: 2px solid white;
+  border-radius: 50%;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: var(--radius-lg);
+  transition: var(--transition);
+}
+
+.user-profile:hover {
+  background-color: var(--muted);
+}
+
+.header-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+}
+
+.user-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 0 1rem;
+  }
+  .header-center {
+    display: none;
+  }
+  .user-meta span {
+    display: none;
+  }
+}

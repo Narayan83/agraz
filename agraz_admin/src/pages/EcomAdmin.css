@@ -1,0 +1,549 @@
+.ecom-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.ecom-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ecom-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.95rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-main);
+  color: var(--text-muted);
+  font-weight: 800;
+  font-size: 0.875rem;
+  transition: var(--transition);
+}
+
+.ecom-tab-btn.active {
+  background: var(--surface);
+  color: var(--primary);
+  border-color: rgba(37, 99, 235, 0.25);
+  box-shadow: var(--shadow-sm);
+}
+
+.ecom-loader {
+  padding: 3rem 1.5rem;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.ecom-tab-panel {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.ecom-toolbar {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ecom-toolbar-wrap {
+  justify-content: space-between;
+}
+
+.ecom-search {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-main);
+  min-width: 280px;
+}
+
+.ecom-search input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+
+.ecom-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.ecom-select {
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.ecom-table-wrap {
+  padding: 0;
+}
+
+.ecom-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.ecom-table thead th {
+  padding: 1rem 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--bg-main);
+  border-bottom: 1px solid var(--border);
+}
+
+.ecom-table tbody td {
+  padding: 0.95rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.ecom-empty {
+  padding: 2.5rem 1.25rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.ecom-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.ecom-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  transition: var(--transition);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ecom-icon-btn:hover {
+  border-color: var(--primary-light);
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+.ecom-icon-btn.ecom-danger:hover {
+  border-color: rgba(220, 38, 38, 0.35);
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.ecom-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.ecom-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+  margin-right: 0.35rem;
+}
+
+.ecom-color-dot-lg {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.ecom-stock-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  margin-right: 0.5rem;
+}
+
+.ecom-stock-badge.ok {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.ecom-stock-badge.warn {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.ecom-stock-badge.danger {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.ecom-stock-qty {
+  color: var(--text-muted);
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.ecom-modal {
+  max-width: 1100px;
+}
+
+.ecom-modal-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 2000;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+/* Inset overlay to the main column so wide modals do not cover the sidebar (desktop). */
+@media (min-width: 769px) {
+  html[data-admin-sidebar="expanded"] .ecom-modal-overlay {
+    left: var(--sidebar-width);
+  }
+
+  html[data-admin-sidebar="collapsed"] .ecom-modal-overlay {
+    left: var(--sidebar-collapsed-width);
+  }
+}
+
+@media (max-width: 768px) {
+  .ecom-modal-overlay {
+    left: 0 !important;
+  }
+}
+
+.ecom-modal-content {
+  width: 100%;
+  min-width: 0;
+  max-width: min(1100px, 100%);
+  max-height: min(94vh, 1040px);
+  box-sizing: border-box;
+  overflow: auto;
+  background: var(--surface);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  font-family: inherit;
+}
+
+.ecom-modal-body {
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.ecom-modal-content .modal-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ecom-modal-content .modal-header h3 {
+  font-family: inherit;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.ecom-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ecom-form-scroll {
+  padding: 0;
+}
+
+.ecom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.ecom-grid-4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 1rem;
+}
+
+.ecom-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.ecom-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ecom-field label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-main);
+  text-transform: none;
+  letter-spacing: -0.01em;
+  font-family: inherit;
+}
+
+.ecom-input,
+.ecom-field input,
+.ecom-field textarea {
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-main);
+  font-size: 0.9375rem;
+  color: var(--text-main);
+  font-weight: 500;
+  font-family: inherit;
+}
+
+.ecom-field textarea {
+  resize: vertical;
+}
+
+.ecom-field-full {
+  grid-column: 1 / -1;
+}
+
+.ecom-section {
+  border: 1px solid rgba(226, 232, 240, 0.75);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1rem;
+  background: rgba(248, 250, 252, 0.4);
+}
+
+.ecom-section h4 {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+  margin-bottom: 0.9rem;
+  font-family: inherit;
+}
+
+.ecom-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ecom-row {
+  display: grid;
+  grid-template-columns: 1.1fr 1.1fr 0.2fr;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.ecom-row-variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.ecom-row-variants > .ecom-field,
+.ecom-row-variants > .ecom-image-cell {
+  flex: 1 1 210px;
+}
+
+.ecom-row-variants > * {
+  flex: 1 1 210px;
+  min-width: 180px;
+}
+
+.ecom-row-variants > .ecom-icon-btn {
+  flex: 0 0 auto;
+  width: 40px;
+  min-width: 40px;
+}
+
+.ecom-row-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.ecom-row-images > .ecom-field,
+.ecom-row-images > .ecom-image-cell {
+  flex: 1 1 220px;
+}
+
+.ecom-row-images > * {
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+
+.ecom-row-images > .ecom-icon-btn {
+  flex: 0 0 auto;
+  width: 40px;
+  min-width: 40px;
+}
+
+.ecom-image-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.ecom-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(241, 245, 249, 0.7);
+}
+
+.ecom-image-placeholder {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  border: 1px dashed rgba(37, 99, 235, 0.25);
+  background: rgba(241, 245, 249, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-weight: 900;
+  font-size: 0.75rem;
+  text-align: center;
+  padding: 0.25rem;
+}
+
+.ecom-thumb-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.ecom-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: var(--radius-md);
+  border: 1px dashed rgba(37, 99, 235, 0.35);
+  background: rgba(239, 246, 255, 0.65);
+  color: var(--primary);
+  font-weight: 900;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.ecom-upload-btn:hover {
+  border-color: rgba(37, 99, 235, 0.7);
+  background: rgba(239, 246, 255, 0.95);
+}
+
+.ecom-danger {
+  color: #dc2626;
+}
+
+.ecom-check {
+  margin-top: 0.25rem;
+}
+
+.ecom-note {
+  margin-top: -0.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.ecom-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.ecom-page-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.ecom-storefront-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ecom-product-thumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.ecom-thumb-fallback {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.ecom-td-thumb {
+  width: 56px;
+}
+

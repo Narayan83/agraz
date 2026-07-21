@@ -1,0 +1,221 @@
+.sidebar {
+  width: var(--sidebar-width);
+  height: 100vh;
+  background-color: var(--sidebar);
+  border-right: 1px solid var(--sidebar-border);
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  transition: width 0.2s ease, left 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-sm);
+}
+
+.sidebar.open {
+  width: var(--sidebar-width);
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+.sidebar.mobile {
+  position: fixed;
+  left: -100%;
+}
+
+.sidebar.mobile-open {
+  left: 0;
+}
+
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+}
+
+.sidebar-header {
+  height: var(--header-height);
+  padding: 0 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--sidebar-border);
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(145deg, var(--sidebar-primary), #006b5c);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sidebar-primary-foreground);
+  font-weight: 700;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgb(0 134 116 / 0.35);
+}
+
+.logo-text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--sidebar-foreground);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 1.25rem 0.625rem;
+  overflow-y: auto;
+}
+
+.nav-group {
+  margin-bottom: 1.25rem;
+}
+
+.nav-label {
+  display: block;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-sidebar-muted);
+  margin-bottom: 0.4rem;
+  padding: 0 0.625rem;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  padding: 0.45rem 0.625rem;
+  border-radius: var(--radius-md);
+  color: var(--text-sidebar-muted);
+  transition: var(--transition);
+  gap: 0.625rem;
+  margin-bottom: 0.0625rem;
+  text-decoration: none;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2rem;
+}
+
+button.sidebar-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebar-item:hover {
+  background-color: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+}
+
+.sidebar-item.active {
+  background-color: var(--sidebar-primary);
+  color: var(--sidebar-primary-foreground);
+  font-weight: 500;
+}
+
+.sidebar-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-text {
+  font-size: inherit;
+  white-space: nowrap;
+}
+
+.sidebar-chevron {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-children {
+  margin-top: 0.25rem;
+}
+
+.sidebar-footer {
+  padding: 1.25rem 1rem;
+  border-top: 1px solid var(--sidebar-border);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--sidebar-primary);
+  color: var(--sidebar-primary-foreground);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.details {
+  display: flex;
+  flex-direction: column;
+}
+
+.details .name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--sidebar-accent-foreground);
+}
+
+.details .role {
+  font-size: 0.6875rem;
+  color: var(--text-sidebar-muted);
+}
+
+/* Collapsed Styles */
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .sidebar-text,
+.sidebar.collapsed .sidebar-chevron,
+.sidebar.collapsed .user-info .details,
+.sidebar.collapsed .logo-text {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-item {
+  justify-content: center;
+  padding: 0.75rem;
+}
+
+.sidebar.collapsed .logo-container {
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .sidebar.mobile-open {
+    width: var(--sidebar-width);
+  }
+}
