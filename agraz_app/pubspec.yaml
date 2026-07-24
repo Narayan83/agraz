@@ -16,23 +16,38 @@ dependencies:
   intl: ^0.20.2
   shared_preferences: ^2.5.3
   youtube_player_flutter: ^9.1.1
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.6
 
 # ADD THIS SECTION TO FIX THE DEPENDENCY CONFLICT
 dependency_overrides:
   vector_math: ^2.2.0
 
-flutter_icons:
+flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/1024.png"
-  adaptive_icon_background: "#4CAF50" # Green color matching agriculture theme
-  # Remove adaptive_icon_background if you want transparent background
+  image_path: "assets/images/app_logo_padded.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/app_logo_padded.png"
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/images/app_logo.png
+  android: true
+  ios: true
+  android_gravity: center
+  ios_content_mode: scaleAspectFit
+  fullscreen: true
+  android_12:
+    color: "#FFFFFF"
+    image: assets/images/app_logo_padded.png
+    icon_background_color: "#FFFFFF"
 
 flutter:
   assets:
@@ -46,6 +61,8 @@ flutter:
     - assets/ad2.jpg
     - assets/ad3.jpg
     - assets/images/1024.png
+    - assets/images/app_logo.png
+    - assets/images/app_logo_padded.png
     - assets/images/logo.jpeg
     - assets/images/48.png
     - assets/images/72.png

@@ -13,6 +13,7 @@ import VendorProductMapping from "./pages/VendorProductMapping";
 import VendorUserMapping from "./pages/VendorUserMapping";
 import EcomAdmin from "./pages/EcomAdmin";
 import StorefrontHero from "./pages/StorefrontHero";
+import GovFacilities from "./pages/GovFacilities";
 import Login from "./pages/Login";
 import { logoutAndRedirect } from "./lib/authStorage";
 import "./App.css";
@@ -104,6 +105,10 @@ function App() {
 
         <Route path="/storefront-hero" element={
           <ProtectedRoute><StorefrontHero /></ProtectedRoute>
+        } />
+
+        <Route path="/gov-facilities" element={
+          <ProtectedRoute><GovFacilities /></ProtectedRoute>
         } />
         
         <Route path="/auditlogs" element={

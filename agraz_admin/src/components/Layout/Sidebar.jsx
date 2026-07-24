@@ -24,6 +24,7 @@ import {
   Share2,
   Image,
   Images,
+  Landmark,
 } from "lucide-react";
 import "./Sidebar.css";
 
@@ -51,6 +52,7 @@ const iconMap = {
   Share2: <Share2 size={18} strokeWidth={1.75} />,
   Image: <Image size={18} strokeWidth={1.75} />,
   Images: <Images size={18} strokeWidth={1.75} />,
+  Landmark: <Landmark size={18} strokeWidth={1.75} />,
 };
 
 /** Normalize menu rows from `/my-menus` (snake_case + occasional PascalCase). */
@@ -128,6 +130,7 @@ function menuSubtreeActive(location, item) {
 
 const HARD_CODED_SERVICE_NAV = [
   { menu_name: "Service Registrations", url: "/service-registrations", icon: "ClipboardList" },
+  { menu_name: "Government Facilities", url: "/gov-facilities", icon: "Landmark" },
 ];
 
 const LOGOUT_NAV_ITEM = { menu_name: "Logout", url: "/logout", icon: "LogOut" };

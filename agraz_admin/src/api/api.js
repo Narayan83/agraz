@@ -447,4 +447,66 @@ export const deleteCartItem = async (variantId) => {
   return response.data;
 };
 
+// Government facilities (admin)
+export const getAdminGovDepartments = async () => {
+  const response = await api.get('/admin/gov/departments');
+  return response.data;
+};
+export const createAdminGovDepartment = async (data) => {
+  const response = await api.post('/admin/gov/departments', data);
+  return response.data;
+};
+export const updateAdminGovDepartment = async (id, data) => {
+  const response = await api.put(`/admin/gov/departments/${id}`, data);
+  return response.data;
+};
+export const deleteAdminGovDepartment = async (id) => {
+  const response = await api.delete(`/admin/gov/departments/${id}`);
+  return response.data;
+};
+
+export const getAdminGovCrops = async () => {
+  const response = await api.get('/admin/gov/crops');
+  return response.data;
+};
+export const createAdminGovCrop = async (data) => {
+  const response = await api.post('/admin/gov/crops', data);
+  return response.data;
+};
+export const updateAdminGovCrop = async (id, data) => {
+  const response = await api.put(`/admin/gov/crops/${id}`, data);
+  return response.data;
+};
+export const deleteAdminGovCrop = async (id) => {
+  const response = await api.delete(`/admin/gov/crops/${id}`);
+  return response.data;
+};
+
+export const getAdminGovFacilities = async (params = {}) => {
+  const response = await api.get('/admin/gov/facilities', { params });
+  return response.data;
+};
+export const getAdminGovFacility = async (id) => {
+  const response = await api.get(`/admin/gov/facilities/${id}`);
+  return response.data;
+};
+export const createAdminGovFacility = async (data) => {
+  const response = await api.post('/admin/gov/facilities', data);
+  return response.data;
+};
+export const updateAdminGovFacility = async (id, data) => {
+  const response = await api.put(`/admin/gov/facilities/${id}`, data);
+  return response.data;
+};
+export const deleteAdminGovFacility = async (id) => {
+  const response = await api.delete(`/admin/gov/facilities/${id}`);
+  return response.data;
+};
+export const uploadGovFacilityApplication = async (file) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  const response = await api.post('/admin/gov/facilities/upload', fd);
+  return response.data;
+};
+
 export default api;

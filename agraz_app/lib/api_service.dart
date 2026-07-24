@@ -238,6 +238,36 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> createLaborsBatch(
+      List<Map<String, dynamic>> rows) async {
+    try {
+      final headers = await authJsonHeaders();
+      final response = await http.post(
+        Uri.parse('$BASE_URL/api/labors/batch'),
+        headers: headers,
+        body: jsonEncode(rows),
+      );
+      final decoded = response.body.isNotEmpty
+          ? jsonDecode(response.body)
+          : <String, dynamic>{};
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          'success': true,
+          'data': decoded is Map ? (decoded['data'] ?? decoded) : decoded,
+          'message': decoded is Map
+              ? (decoded['message'] ?? 'Labourers added successfully')
+              : 'Labourers added successfully',
+        };
+      }
+      final err = decoded is Map
+          ? (decoded['error']?.toString() ?? 'Failed to add labourers')
+          : 'Failed to add labourers';
+      return {'success': false, 'message': err};
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to add labourers: $e'};
+    }
+  }
+
   Future<List<Map<String, dynamic>>> fetchLabors({String? mobile}) async {
     try {
       final uri = Uri.parse('$BASE_URL/api/labors').replace(

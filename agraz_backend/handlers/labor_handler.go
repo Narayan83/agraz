@@ -16,11 +16,14 @@ func SetLaborDB(db *gorm.DB) {
 	laborDB = db
 }
 
-var validShifts = map[string]bool{
-	"Morning":   true,
-	"Afternoon": true,
-	"Night":     true,
-	"Full Day":  true,
+var validWorkTypes = map[string]bool{
+	"Daily Wages": true,
+	"Contract":    true,
+}
+
+var validGenders = map[string]bool{
+	"Male":   true,
+	"Female": true,
 }
 
 type laborPayload struct {
@@ -30,6 +33,10 @@ type laborPayload struct {
 	NumberOfLabours int             `json:"number_of_labours"`
 	Shift           string          `json:"shift"`
 	Category        string          `json:"category"`
+	Gender          string          `json:"gender"`
+	WorkType        string          `json:"work_type"`
+	LabourHead      string          `json:"labour_head"`
+	Location        string          `json:"location"`
 	Narration       string          `json:"narration"`
 	Date            time.Time       `json:"date"`
 	Mobile          *string         `json:"mobile"`
@@ -40,21 +47,41 @@ func validateLaborPayload(body *laborPayload) string {
 		return "name is required"
 	}
 	if body.Wage.LessThanOrEqual(decimal.Zero) {
-		return "wage must be greater than zero"
+		return "rate (wage) must be greater than zero"
 	}
 	if body.Hours.LessThanOrEqual(decimal.Zero) {
-		return "hours must be greater than zero"
+		return "days/hour must be greater than zero"
 	}
 	if body.NumberOfLabours < 1 {
-		return "number_of_labours must be at least 1"
+		body.NumberOfLabours = 1
 	}
 	shift := strings.TrimSpace(body.Shift)
-	if !validShifts[shift] {
-		return "shift must be Morning, Afternoon, Night, or Full Day"
+	if shift == "" {
+		return "shift is required"
 	}
 	body.Shift = shift
 	if strings.TrimSpace(body.Category) == "" {
 		return "category is required"
+	}
+	gender := strings.TrimSpace(body.Gender)
+	if !validGenders[gender] {
+		return "gender must be Male or Female"
+	}
+	body.Gender = gender
+	workType := strings.TrimSpace(body.WorkType)
+	if !validWorkTypes[workType] {
+		return "work_type must be Daily Wages or Contract"
+	}
+	body.WorkType = workType
+	body.LabourHead = strings.TrimSpace(body.LabourHead)
+	if workType == "Contract" && body.LabourHead == "" {
+		return "labour_head is required for Contract work type"
+	}
+	if workType == "Daily Wages" {
+		body.LabourHead = ""
+	}
+	if strings.TrimSpace(body.Location) == "" {
+		return "location is required"
 	}
 	if strings.TrimSpace(body.Narration) == "" {
 		return "narration is required"
@@ -63,6 +90,22 @@ func validateLaborPayload(body *laborPayload) string {
 		return "date is required"
 	}
 	return ""
+}
+
+func applyLaborPayload(row *models.Labor, body *laborPayload) {
+	row.Name = strings.TrimSpace(body.Name)
+	row.Wage = body.Wage
+	row.Hours = body.Hours
+	row.NumberOfLabours = body.NumberOfLabours
+	row.Shift = body.Shift
+	row.Category = strings.TrimSpace(body.Category)
+	row.Gender = body.Gender
+	row.WorkType = body.WorkType
+	row.LabourHead = body.LabourHead
+	row.Location = strings.TrimSpace(body.Location)
+	row.Narration = strings.TrimSpace(body.Narration)
+	row.Date = body.Date
+	row.Mobile = body.Mobile
 }
 
 func CreateLabor(c *fiber.Ctx) error {
@@ -74,21 +117,37 @@ func CreateLabor(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": msg})
 	}
 
-	row := models.Labor{
-		Name:            strings.TrimSpace(body.Name),
-		Wage:            body.Wage,
-		Hours:           body.Hours,
-		NumberOfLabours: body.NumberOfLabours,
-		Shift:           body.Shift,
-		Category:        strings.TrimSpace(body.Category),
-		Narration:       strings.TrimSpace(body.Narration),
-		Date:            body.Date,
-		Mobile:          body.Mobile,
-	}
+	row := models.Labor{}
+	applyLaborPayload(&row, &body)
 	if err := laborDB.Create(&row).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create labor record", "details": err.Error()})
 	}
 	return c.Status(201).JSON(fiber.Map{"message": "Laborer added successfully", "data": row})
+}
+
+func CreateLaborsBatch(c *fiber.Ctx) error {
+	var bodies []laborPayload
+	if err := c.BodyParser(&bodies); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body", "details": err.Error()})
+	}
+	if len(bodies) == 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "at least one labour row is required"})
+	}
+
+	rows := make([]models.Labor, 0, len(bodies))
+	for i := range bodies {
+		if msg := validateLaborPayload(&bodies[i]); msg != "" {
+			return c.Status(400).JSON(fiber.Map{"error": msg, "row": i + 1})
+		}
+		var row models.Labor
+		applyLaborPayload(&row, &bodies[i])
+		rows = append(rows, row)
+	}
+
+	if err := laborDB.Create(&rows).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to create labor records", "details": err.Error()})
+	}
+	return c.Status(201).JSON(fiber.Map{"message": "Labourers added successfully", "data": rows})
 }
 
 func GetLabors(c *fiber.Ctx) error {
@@ -113,6 +172,12 @@ func GetLabors(c *fiber.Ctx) error {
 	}
 	if cat := c.Query("category"); cat != "" {
 		q = q.Where("category ILIKE ?", "%"+cat+"%")
+	}
+	if workType := c.Query("work_type"); workType != "" {
+		q = q.Where("work_type = ?", workType)
+	}
+	if location := c.Query("location"); location != "" {
+		q = q.Where("location ILIKE ?", "%"+location+"%")
 	}
 	if from := c.Query("from"); from != "" {
 		q = q.Where("date >= ?", from)
@@ -151,15 +216,7 @@ func UpdateLabor(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Labor record not found"})
 	}
 
-	row.Name = strings.TrimSpace(body.Name)
-	row.Wage = body.Wage
-	row.Hours = body.Hours
-	row.NumberOfLabours = body.NumberOfLabours
-	row.Shift = body.Shift
-	row.Category = strings.TrimSpace(body.Category)
-	row.Narration = strings.TrimSpace(body.Narration)
-	row.Date = body.Date
-	row.Mobile = body.Mobile
+	applyLaborPayload(&row, &body)
 
 	if err := laborDB.Save(&row).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to update labor record", "details": err.Error()})

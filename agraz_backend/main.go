@@ -40,6 +40,9 @@ func init() {
 		&models.EcomCart{},
 		&models.EcomCartItem{},
 		&models.StorefrontBannerSlide{},
+		&models.GovDepartment{},
+		&models.GovCrop{},
+		&models.GovFacility{},
 	)
 	seeds.SeedAll()
 }
@@ -64,6 +67,7 @@ func main() {
 	handler.SetEcomDB(initializers.DB)
 	handler.SetVendorDB(initializers.DB)
 	handler.SetStorefrontBannerDB(initializers.DB)
+	handler.SetGovDB(initializers.DB)
 
 	// set up fiber (large body limit for multi-image uploads)
 	app := fiber.New(fiber.Config{
@@ -100,8 +104,9 @@ func main() {
 
 	// Labor management (public JSON API for Flutter app)
 	api.Get("/labors", handler.GetLabors)
-	api.Get("/labors/:id", handler.GetLabor)
+	api.Post("/labors/batch", handler.CreateLaborsBatch)
 	api.Post("/labors", handler.CreateLabor)
+	api.Get("/labors/:id", handler.GetLabor)
 	api.Put("/labors/:id", handler.UpdateLabor)
 	api.Delete("/labors/:id", handler.DeleteLabor)
 
@@ -113,6 +118,13 @@ func main() {
 	api.Get("/store/products/:id", handler.GetStoreProductByID)
 	api.Get("/store/vendors", handler.GetStoreVendors)
 	api.Get("/store/banners", handler.GetStoreBannersPublic)
+
+	// Government facilities (public browse for Flutter)
+	api.Get("/gov/departments", handler.GetGovDepartments)
+	api.Get("/gov/crops", handler.GetGovCrops)
+	api.Get("/gov/categories", handler.GetGovCategories)
+	api.Get("/gov/facilities", handler.GetGovFacilities)
+	api.Get("/gov/facilities/:id", handler.GetGovFacility)
 
 	// Use Middleware
 	api.Use(middleware.Protected())
@@ -239,6 +251,24 @@ func main() {
 	api.Put("/admin/storefront/banners/reorder", handler.AdminReorderStorefrontBanners)
 	api.Put("/admin/storefront/banners/:id", handler.AdminUpdateStorefrontBanner)
 	api.Delete("/admin/storefront/banners/:id", handler.AdminDeleteStorefrontBanner)
+
+	// Admin government facilities
+	api.Get("/admin/gov/departments", handler.AdminGetGovDepartments)
+	api.Post("/admin/gov/departments", handler.AdminCreateGovDepartment)
+	api.Put("/admin/gov/departments/:id", handler.AdminUpdateGovDepartment)
+	api.Delete("/admin/gov/departments/:id", handler.AdminDeleteGovDepartment)
+
+	api.Get("/admin/gov/crops", handler.AdminGetGovCrops)
+	api.Post("/admin/gov/crops", handler.AdminCreateGovCrop)
+	api.Put("/admin/gov/crops/:id", handler.AdminUpdateGovCrop)
+	api.Delete("/admin/gov/crops/:id", handler.AdminDeleteGovCrop)
+
+	api.Get("/admin/gov/facilities", handler.AdminGetGovFacilities)
+	api.Get("/admin/gov/facilities/:id", handler.AdminGetGovFacility)
+	api.Post("/admin/gov/facilities", handler.AdminCreateGovFacility)
+	api.Put("/admin/gov/facilities/:id", handler.AdminUpdateGovFacility)
+	api.Delete("/admin/gov/facilities/:id", handler.AdminDeleteGovFacility)
+	api.Post("/admin/gov/facilities/upload", handler.UploadGovFacilityApplication)
 
 	// start server
 	port := os.Getenv("PORT")

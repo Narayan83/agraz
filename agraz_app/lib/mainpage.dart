@@ -9,6 +9,7 @@ import 'labour.dart';
 import 'marke_report.dart';
 import 'buy_and_sell.dart';
 import 'farmer_education.dart';
+import 'government_facilities.dart';
 import 'auth_token.dart';
 import 'login.dart';
 import 'service_register.dart';
@@ -158,18 +159,13 @@ class _MainPageState extends State<MainPage> {
           children: [
             DrawerHeader(
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1B5E20), Color(0xFF43A047)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: Colors.white,
               ),
               child: Center(
                 child: Image.asset(
-                  'assets/images/logo.jpeg',
-                  width: 200,
-                  height: 90,
+                  'assets/images/app_logo.png',
                   fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
                 ),
               ),
             ),
@@ -233,6 +229,14 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Farmer Education'),
               onTap: () => _openProtected(
                 const FarmerEducationPage(),
+                closeDrawer: true,
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance, color: Colors.deepOrange),
+              title: const Text('Government Facilities'),
+              onTap: () => _openProtected(
+                const GovernmentFacilitiesPage(),
                 closeDrawer: true,
               ),
             ),
@@ -807,7 +811,13 @@ class _MainPageState extends State<MainPage> {
       itemBuilder: (context, index) {
         final service = services[index];
         return GestureDetector(
-          onTap: () => _showServiceDetailModal(context, service),
+          onTap: () {
+            if (service.title == 'Banking & Finance Solutions') {
+              _openProtected(const GovernmentFacilitiesPage());
+              return;
+            }
+            _showServiceDetailModal(context, service);
+          },
           child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(

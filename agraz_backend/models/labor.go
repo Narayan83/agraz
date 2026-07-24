@@ -10,11 +10,15 @@ import (
 type Labor struct {
 	ID              uint            `gorm:"primaryKey;autoIncrement" json:"id"`
 	Name            string          `gorm:"type:varchar(255);not null" json:"name"`
-	Wage            decimal.Decimal `gorm:"type:numeric(15,2);not null" json:"wage"`
-	Hours           decimal.Decimal `gorm:"type:numeric(10,2);not null" json:"hours"`
+	Wage            decimal.Decimal `gorm:"type:numeric(15,2);not null" json:"wage"` // rate
+	Hours           decimal.Decimal `gorm:"type:numeric(10,2);not null" json:"hours"` // days/hour
 	NumberOfLabours int             `gorm:"not null;default:1" json:"number_of_labours"`
 	Shift           string          `gorm:"type:varchar(50);not null" json:"shift"`
 	Category        string          `gorm:"type:varchar(100);not null" json:"category"`
+	Gender          string          `gorm:"type:varchar(20);not null;default:''" json:"gender"`
+	WorkType        string          `gorm:"type:varchar(50);not null;default:''" json:"work_type"`
+	LabourHead      string          `gorm:"type:varchar(255);not null;default:''" json:"labour_head"`
+	Location        string          `gorm:"type:varchar(255);not null;default:''" json:"location"`
 	Narration       string          `gorm:"type:text;not null" json:"narration"`
 	Date            time.Time       `gorm:"not null" json:"date"`
 	Mobile          *string         `gorm:"type:varchar(15)" json:"mobile,omitempty"`

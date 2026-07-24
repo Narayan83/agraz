@@ -1,4 +1,3 @@
-import 'package:agraz/mainpage.dart';
 import 'package:flutter/material.dart';
 import 'login.dart'; // Contains LoginScreen
 import 'registration.dart';
@@ -7,8 +6,11 @@ import 'category_create.dart';
 import 'subcategory_create.dart';
 import 'services.dart';
 import 'service_register.dart';
+import 'mainpage.dart';
+import 'app_splash.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -19,28 +21,18 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Flutter Auth',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      // Open main page without requiring login first
-      initialRoute: '/main',
-      // Define all your routes
+      title: 'AgRaz',
+      theme: ThemeData(primarySwatch: Colors.green),
+      home: const AppSplashPage(),
       routes: {
         '/login': (context) => const LoginScreen(),
         '/registration': (context) => const RegistrationPage(),
         '/main': (context) => const MainPage(),
-        '/receipt_payment':
-            (context) =>
-                const IncomeExpensePage(), // Assuming you have MainPage
-        '/category_create':
-            (context) =>
-                const CategoryManagementPage(), // Assuming you have MainPage
-        '/subcategory_create':
-            (context) =>
-                const SubcategoryManagementPage(), // Assuming you have MainPage
-        '/services':
-            (context) => ServiceListingPage(), // Assuming you have MainPage
-        '/service_register':
-            (context) => ServiceRegisterPage(), // Assuming you have MainPage
+        '/receipt_payment': (context) => const IncomeExpensePage(),
+        '/category_create': (context) => const CategoryManagementPage(),
+        '/subcategory_create': (context) => const SubcategoryManagementPage(),
+        '/services': (context) => ServiceListingPage(),
+        '/service_register': (context) => const ServiceRegisterPage(),
       },
     );
   }

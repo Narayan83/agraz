@@ -20,6 +20,7 @@ func SeedAll() {
 	SeedAdminUser()
 	SeedMenus()
 	SeedStorefrontBannerMenu()
+	SeedGovFacilities()
 }
 
 func SeedEcomDefaults() {
