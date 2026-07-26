@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'dart:async';
 import 'profile_page.dart';
 import 'settings_page.dart';
 import 'about_page.dart';
@@ -38,28 +38,41 @@ class _ServiceFeature {
 
 class _MainPageState extends State<MainPage> {
   bool _isLoggedIn = false;
-  late YoutubePlayerController _youtubeController;
+
+  final List<String> _sliderImages = [
+    'assets/images/areca.jpg',
+    'assets/images/banana.jpeg',
+    'assets/images/pepper.jpg',
+    'assets/images/coffee.jpeg',
+    'assets/images/bhatta.jpeg',
+  ];
+
+  late PageController _pageController;
+  late Timer _autoSlideTimer;
+  int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
     _refreshAuthState();
-      _youtubeController = YoutubePlayerController(
-        initialVideoId: 'UPQZLboVsEE',
-        flags: const YoutubePlayerFlags(
-          autoPlay: false,
-          mute: true,
-          hideControls: true,
-          loop: false,
-          disableDragSeek: true,
-          enableCaption: false,
-        ),
-      );
+    _currentPage = 0;
+    _pageController = PageController(viewportFraction: 1.0);
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      _currentPage++;
+      if (_pageController.hasClients) {
+        _pageController.animateToPage(
+          _currentPage,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
-    _youtubeController.dispose();
+    _autoSlideTimer.cancel();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -122,9 +135,14 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           "AgRaz",
-          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+            color: Colors.white,
+          ),
         ),
         centerTitle: true,
         flexibleSpace: Container(
@@ -163,7 +181,7 @@ class _MainPageState extends State<MainPage> {
               ),
               child: Center(
                 child: Image.asset(
-                  'assets/images/app_logo.png',
+                  'assets/images/menulogo.jpeg',
                   fit: BoxFit.contain,
                   filterQuality: FilterQuality.high,
                 ),
@@ -317,24 +335,62 @@ class _MainPageState extends State<MainPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Hero Section ---
+            // --- Hero Section (Image Slider) ---
             SizedBox(
               height: 260,
               width: double.infinity,
               child: Stack(
                 children: [
-                  Container(color: Colors.black),
-                  ClipRRect(
-                    child: YoutubePlayer(
-                      controller: _youtubeController,
-                      showVideoProgressIndicator: false,
-                      progressIndicatorColor: Colors.transparent,
-                      bottomActions: const [],
-                      topActions: const [],
-
+                  PageView.builder(
+                    controller: _pageController,
+                    itemCount: null,
+                    onPageChanged: (index) {
+                      setState(() {
+                        _currentPage = index;
+                      });
+                    },
+                    itemBuilder: (context, index) {
+                      final imageIndex = index % _sliderImages.length;
+                      return Image.asset(
+                        _sliderImages[imageIndex],
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: 260,
+                      );
+                    },
+                  ),
+                  Positioned(
+                    bottom: 10,
+                    left: 0,
+                    right: 0,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(_sliderImages.length, (i) {
+                        final isActive = _currentPage % _sliderImages.length == i;
+                        return GestureDetector(
+                          onTap: () {
+                            int target = (_currentPage ~/ _sliderImages.length) * _sliderImages.length + i;
+                            if (target < _currentPage) target += _sliderImages.length;
+                            _pageController.animateToPage(
+                              target,
+                              duration: const Duration(milliseconds: 400),
+                              curve: Curves.easeInOut,
+                            );
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
+                            width: isActive ? 18 : 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: isActive ? const Color(0xFF2E7D32) : Colors.white,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        );
+                      }),
                     ),
                   ),
-
                 ],
               ),
             ),
@@ -414,12 +470,12 @@ class _MainPageState extends State<MainPage> {
                   ),
                   const SizedBox(height: 32),
                   // --- Services ---
-                  _buildSectionHeader('🌾 Our Services for Farmers'),
+                  _buildSectionHeader('Our Services for Farmers'),
                   const SizedBox(height: 16),
                   _buildServicesGrid(),
                   const SizedBox(height: 32),
                   // --- Why Choose AgRaz? ---
-                  _buildSectionHeader('🌟 Why Choose AgRaz?'),
+                  _buildSectionHeader('Why Choose AgRaz?'),
                   const SizedBox(height: 16),
                   _buildWhyChooseCard(
                     icon: Icons.auto_awesome,
@@ -743,7 +799,7 @@ class _MainPageState extends State<MainPage> {
       ),
       _ServiceFeature(
         icon: Icons.trending_up,
-        title: 'Forecast & Predict Yields',
+        title: 'Forecast & Predict',
         description: 'Get AI-powered predictions on crop yield and productivity based on historical patterns, weather, and inputs.',
         details: [
           'AI-driven yield predictions',
@@ -754,7 +810,7 @@ class _MainPageState extends State<MainPage> {
       ),
       _ServiceFeature(
         icon: Icons.shopping_basket,
-        title: 'Buy & Sell Agri Products',
+        title: 'Buy & Sell',
         description: 'Trade seeds, fertilizers, pesticides, and harvested crops with trusted vendors and buyers right from your phone.',
         details: [
           'Verified vendors and buyers',
@@ -776,7 +832,7 @@ class _MainPageState extends State<MainPage> {
       ),
       _ServiceFeature(
         icon: Icons.account_balance,
-        title: 'Banking & Finance Solutions',
+        title: 'Banking & Finance',
         description: 'Get access to agricultural loans, credit tools, insurance services, and government schemes.',
         details: [
           'Easy loan applications',
@@ -787,7 +843,7 @@ class _MainPageState extends State<MainPage> {
       ),
       _ServiceFeature(
         icon: Icons.dashboard,
-        title: 'Farm Analytics Dashboard',
+        title: 'Farm Analytics',
         description: 'See all your key data in one simple, visual dashboard.',
         details: [
           'Visual data representations',

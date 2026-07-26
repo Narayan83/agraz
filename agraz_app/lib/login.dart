@@ -149,15 +149,19 @@ class _LoginScreenState extends State<LoginScreen>
                         children: [
                           // Brand section
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: const Color(0xFFE8F5E9),
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: const Icon(
-                              Icons.eco,
-                              color: Color(0xFF2E7D32),
-                              size: 52,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.asset(
+                                'assets/images/app_logo.png',
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.contain,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 16),
