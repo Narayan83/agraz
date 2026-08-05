@@ -9,19 +9,11 @@ import 'config.dart'; // Import the config file
 class ApiService {
   Future<bool> submitTransaction(IncomeExpenseData data) async {
     try {
-      // Convert data to JSON
       final jsonData = data.toJson();
 
-      // Print the data being sent to backend
       print('=== DATA SENDING TO BACKEND ===');
       print('URL: $BASE_URL/api/income_expense');
-      print('Request Body:');
       print(jsonEncode(jsonData));
-      print('Formatted Data:');
-      jsonData.forEach((key, value) {
-        print('  $key: $value');
-      });
-      print('=== END OF DATA ===');
 
       final headers = await authJsonHeaders();
       final response = await http.post(
@@ -32,16 +24,43 @@ class ApiService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         print('Transaction submitted successfully');
-        print('Response: ${response.body}');
         return true;
       } else {
         print('API Error: ${response.statusCode} - ${response.body}');
-        throw Exception('Failed to submit transaction: ${response.statusCode}');
+        String msg = 'Failed to submit transaction (${response.statusCode})';
+        try {
+          final err = jsonDecode(response.body);
+          if (err is Map && err['error'] != null) {
+            msg = err['error'].toString();
+          } else if (err is Map && err['message'] != null) {
+            msg = err['message'].toString();
+          }
+        } catch (_) {}
+        throw Exception(msg);
       }
     } catch (e) {
       print('Error submitting transaction: $e');
       rethrow;
     }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchApprovedServices({String? query}) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/services').replace(
+      queryParameters: {
+        if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+      },
+    );
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load services (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    final list = decoded is Map ? (decoded['data'] as List? ?? []) : (decoded as List? ?? []);
+    return list
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
   }
 
   Future<Map<String, dynamic>?> fetchUserByMobile(String mobile) async {

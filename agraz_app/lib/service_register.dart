@@ -1,15 +1,61 @@
 import 'package:flutter/material.dart';
 import 'api_service.dart';
 
-class ServiceRegisterPage extends StatefulWidget {
+/// Shows service registration as a modal bottom sheet. Returns true on success.
+Future<bool?> showServiceRegisterSheet(BuildContext context) {
+  return showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) {
+      return DraggableScrollableSheet(
+        initialChildSize: 0.92,
+        minChildSize: 0.5,
+        maxChildSize: 0.98,
+        builder: (_, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFFF5F7F5),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: ServiceRegisterForm(
+              scrollController: scrollController,
+              asSheet: true,
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+class ServiceRegisterPage extends StatelessWidget {
   const ServiceRegisterPage({super.key});
 
   @override
-  _ServiceRegisterPageState createState() => _ServiceRegisterPageState();
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Color(0xFFF5F7F5),
+      body: SafeArea(child: ServiceRegisterForm(asSheet: false)),
+    );
+  }
 }
 
-class _ServiceRegisterPageState extends State<ServiceRegisterPage>
-    with SingleTickerProviderStateMixin {
+class ServiceRegisterForm extends StatefulWidget {
+  final ScrollController? scrollController;
+  final bool asSheet;
+
+  const ServiceRegisterForm({
+    super.key,
+    this.scrollController,
+    this.asSheet = false,
+  });
+
+  @override
+  State<ServiceRegisterForm> createState() => _ServiceRegisterFormState();
+}
+
+class _ServiceRegisterFormState extends State<ServiceRegisterForm> {
   final _formKey = GlobalKey<FormState>();
   final ApiService _apiService = ApiService();
   final mobileController = TextEditingController();
@@ -20,9 +66,6 @@ class _ServiceRegisterPageState extends State<ServiceRegisterPage>
   String? selectedMainCategory;
   String? selectedSubCategory;
   bool isLoading = false;
-
-  late AnimationController _animController;
-  late Animation<double> _fadeAnim;
 
   final Map<String, List<String>> categories = {
     'Farming Services': [
@@ -123,14 +166,7 @@ class _ServiceRegisterPageState extends State<ServiceRegisterPage>
         final transaction = responseData['data'][0];
         setState(() => nameController.text = transaction['name'] ?? '');
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to fetch details: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    } catch (_) {}
   }
 
   Future<void> _submitForm() async {
@@ -153,14 +189,20 @@ class _ServiceRegisterPageState extends State<ServiceRegisterPage>
       setState(() => isLoading = false);
 
       if (result['success'] == true) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Service registered successfully!'),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.of(context).pop();
+        if (widget.asSheet) {
+          Navigator.of(context).pop(true);
+        } else {
+          Navigator.of(context).pop();
+        }
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Failed to register. Try again.'),
@@ -170,6 +212,7 @@ class _ServiceRegisterPageState extends State<ServiceRegisterPage>
       }
     } catch (e) {
       setState(() => isLoading = false);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Unexpected error: $e'), backgroundColor: Colors.red),
       );
@@ -177,19 +220,7 @@ class _ServiceRegisterPageState extends State<ServiceRegisterPage>
   }
 
   @override
-  void initState() {
-    super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
-    _animController.forward();
-  }
-
-  @override
   void dispose() {
-    _animController.dispose();
     mobileController.dispose();
     nameController.dispose();
     businessNameController.dispose();
@@ -200,45 +231,55 @@ class _ServiceRegisterPageState extends State<ServiceRegisterPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F5),
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnim,
-          child: Column(
-            children: [
-              _buildHeader(),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        _buildContactCard(),
-                        const SizedBox(height: 16),
-                        _buildCategoryCard(),
-                        const SizedBox(height: 16),
-                        _buildDetailsCard(),
-                        const SizedBox(height: 16),
-                        _buildEmailRemarksCard(),
-                        const SizedBox(height: 28),
-                        _buildSubmitButton(),
-                      ],
-                    ),
-                  ),
-                ),
+    return Column(
+      children: [
+        if (widget.asSheet)
+          Padding(
+            padding: const EdgeInsets.only(top: 10, bottom: 4),
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade400,
+                borderRadius: BorderRadius.circular(4),
               ),
-            ],
+            ),
+          ),
+        _buildHeader(),
+        Expanded(
+          child: SingleChildScrollView(
+            controller: widget.scrollController,
+            padding: EdgeInsets.fromLTRB(
+              20,
+              8,
+              20,
+              24 + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  _buildContactCard(),
+                  const SizedBox(height: 16),
+                  _buildCategoryCard(),
+                  const SizedBox(height: 16),
+                  _buildDetailsCard(),
+                  const SizedBox(height: 16),
+                  _buildEmailRemarksCard(),
+                  const SizedBox(height: 28),
+                  _buildSubmitButton(),
+                ],
+              ),
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF1B5E20), Color(0xFF388E3C), Color(0xFF4CAF50)],
@@ -246,65 +287,61 @@ class _ServiceRegisterPageState extends State<ServiceRegisterPage>
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
         ),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
-                ),
+          if (!widget.asSheet)
+            Container(
+              width: 40,
+              height: 40,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
               ),
-              const Spacer(),
-            ],
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.miscellaneous_services_rounded, color: Colors.white, size: 22),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Register your Business or Service',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                child: const Icon(Icons.miscellaneous_services_rounded, color: Colors.white, size: 26),
-              ),
-              const SizedBox(width: 14),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Service Registration',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Register your business or service',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                SizedBox(height: 2),
+                Text(
+                  'Fill in the details below',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
           ),
+          if (widget.asSheet)
+            IconButton(
+              onPressed: () => Navigator.pop(context, false),
+              icon: const Icon(Icons.close, color: Colors.white),
+            ),
         ],
       ),
     );
@@ -407,10 +444,10 @@ class _ServiceRegisterPageState extends State<ServiceRegisterPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle('Business Details', Icons.business_rounded),
+          _sectionTitle('Business Name', Icons.business_rounded),
           _buildTextField(
             controller: businessNameController,
-            label: 'Business / Service Name',
+            label: 'Business Name',
             icon: Icons.store_rounded,
             validator: (v) => v!.isEmpty ? 'Required' : null,
           ),
@@ -504,82 +541,50 @@ class _ServiceRegisterPageState extends State<ServiceRegisterPage>
   }
 
   Widget _card({required Widget child}) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 400),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(offset: Offset(0, 20 * (1 - value)), child: child),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(20),
-        child: child,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
+      padding: const EdgeInsets.all(20),
+      child: child,
     );
   }
 
   Widget _buildSubmitButton() {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 500),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(offset: Offset(0, 20 * (1 - value)), child: child),
-        );
-      },
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF2E7D32).withValues(alpha: 0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: ElevatedButton(
-            onPressed: isLoading ? null : _submitForm,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2E7D32),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              disabledBackgroundColor: const Color(0xFFA5D6A7),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            ),
-            child: isLoading
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                  )
-                : const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.check_circle_outline_rounded, size: 22),
-                      SizedBox(width: 8),
-                      Text('Register Service', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                    ],
-                  ),
-          ),
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : _submitForm,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2E7D32),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          disabledBackgroundColor: const Color(0xFFA5D6A7),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
+        child: isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+              )
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.check_circle_outline_rounded, size: 22),
+                  SizedBox(width: 8),
+                  Text('Register Service', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                ],
+              ),
       ),
     );
   }

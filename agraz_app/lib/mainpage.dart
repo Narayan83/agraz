@@ -12,7 +12,6 @@ import 'farmer_education.dart';
 import 'government_facilities.dart';
 import 'auth_token.dart';
 import 'login.dart';
-import 'service_register.dart';
 import 'welcome_screen.dart';
 
 class MainPage extends StatefulWidget {
@@ -206,15 +205,6 @@ class _MainPageState extends State<MainPage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.app_registration, color: Colors.green),
-              title: const Text('Service Register'),
-              onTap:
-                  () => _openProtected(
-                    const ServiceRegisterPage(),
-                    closeDrawer: true,
-                  ),
-            ),
-            ListTile(
               leading: const Icon(
                 Icons.account_balance_wallet,
                 color: Colors.orange,
@@ -278,7 +268,10 @@ class _MainPageState extends State<MainPage> {
               ),
               title: const Text('General Services'),
               onTap:
-                  () => _openProtected(ServiceListingPage(), closeDrawer: true),
+                  () => _openProtected(
+                    const ServiceListingPage(),
+                    closeDrawer: true,
+                  ),
             ),
             ListTile(
               leading: const Icon(Icons.account_circle, color: Colors.blue),

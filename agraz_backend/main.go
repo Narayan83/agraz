@@ -94,6 +94,7 @@ func main() {
 	api.Post("/mobile/register", handler.MobileRegisterUser)
 	api.Get("/mobile/users/by-phone/:phone", handler.GetUserByMobilePublic)
 	api.Post("/register-business", handler.RegisterBusinessPublic)
+	api.Get("/services", handler.ListApprovedServicesPublic)
 	api.Get("/income_expense/summary", handler.GetIncomeExpenseSummaryPublic)
 	api.Get("/income_expense/mobile/:mobile", handler.GetIncomeExpensesByMobilePublic)
 	api.Get("/income_expense", handler.GetIncomeExpenses)

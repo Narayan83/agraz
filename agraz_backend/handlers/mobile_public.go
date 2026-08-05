@@ -22,6 +22,8 @@ type registerBusinessPayload struct {
 	MainCategory string   `json:"main_category"`
 	SubCategory  *string  `json:"sub_category,omitempty"`
 	BusinessName string   `json:"business_name"`
+	Email        *string  `json:"email,omitempty"`
+	Remarks      *string  `json:"remarks,omitempty"`
 	ImagePaths   []string `json:"image_paths"`
 }
 
@@ -47,6 +49,18 @@ func RegisterBusinessPublic(c *fiber.Ctx) error {
 		ImagePaths:   datatypes.JSON(raw),
 		Approved:     false,
 	}
+	if body.Email != nil {
+		email := strings.TrimSpace(*body.Email)
+		if email != "" {
+			row.Email = &email
+		}
+	}
+	if body.Remarks != nil {
+		remarks := strings.TrimSpace(*body.Remarks)
+		if remarks != "" {
+			row.Remarks = &remarks
+		}
+	}
 	if err := serviceRegistrationDB.Create(&row).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to save service registration", "details": err.Error()})
 	}
@@ -57,6 +71,26 @@ func RegisterBusinessPublic(c *fiber.Ctx) error {
 		"message": "Business registered successfully",
 		"data":    row,
 	})
+}
+
+// ListApprovedServicesPublic handles GET /api/services — approved registrations for Flutter General Services.
+func ListApprovedServicesPublic(c *fiber.Ctx) error {
+	var rows []models.ServiceRegistration
+	q := serviceRegistrationDB.Model(&models.ServiceRegistration{}).Where("approved = ?", true)
+	if mc := c.Query("main_category"); mc != "" {
+		q = q.Where("main_category ILIKE ?", "%"+mc+"%")
+	}
+	if search := strings.TrimSpace(c.Query("q")); search != "" {
+		like := "%" + search + "%"
+		q = q.Where(
+			"business_name ILIKE ? OR name ILIKE ? OR main_category ILIKE ? OR COALESCE(sub_category,'') ILIKE ? OR COALESCE(business_address,'') ILIKE ?",
+			like, like, like, like, like,
+		)
+	}
+	if err := q.Order("main_category ASC, sub_category ASC, business_name ASC").Find(&rows).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"data": rows, "total": len(rows)})
 }
 
 type mobileRegisterRequest struct {
@@ -150,9 +184,7 @@ func CreateIncomeExpenseMobile(c *fiber.Ctx) error {
 	}
 	mobile, _ := raw["mobile"].(string)
 	name, _ := raw["name"].(string)
-	if strings.TrimSpace(mobile) == "" || strings.TrimSpace(name) == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "mobile and name are required"})
-	}
+	// mobile and name are optional for income/expense entries
 	var dt time.Time
 	if ds, ok := raw["date"].(string); ok && strings.TrimSpace(ds) != "" {
 		var parseErr error

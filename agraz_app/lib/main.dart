@@ -5,7 +5,6 @@ import 'income_expense.dart';
 import 'category_create.dart';
 import 'subcategory_create.dart';
 import 'services.dart';
-import 'service_register.dart';
 import 'mainpage.dart';
 import 'app_splash.dart';
 
@@ -31,8 +30,7 @@ class MyApp extends StatelessWidget {
         '/receipt_payment': (context) => const IncomeExpensePage(),
         '/category_create': (context) => const CategoryManagementPage(),
         '/subcategory_create': (context) => const SubcategoryManagementPage(),
-        '/services': (context) => ServiceListingPage(),
-        '/service_register': (context) => const ServiceRegisterPage(),
+        '/services': (context) => const ServiceListingPage(),
       },
     );
   }

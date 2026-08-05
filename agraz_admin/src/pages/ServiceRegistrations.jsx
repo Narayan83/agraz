@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import {
   getServiceRegistrations,
+  getServiceRegistration,
   updateServiceRegistration,
   deleteServiceRegistration,
   uploadServiceRegistrationImages,
@@ -91,6 +92,7 @@ function emptyForm() {
     whatsapp: "",
     name: "",
     email: "",
+    remarks: "",
     business_name: "",
     business_address: "",
     customer_address: "",
@@ -155,7 +157,7 @@ const ServiceRegistrations = () => {
 
   const totalPages = Math.max(1, Math.ceil(total / limit) || 1);
 
-  const openEdit = (row) => {
+  const openEdit = async (row) => {
     setSelected(row);
     setForm({
       ...emptyForm(),
@@ -164,6 +166,7 @@ const ServiceRegistrations = () => {
       whatsapp: row.whatsapp || "",
       name: row.name || "",
       email: row.email || "",
+      remarks: row.remarks || "",
       business_name: row.business_name || "",
       business_address: row.business_address || "",
       customer_address: row.customer_address || "",
@@ -182,6 +185,46 @@ const ServiceRegistrations = () => {
       social_youtube: row.social_youtube || "",
     });
     setModalOpen(true);
+    // Refresh full record so email/remarks and other fields always appear
+    try {
+      const fresh = await getServiceRegistration(row.id);
+      if (fresh && fresh.id) {
+        setSelected(fresh);
+        setForm((prev) => ({
+          ...prev,
+          mobile: fresh.mobile || "",
+          secondary_contact: fresh.secondary_contact || "",
+          whatsapp: fresh.whatsapp || "",
+          name: fresh.name || "",
+          email: fresh.email || "",
+          remarks: fresh.remarks || "",
+          business_name: fresh.business_name || "",
+          business_address: fresh.business_address || "",
+          customer_address: fresh.customer_address || "",
+          service_provider_photo: fresh.service_provider_photo || "",
+          aadhar: fresh.aadhar || "",
+          main_category: fresh.main_category || "",
+          sub_category: fresh.sub_category || "",
+          image_paths_json: formatImagePathsForForm(fresh.image_paths),
+          approved: !!fresh.approved,
+          latitude:
+            fresh.latitude != null && fresh.latitude !== ""
+              ? String(fresh.latitude)
+              : "",
+          longitude:
+            fresh.longitude != null && fresh.longitude !== ""
+              ? String(fresh.longitude)
+              : "",
+          custom_services: normalizeCustomServices(fresh.custom_services),
+          social_facebook: fresh.social_facebook || "",
+          social_website: fresh.social_website || "",
+          social_instagram: fresh.social_instagram || "",
+          social_youtube: fresh.social_youtube || "",
+        }));
+      }
+    } catch (e) {
+      console.warn("Could not refresh registration detail", e);
+    }
   };
 
   const closeModal = () => {
@@ -211,6 +254,7 @@ const ServiceRegistrations = () => {
       secondary_contact: form.secondary_contact || null,
       whatsapp: form.whatsapp || null,
       email: form.email || null,
+      remarks: form.remarks || null,
       social_facebook: form.social_facebook || null,
       social_website: form.social_website || null,
       social_instagram: form.social_instagram || null,
@@ -529,6 +573,12 @@ const ServiceRegistrations = () => {
                       <dd className="sr-dd-truncate">{row.email}</dd>
                     </div>
                   ) : null}
+                  {row.remarks ? (
+                    <div>
+                      <dt>Remarks</dt>
+                      <dd className="sr-dd-truncate">{row.remarks}</dd>
+                    </div>
+                  ) : null}
                   <div>
                     <dt>
                       <Tag size={14} /> Categories
@@ -649,6 +699,17 @@ const ServiceRegistrations = () => {
                       value={form.email}
                       onChange={handleFormChange}
                       placeholder="name@example.com"
+                    />
+                  </div>
+                  <div className="form-group sr-form-span-3">
+                    <label>Remarks</label>
+                    <textarea
+                      name="remarks"
+                      value={form.remarks}
+                      onChange={handleFormChange}
+                      rows={2}
+                      className="sr-textarea"
+                      placeholder="Notes from app registration or admin"
                     />
                   </div>
                 </div>

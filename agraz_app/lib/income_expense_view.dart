@@ -208,6 +208,13 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
   static const Color _incomeGreen = Color(0xFF4CAF50);
   static const Color _expenseRed = Color(0xFFE53935);
 
+  String _formatAmount(dynamic amount) {
+    final value = amount is num
+        ? amount.toDouble()
+        : double.tryParse(amount?.toString() ?? '') ?? 0.0;
+    return value.toStringAsFixed(2);
+  }
+
   Widget _buildTransactionCard(Map<String, dynamic> transaction) {
     final bool isIncome = transaction['type'] == 'Income';
     final Color amountColor = isIncome ? _incomeGreen : _expenseRed;
@@ -294,7 +301,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '$amountPrefix ₹${transaction['amount']?. toStringAsFixed(2) ?? '0.00'}',
+                '$amountPrefix ₹${_formatAmount(transaction['amount'])}',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,

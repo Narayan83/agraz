@@ -2,24 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'income_expense_data.dart';
-import 'address_page.dart';
 import 'income_expense_view.dart';
+import 'api_service.dart';
 
 class IncomeExpensePage extends StatefulWidget {
   const IncomeExpensePage({super.key});
 
   @override
-  _IncomeExpensePageState createState() => _IncomeExpensePageState();
+  State<IncomeExpensePage> createState() => _IncomeExpensePageState();
 }
 
 class _IncomeExpensePageState extends State<IncomeExpensePage>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final IncomeExpenseData _formData = IncomeExpenseData();
+  final ApiService _apiService = ApiService();
+
+  final _nameController = TextEditingController();
+  final _mobileController = TextEditingController();
+  final _narrationController = TextEditingController();
+  final _amountController = TextEditingController();
+  final _villageController = TextEditingController();
+  final _postController = TextEditingController();
+  final _talukController = TextEditingController();
+  final _districtController = TextEditingController();
+  final _extraAddressController = TextEditingController();
+  final _pincodeController = TextEditingController();
 
   final List<String> receiptPaymentOptions = ['Income', 'Expense'];
   List<String> categories = [];
   List<String> subCategories = [];
+  bool isLoading = false;
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -41,6 +54,16 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   @override
   void dispose() {
     _animController.dispose();
+    _nameController.dispose();
+    _mobileController.dispose();
+    _narrationController.dispose();
+    _amountController.dispose();
+    _villageController.dispose();
+    _postController.dispose();
+    _talukController.dispose();
+    _districtController.dispose();
+    _extraAddressController.dispose();
+    _pincodeController.dispose();
     super.dispose();
   }
 
@@ -61,7 +84,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     setState(() {
       subCategories =
           _formData.categorySubCategoryMap[selectedCategory]?.keys.toList() ??
-          [];
+              [];
       _formData.subCategory = null;
     });
   }
@@ -97,13 +120,258 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     }
   }
 
-  void _navigateToAddressPage() {
+  Future<void> _prefetchByMobile(String mobile) async {
+    if (mobile.length != 10) return;
+    try {
+      final responseData = await _apiService.fetchUserByMobile(mobile);
+      if (responseData != null &&
+          responseData['data'] != null &&
+          responseData['data'].isNotEmpty) {
+        final transaction = responseData['data'][0];
+        setState(() {
+          if (_nameController.text.isEmpty) {
+            _nameController.text = transaction['name']?.toString() ?? '';
+          }
+          _villageController.text = transaction['village']?.toString() ?? '';
+          _postController.text = transaction['post']?.toString() ?? '';
+          _talukController.text = transaction['taluk']?.toString() ?? '';
+          _districtController.text = transaction['district']?.toString() ?? '';
+          _extraAddressController.text =
+              transaction['extra_address']?.toString() ??
+                  transaction['extraAddress']?.toString() ??
+                  '';
+          _pincodeController.text = transaction['pincode']?.toString() ?? '';
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _syncFormDataFromControllers() {
+    _formData.name = _nameController.text.trim().isEmpty
+        ? ''
+        : _nameController.text.trim();
+    _formData.mobile = _mobileController.text.trim().isEmpty
+        ? ''
+        : _mobileController.text.trim();
+    _formData.narration = _narrationController.text.trim().isEmpty
+        ? null
+        : _narrationController.text.trim();
+    _formData.village = _villageController.text.trim().isEmpty
+        ? null
+        : _villageController.text.trim();
+    _formData.post =
+        _postController.text.trim().isEmpty ? null : _postController.text.trim();
+    _formData.taluk = _talukController.text.trim().isEmpty
+        ? null
+        : _talukController.text.trim();
+    _formData.district = _districtController.text.trim().isEmpty
+        ? null
+        : _districtController.text.trim();
+    _formData.extraAddress = _extraAddressController.text.trim().isEmpty
+        ? null
+        : _extraAddressController.text.trim();
+    _formData.pincode = _pincodeController.text.trim().isEmpty
+        ? null
+        : _pincodeController.text.trim();
+  }
+
+  void _clearFormForNextEntry() {
+    final keptType = _formData.receiptPaymentType;
+    _nameController.clear();
+    _mobileController.clear();
+    _narrationController.clear();
+    _amountController.clear();
+    _villageController.clear();
+    _postController.clear();
+    _talukController.clear();
+    _districtController.clear();
+    _extraAddressController.clear();
+    _pincodeController.clear();
+
+    setState(() {
+      _formData.amount = null;
+      _formData.narration = null;
+      _formData.mobile = null;
+      _formData.name = null;
+      _formData.village = null;
+      _formData.post = null;
+      _formData.taluk = null;
+      _formData.district = null;
+      _formData.extraAddress = null;
+      _formData.pincode = null;
+      _formData.transactionDate = DateTime.now();
+      _formData.receiptPaymentType = keptType;
+      _updateCategories();
+    });
+    _formKey.currentState?.reset();
+  }
+
+  Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
+    _syncFormDataFromControllers();
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => AddressPage(formData: _formData)),
+    if (_formData.receiptPaymentType == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select Income or Expense'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (_formData.category == null || _formData.subCategory == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select category and sub category'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => isLoading = true);
+    try {
+      final success = await _apiService.submitTransaction(_formData);
+      if (!mounted) return;
+      setState(() => isLoading = false);
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Transaction recorded successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _clearFormForNextEntry();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showOtherInfoSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade400,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Other Information',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1B5E20),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    'Optional address details',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                  ),
+                  const SizedBox(height: 16),
+                  _sheetField('Village', Icons.location_city, _villageController),
+                  _sheetField('Post', Icons.local_post_office, _postController),
+                  _sheetField('Taluk', Icons.map, _talukController),
+                  _sheetField('District', Icons.place, _districtController),
+                  _sheetField(
+                    'Extra Address',
+                    Icons.note_add,
+                    _extraAddressController,
+                    maxLines: 2,
+                  ),
+                  _sheetField(
+                    'Pincode',
+                    Icons.pin_drop,
+                    _pincodeController,
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E7D32),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text('Done'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    setState(() {});
+  }
+
+  Widget _sheetField(
+    String label,
+    IconData icon,
+    TextEditingController controller, {
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: const Color(0xFF2E7D32)),
+          filled: true,
+          fillColor: const Color(0xFFF5F7F5),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
     );
   }
 
@@ -120,6 +388,15 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       default:
         return const Color(0xFF78909C);
     }
+  }
+
+  bool get _hasOtherInfo {
+    return _villageController.text.isNotEmpty ||
+        _postController.text.isNotEmpty ||
+        _talukController.text.isNotEmpty ||
+        _districtController.text.isNotEmpty ||
+        _extraAddressController.text.isNotEmpty ||
+        _pincodeController.text.isNotEmpty;
   }
 
   @override
@@ -150,13 +427,15 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                             subCategories.isNotEmpty)
                           _buildSubCategorySection(),
                         const SizedBox(height: 16),
+                        _buildPartyCard(),
+                        const SizedBox(height: 16),
                         _buildNarrationCard(),
                         const SizedBox(height: 16),
-                        _buildMobileCard(),
-                        const SizedBox(height: 16),
                         _buildViewAllButton(),
-                        const SizedBox(height: 16),
-                        _buildNextButton(),
+                        const SizedBox(height: 12),
+                        _buildOtherInfoButton(),
+                        const SizedBox(height: 12),
+                        _buildSubmitButton(),
                       ],
                     ),
                   ),
@@ -171,7 +450,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF1B5E20), Color(0xFF388E3C), Color(0xFF4CAF50)],
@@ -179,142 +458,60 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
         ),
       ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.note_add_rounded, size: 16, color: Colors.white.withValues(alpha: 0.9)),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Step 1 of 2',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 26),
-              ),
-              const SizedBox(width: 14),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Record Transaction',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Fill in the details below',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _buildStepIndicator(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStepIndicator() {
-    return Row(
-      children: [
-        _stepDot('Details', true),
-        _stepLine(true),
-        _stepDot('Address', false),
-      ],
-    );
-  }
-
-  Widget _stepDot(String label, bool active) {
-    return Expanded(
-      child: Column(
+      child: Row(
         children: [
           Container(
-            width: 28,
-            height: 28,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: active ? Colors.white : Colors.white.withValues(alpha: 0.3),
-              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              active ? Icons.check : Icons.circle_outlined,
-              size: 16,
-              color: active ? const Color(0xFF1B5E20) : Colors.white,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+              onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: active ? Colors.white : Colors.white.withValues(alpha: 0.6),
-              fontSize: 11,
-              fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+          const SizedBox(width: 12),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.account_balance_wallet_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Record Transaction',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Income & Expense',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _stepLine(bool active) {
-    return Container(
-      width: 40,
-      height: 2,
-      decoration: BoxDecoration(
-        color: active ? Colors.white : Colors.white.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(1),
       ),
     );
   }
@@ -340,48 +537,31 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   }
 
   Widget _buildTransactionTypeCard() {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 400),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(0, 20 * (1 - value)),
-            child: child,
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle('Transaction Type', Icons.swap_horiz_rounded),
+          Row(
+            children: [
+              Expanded(
+                child: _typeToggle(
+                  'Income',
+                  Icons.trending_up_rounded,
+                  const Color(0xFF4CAF50),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _typeToggle(
+                  'Expense',
+                  Icons.trending_down_rounded,
+                  const Color(0xFFE53935),
+                ),
+              ),
+            ],
           ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _sectionTitle('Transaction Type', Icons.swap_horiz_rounded),
-            Row(
-              children: [
-                Expanded(
-                  child: _typeToggle('Income', Icons.trending_up_rounded, const Color(0xFF4CAF50)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _typeToggle('Expense', Icons.trending_down_rounded, const Color(0xFFE53935)),
-                ),
-              ],
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -408,7 +588,11 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
         ),
         child: Column(
           children: [
-            Icon(icon, color: selected ? Colors.white : Colors.grey.shade600, size: 28),
+            Icon(
+              icon,
+              color: selected ? Colors.white : Colors.grey.shade600,
+              size: 28,
+            ),
             const SizedBox(height: 6),
             Text(
               type,
@@ -425,32 +609,16 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   }
 
   Widget _buildDateAmountCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(20),
+    return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _sectionTitle('Date & Amount', Icons.calendar_month_rounded),
           Row(
             children: [
-              Expanded(
-                child: _buildDateField(),
-              ),
+              Expanded(child: _buildDateField()),
               const SizedBox(width: 12),
-              Expanded(
-                child: _buildAmountField(),
-              ),
+              Expanded(child: _buildAmountField()),
             ],
           ),
         ],
@@ -470,7 +638,11 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_rounded, color: Color(0xFF2E7D32), size: 18),
+            const Icon(
+              Icons.calendar_today_rounded,
+              color: Color(0xFF2E7D32),
+              size: 18,
+            ),
             const SizedBox(width: 10),
             Text(
               DateFormat('dd MMM yyyy').format(_formData.transactionDate!),
@@ -480,8 +652,6 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                 color: Color(0xFF1B5E20),
               ),
             ),
-            const Spacer(),
-            const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF2E7D32), size: 20),
           ],
         ),
       ),
@@ -496,7 +666,12 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
         borderRadius: BorderRadius.circular(14),
       ),
       child: TextFormField(
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1B5E20)),
+        controller: _amountController,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF1B5E20),
+        ),
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         validator: (value) {
           if (value == null || value.isEmpty) return 'Required';
@@ -507,7 +682,11 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
         onSaved: (value) => _formData.amount = double.tryParse(value!),
         decoration: InputDecoration(
           border: InputBorder.none,
-          prefixIcon: const Icon(Icons.currency_rupee_rounded, color: Color(0xFF2E7D32), size: 18),
+          prefixIcon: const Icon(
+            Icons.currency_rupee_rounded,
+            color: Color(0xFF2E7D32),
+            size: 18,
+          ),
           prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
           hintText: 'Amount',
           hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
@@ -518,42 +697,17 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   }
 
   Widget _buildCategorySection() {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 350),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(0, 15 * (1 - value)),
-            child: child,
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle('Category', Icons.category_rounded),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: categories.map((cat) => _categoryChip(cat)).toList(),
           ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _sectionTitle('Category', Icons.category_rounded),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: categories.map((cat) => _categoryChip(cat)).toList(),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -579,60 +733,26 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
             width: 1.5,
           ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (selected)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: Icon(Icons.check_circle, size: 16, color: selected ? Colors.white : color),
-              ),
-            Text(
-              label,
-              style: TextStyle(
-                color: selected ? Colors.white : color,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : color,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
   }
 
   Widget _buildSubCategorySection() {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 350),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(0, 15 * (1 - value)),
-            child: child,
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(top: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(20),
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      child: _card(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _sectionTitle('Sub Category', Icons.list_alt_rounded),
-            const SizedBox(height: 4),
             _buildSubCategoryGrid(),
           ],
         ),
@@ -656,7 +776,8 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
         final option = subCategories[index];
         final selected = _formData.subCategory == option;
         final emoji =
-            _formData.categorySubCategoryMap[_formData.category]![option] ?? '📋';
+            _formData.categorySubCategoryMap[_formData.category]![option] ??
+                '📋';
         return GestureDetector(
           onTap: () => setState(() => _formData.subCategory = option),
           child: AnimatedContainer(
@@ -668,15 +789,6 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                 color: selected ? color : color.withValues(alpha: 0.25),
                 width: 1.5,
               ),
-              boxShadow: selected
-                  ? [
-                      BoxShadow(
-                        color: color.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : [],
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -705,24 +817,12 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     );
   }
 
-  Widget _buildNarrationCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(20),
+  Widget _buildPartyCard() {
+    return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle('Narration', Icons.description_rounded),
+          _sectionTitle('By / To', Icons.person_rounded),
           Container(
             decoration: BoxDecoration(
               color: const Color(0xFFF5F7F5),
@@ -730,17 +830,67 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
             ),
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: TextFormField(
-              style: const TextStyle(fontSize: 14, color: Color(0xFF1B5E20)),
-              maxLines: 3,
-              validator: (value) {
-                if (value == null || value.isEmpty) return 'Please enter narration';
-                if (value.length > 200) return 'Max 200 characters';
-                return null;
-              },
-              onSaved: (value) => _formData.narration = value,
+              controller: _nameController,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1B5E20),
+              ),
+              onSaved: (v) => _formData.name = v?.trim() ?? '',
               decoration: InputDecoration(
                 border: InputBorder.none,
-                hintText: 'Describe the transaction...',
+                prefixIcon: const Icon(
+                  Icons.badge_rounded,
+                  color: Color(0xFF2E7D32),
+                  size: 18,
+                ),
+                prefixIconConstraints:
+                    const BoxConstraints(minWidth: 0, minHeight: 0),
+                hintText: 'Name (optional, for search)',
+                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F7F5),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: TextFormField(
+              controller: _mobileController,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1B5E20),
+              ),
+              keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ],
+              validator: (value) {
+                if (value != null && value.isNotEmpty && value.length != 10) {
+                  return '10 digits required';
+                }
+                return null;
+              },
+              onChanged: _prefetchByMobile,
+              onSaved: (v) => _formData.mobile = v?.trim() ?? '',
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                prefixIcon: const Icon(
+                  Icons.phone_rounded,
+                  color: Color(0xFF2E7D32),
+                  size: 18,
+                ),
+                prefixIconConstraints:
+                    const BoxConstraints(minWidth: 0, minHeight: 0),
+                hintText: 'By/To mobile (optional)',
+                labelText: 'By/To mobile',
+                labelStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
                 hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
                 contentPadding: const EdgeInsets.symmetric(vertical: 14),
               ),
@@ -751,24 +901,12 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     );
   }
 
-  Widget _buildMobileCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(20),
+  Widget _buildNarrationCard() {
+    return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle('Contact', Icons.phone_rounded),
+          _sectionTitle('Narration (optional)', Icons.description_rounded),
           Container(
             decoration: BoxDecoration(
               color: const Color(0xFFF5F7F5),
@@ -776,23 +914,20 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
             ),
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: TextFormField(
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1B5E20)),
-              keyboardType: TextInputType.phone,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(10),
-              ],
+              controller: _narrationController,
+              style: const TextStyle(fontSize: 14, color: Color(0xFF1B5E20)),
+              maxLines: 3,
               validator: (value) {
-                if (value == null || value.isEmpty) return 'Required';
-                if (value.length != 10) return '10 digits required';
+                if (value != null && value.length > 200) {
+                  return 'Max 200 characters';
+                }
                 return null;
               },
-              onSaved: (value) => _formData.mobile = value,
+              onSaved: (value) => _formData.narration =
+                  (value == null || value.trim().isEmpty) ? null : value.trim(),
               decoration: InputDecoration(
                 border: InputBorder.none,
-                prefixIcon: const Icon(Icons.phone_rounded, color: Color(0xFF2E7D32), size: 18),
-                prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                hintText: 'Mobile number',
+                hintText: 'Describe the transaction (optional)...',
                 hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
                 contentPadding: const EdgeInsets.symmetric(vertical: 14),
               ),
@@ -821,54 +956,85 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     );
   }
 
-  Widget _buildNextButton() {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 500),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(0, 20 * (1 - value)),
-            child: child,
-          ),
-        );
-      },
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF2E7D32).withValues(alpha: 0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: ElevatedButton(
-            onPressed: _navigateToAddressPage,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2E7D32),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('Next Step', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                SizedBox(width: 8),
-                Icon(Icons.arrow_forward_rounded, size: 20),
-              ],
-            ),
-          ),
+  Widget _buildOtherInfoButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _showOtherInfoSheet,
+        icon: Icon(
+          _hasOtherInfo ? Icons.check_circle_outline : Icons.info_outline,
+          size: 18,
+        ),
+        label: Text(
+          _hasOtherInfo
+              ? 'Other Information (filled)'
+              : 'Other Information (optional)',
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF1565C0),
+          side: const BorderSide(color: Color(0xFF1565C0), width: 1.5),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : _submitForm,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2E7D32),
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: const Color(0xFFA5D6A7),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
+              )
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.save_rounded, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Submit',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _card({required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: child,
     );
   }
 }

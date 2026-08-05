@@ -33,6 +33,7 @@ type serviceRegistrationCreatePayload struct {
 	SecondaryContact     *string  `json:"secondary_contact"`
 	Whatsapp             *string  `json:"whatsapp"`
 	Email                *string  `json:"email"`
+	Remarks              *string  `json:"remarks"`
 	SocialFacebook       *string  `json:"social_facebook"`
 	SocialWebsite        *string  `json:"social_website"`
 	SocialInstagram      *string  `json:"social_instagram"`
@@ -57,6 +58,7 @@ type serviceRegistrationUpdatePayload struct {
 	SecondaryContact     *string  `json:"secondary_contact"`
 	Whatsapp             *string  `json:"whatsapp"`
 	Email                *string  `json:"email"`
+	Remarks              *string  `json:"remarks"`
 	SocialFacebook       *string  `json:"social_facebook"`
 	SocialWebsite        *string  `json:"social_website"`
 	SocialInstagram      *string  `json:"social_instagram"`
@@ -94,6 +96,7 @@ func CreateServiceRegistration(c *fiber.Ctx) error {
 		SecondaryContact:     body.SecondaryContact,
 		Whatsapp:             body.Whatsapp,
 		Email:                body.Email,
+		Remarks:              body.Remarks,
 		SocialFacebook:       body.SocialFacebook,
 		SocialWebsite:        body.SocialWebsite,
 		SocialInstagram:      body.SocialInstagram,
@@ -237,6 +240,9 @@ func UpdateServiceRegistration(c *fiber.Ctx) error {
 	}
 	if body.Email != nil {
 		updates["email"] = *body.Email
+	}
+	if body.Remarks != nil {
+		updates["remarks"] = *body.Remarks
 	}
 	if body.SocialFacebook != nil {
 		updates["social_facebook"] = *body.SocialFacebook

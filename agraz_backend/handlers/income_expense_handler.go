@@ -44,8 +44,8 @@ func CreateIncomeExpense(c *fiber.Ctx) error {
 	if !validIncomeExpenseType(body.Type) {
 		return c.Status(400).JSON(fiber.Map{"error": "type must be Income or Expense"})
 	}
-	if body.Category == "" || body.SubCategory == "" || body.Mobile == "" || body.Name == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "category, sub_category, mobile, and name are required"})
+	if body.Category == "" || body.SubCategory == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "category and sub_category are required"})
 	}
 	if body.Date.IsZero() {
 		return c.Status(400).JSON(fiber.Map{"error": "date is required"})

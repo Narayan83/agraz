@@ -27,6 +27,7 @@ type ServiceRegistration struct {
 	SecondaryContact *string `gorm:"size:20" json:"secondary_contact,omitempty"`
 	Whatsapp         *string `gorm:"size:20" json:"whatsapp,omitempty"`
 	Email            *string `gorm:"size:255" json:"email,omitempty"`
+	Remarks          *string `gorm:"type:text" json:"remarks,omitempty"`
 
 	SocialFacebook  *string `gorm:"size:512" json:"social_facebook,omitempty"`
 	SocialWebsite   *string `gorm:"size:512" json:"social_website,omitempty"`
