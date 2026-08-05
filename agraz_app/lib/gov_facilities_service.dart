@@ -14,19 +14,23 @@ Map<String, String> _govHeaders() {
 }
 
 Future<List<dynamic>> _getList(String path, [Map<String, String>? query]) async {
-  final uri = Uri.parse('${normalizedBaseUrl()}$path').replace(
-    queryParameters: query == null || query.isEmpty ? null : query,
-  );
-  final response = await http.get(uri, headers: _govHeaders());
-  if (response.statusCode < 200 || response.statusCode >= 300) {
-    throw Exception('Request failed (${response.statusCode}): ${response.body}');
+  try {
+    final uri = Uri.parse('${normalizedBaseUrl()}$path').replace(
+      queryParameters: query == null || query.isEmpty ? null : query,
+    );
+    final response = await http.get(uri, headers: _govHeaders());
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      return [];
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map && decoded['data'] is List) {
+      return decoded['data'] as List<dynamic>;
+    }
+    if (decoded is List) return decoded;
+    return [];
+  } catch (_) {
+    return [];
   }
-  final decoded = jsonDecode(response.body);
-  if (decoded is Map && decoded['data'] is List) {
-    return decoded['data'] as List<dynamic>;
-  }
-  if (decoded is List) return decoded;
-  return [];
 }
 
 Future<Map<String, dynamic>> _getObject(String path) async {

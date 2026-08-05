@@ -62,7 +62,8 @@ func GetGovDepartments(c *fiber.Ctx) error {
 	q := govDB.Model(&models.GovDepartment{}).Where("tenant_id = ? AND status = ?", tid, "active")
 	var rows []models.GovDepartment
 	if err := q.Order("sort_order ASC, name ASC").Find(&rows).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		// Missing tables / empty DB should not break the app — return empty list.
+		return c.JSON(fiber.Map{"data": []models.GovDepartment{}})
 	}
 	return c.JSON(fiber.Map{"data": rows})
 }
@@ -72,7 +73,7 @@ func GetGovCrops(c *fiber.Ctx) error {
 	q := govDB.Model(&models.GovCrop{}).Where("tenant_id = ? AND status = ?", tid, "active")
 	var rows []models.GovCrop
 	if err := q.Order("sort_order ASC, name ASC").Find(&rows).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		return c.JSON(fiber.Map{"data": []models.GovCrop{}})
 	}
 	return c.JSON(fiber.Map{"data": rows})
 }
@@ -111,7 +112,7 @@ func GetGovFacilities(c *fiber.Ctx) error {
 	var rows []models.GovFacility
 	if err := q.Preload("Department").Preload("Crop").
 		Order("sort_order ASC, title ASC").Find(&rows).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		return c.JSON(fiber.Map{"data": []models.GovFacility{}})
 	}
 	return c.JSON(fiber.Map{"data": rows})
 }

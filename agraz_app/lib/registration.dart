@@ -115,14 +115,23 @@ class _RegistrationPageState extends State<RegistrationPage>
       if (response.statusCode == 201 || response.statusCode == 200) {
         final responseData = jsonDecode(response.body) as Map<String, dynamic>;
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              responseData['message']?.toString() ?? 'Registration successful!',
-            ),
-            backgroundColor: Colors.green,
+        final msg = responseData['message']?.toString() ??
+            'Registration successful. You are in cooling period. Please wait for approval.';
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Registration successful'),
+            content: Text(msg),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+            ],
           ),
         );
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/login');
       } else {
         final responseData =

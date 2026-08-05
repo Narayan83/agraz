@@ -92,6 +92,7 @@ func main() {
 
 	// Agraz / Flutter mobile (public JSON API; same DB as admin)
 	api.Post("/mobile/register", handler.MobileRegisterUser)
+	api.Post("/mobile/reset-password", handler.MobileResetPassword)
 	api.Get("/mobile/users/by-phone/:phone", handler.GetUserByMobilePublic)
 	api.Post("/register-business", handler.RegisterBusinessPublic)
 	api.Get("/services", handler.ListApprovedServicesPublic)
@@ -132,6 +133,8 @@ func main() {
 
 	// Authenticated Routes
 	api.Get("/me", handler.GetMe)
+	api.Put("/me", handler.UpdateMe)
+	api.Put("/me/password", handler.ChangeMyPassword)
 	api.Get("/my-menus", handler.GetCurrentUserMenuTree)
 	api.Get("/dashboard/stats", handler.GetDashboardStats)
 

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'auth_token.dart';
 import 'config.dart';
 import 'mainpage.dart';
+import 'reset_password_page.dart';
 
 void main() {
   runApp(MaterialApp(debugShowCheckedModeBanner: false, home: LoginScreen()));
@@ -98,8 +99,37 @@ class _LoginScreenState extends State<LoginScreen>
           }
         } else {
           if (!mounted) return;
+          String message = 'Login failed';
+          try {
+            final data = jsonDecode(response.body);
+            if (data is Map) {
+              message = (data['message'] ?? data['error'] ?? message).toString();
+              if (data['code'] == 'cooling_period' ||
+                  message.toLowerCase().contains('cooling')) {
+                await showDialog<void>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Cooling period'),
+                    content: const Text(
+                      'You are in cooling period. Please wait for approval. '
+                      'An admin will verify your account before you can sign in.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
+                return;
+              }
+            }
+          } catch (_) {
+            message = response.body;
+          }
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Login Failed: ${response.body}")),
+            SnackBar(content: Text(message)),
           );
         }
       } catch (e) {
@@ -285,7 +315,14 @@ class _LoginScreenState extends State<LoginScreen>
                                 ],
                               ),
                               GestureDetector(
-                                onTap: () {},
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const ResetPasswordPage(),
+                                    ),
+                                  );
+                                },
                                 child: Text(
                                   "Forgot Password?",
                                   style: TextStyle(

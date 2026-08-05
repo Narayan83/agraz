@@ -62,8 +62,11 @@ export const getVendorUsers = async (params = {}) => {
 };
 
 // Users
-export const getUsers = async (page = 1, limit = 10) => {
-  const response = await api.get(`/users?page=${page}&limit=${limit}`);
+export const getUsers = async (page = 1, limit = 10, opts = {}) => {
+  const params = { page, limit };
+  if (opts.approval && opts.approval !== 'all') params.approval = opts.approval;
+  if (opts.filter) params.filter = opts.filter;
+  const response = await api.get('/users', { params });
   return response.data;
 };
 export const createUser = async (userData) => {

@@ -58,12 +58,21 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
         _crops = results[1];
         _categories = results[2];
         _loading = false;
+        // Never surface raw API/table errors — empty lists show a friendly hint.
+        _error = null;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
+        _departments = [];
+        _crops = [];
+        _categories = const [
+          {'slug': 'loans', 'name': 'Loans'},
+          {'slug': 'insurance', 'name': 'Insurance'},
+          {'slug': 'grants', 'name': 'Grants'},
+        ];
         _loading = false;
-        _error = e.toString();
+        _error = null;
       });
     }
   }
@@ -88,15 +97,12 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
         _facilities = rows;
         _loadingFacilities = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _facilities = [];
         _loadingFacilities = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load facilities: $e')),
-      );
     }
   }
 
@@ -198,7 +204,9 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
                           ),
                         ),
                         if (_departments.isEmpty)
-                          const _EmptyHint('No departments available yet.'),
+                          const _EmptyHint(
+                            'Yet there is no information available. Please check back later.',
+                          ),
                       ] else if (_selectedCrop == null) ...[
                         _sectionTitle('Select crop'),
                         ..._crops.map(
@@ -209,7 +217,9 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
                           ),
                         ),
                         if (_crops.isEmpty)
-                          const _EmptyHint('No crops available yet.'),
+                          const _EmptyHint(
+                            'Yet there is no information available. Please check back later.',
+                          ),
                       ] else if (_selectedCategory == null) ...[
                         _sectionTitle('Select category'),
                         ..._categories.map(
@@ -246,7 +256,7 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
                           )
                         else if (_facilities.isEmpty)
                           const _EmptyHint(
-                            'No facilities found for this selection.',
+                            'Yet there is no information available for this selection.',
                           )
                         else
                           ..._facilities.map(

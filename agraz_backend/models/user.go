@@ -19,6 +19,9 @@ type User struct {
 	Password      string    `json:"-"`                        // hashed password, never return to frontend
 	PlainPassword string    `json:"plain_password,omitempty"` // plain text password for display
 	Active        bool      `json:"active"`
+	// Approved: mobile self-registrations start false (cooling period) until admin verifies.
+	// Existing / admin-created users default true so they keep access after migrate.
+	Approved      bool      `gorm:"not null;default:true" json:"approved"`
 	VendorID      *uint     `gorm:"index" json:"vendor_id,omitempty"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`

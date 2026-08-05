@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Users, 
   Search, 
@@ -12,7 +12,9 @@ import {
   Lock,
   Mail,
   User as UserIcon,
-  Fingerprint
+  Fingerprint,
+  CheckCircle2,
+  CircleDashed
 } from 'lucide-react';
 import { getUsers, createUser, updateUser, deleteUser } from '../api/api';
 import './UserList.css';
@@ -22,29 +24,29 @@ const UserList = () => {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [approvalFilter, setApprovalFilter] = useState('all');
+  const [search, setSearch] = useState('');
   const [formData, setFormData] = useState({
     firstname: '',
     lastname: '',
     email: '',
     usercode: '',
     password: '',
-    active: true
+    active: true,
+    approved: true
   });
   
-  // Pagination
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const limit = 10;
 
-  useEffect(() => {
-    fetchUsers();
-  }, [page]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getUsers(page, limit);
-      // Backend returns { data: [...], total: X, ... }
+      const data = await getUsers(page, limit, {
+        approval: approvalFilter,
+        filter: search.trim() || undefined,
+      });
       setUsers(data.data || []);
       setTotalPages(Math.ceil(data.total / limit) || 1);
     } catch (err) {
@@ -52,7 +54,15 @@ const UserList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, approvalFilter, search]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [approvalFilter, search]);
 
   const openModal = (user = null) => {
     if (user) {
@@ -63,7 +73,8 @@ const UserList = () => {
         email: user.email || '',
         usercode: user.usercode || '',
         password: user.plain_password || '',
-        active: user.active ?? true
+        active: user.active ?? true,
+        approved: user.approved ?? true
       });
     } else {
       setSelectedUser(null);
@@ -73,7 +84,8 @@ const UserList = () => {
         email: '',
         usercode: '',
         password: '',
-        active: true
+        active: true,
+        approved: true
       });
     }
     setModalOpen(true);
@@ -119,6 +131,23 @@ const UserList = () => {
     }
   };
 
+  const handleToggleApprove = async (user) => {
+    const next = !user.approved;
+    try {
+      await updateUser(user.id, { approved: next });
+      fetchUsers();
+    } catch (err) {
+      console.error("Error updating approval:", err);
+      alert(err.response?.data?.error || "Failed to update approval");
+    }
+  };
+
+  const statusLabel = (user) => {
+    if (!user.approved) return { text: 'Pending Approval', cls: 'pending' };
+    if (!user.active) return { text: 'Inactive', cls: 'inactive' };
+    return { text: 'Active', cls: 'active' };
+  };
+
   return (
     <div className="user-list-page">
       <div className="page-header">
@@ -126,7 +155,7 @@ const UserList = () => {
           <Users className="header-icon" />
           <div>
             <h1>User Management</h1>
-            <p>Manage application users and their access</p>
+            <p>Verify new registrations and manage user access</p>
           </div>
         </div>
         <button className="primary-btn" onClick={() => openModal()}>
@@ -135,11 +164,33 @@ const UserList = () => {
         </button>
       </div>
 
+      <div className="approval-tabs">
+        {[
+          { key: 'all', label: 'All' },
+          { key: 'pending', label: 'Pending Approval' },
+          { key: 'approved', label: 'Approved' },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            className={`approval-tab ${approvalFilter === tab.key ? 'active' : ''}`}
+            onClick={() => setApprovalFilter(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       <div className="list-container">
         <div className="list-header">
           <div className="search-box">
             <Search size={18} />
-            <input type="text" placeholder="Search users by name or email..." />
+            <input
+              type="text"
+              placeholder="Search users by name or email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
           <div className="pagination-controls">
             <span>Page {page} of {totalPages}</span>
@@ -161,6 +212,7 @@ const UserList = () => {
                 <th>User Code</th>
                 <th>Full Name</th>
                 <th>Email Address</th>
+                <th>Phone</th>
                 <th>Status</th>
                 <th>Created At</th>
                 <th>Actions</th>
@@ -169,35 +221,45 @@ const UserList = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="loader-cell">
+                  <td colSpan="7" className="loader-cell">
                     <Loader2 className="spinner" size={32} />
                     <p>Loading users...</p>
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="empty-cell">No users found.</td>
+                  <td colSpan="7" className="empty-cell">No users found.</td>
                 </tr>
               ) : (
-                users.map(user => (
+                users.map(user => {
+                  const st = statusLabel(user);
+                  return (
                   <tr key={user.id}>
                     <td className="code-cell">
                       <code>{user.usercode || 'N/A'}</code>
                     </td>
                     <td>
                       <div className="user-name-cell">
-                        <div className="avatar-sm">{user.firstname.charAt(0)}{user.lastname.charAt(0)}</div>
+                        <div className="avatar-sm">{(user.firstname || '?').charAt(0)}{(user.lastname || '').charAt(0)}</div>
                         <span>{user.firstname} {user.lastname}</span>
                       </div>
                     </td>
                     <td>{user.email}</td>
+                    <td>{user.mobile_number || '—'}</td>
                     <td>
-                      <span className={`status-badge ${user.active ? 'active' : 'inactive'}`}>
-                        {user.active ? 'Active' : 'Inactive'}
+                      <span className={`status-badge ${st.cls}`}>
+                        {st.text}
                       </span>
                     </td>
                     <td>{new Date(user.created_at).toLocaleDateString()}</td>
                     <td className="actions-cell">
+                      <button
+                        className={`action-btn ${user.approved ? 'unapprove' : 'approve'}`}
+                        title={user.approved ? 'Revoke approval' : 'Approve user'}
+                        onClick={() => handleToggleApprove(user)}
+                      >
+                        {user.approved ? <CircleDashed size={16} /> : <CheckCircle2 size={16} />}
+                      </button>
                       <button className="action-btn edit" onClick={() => openModal(user)}>
                         <Edit size={16} />
                       </button>
@@ -206,7 +268,8 @@ const UserList = () => {
                       </button>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -291,12 +354,24 @@ const UserList = () => {
                   <label className="switch-label">
                     <input 
                       type="checkbox" 
+                      name="approved" 
+                      checked={formData.approved} 
+                      onChange={handleInputChange} 
+                    />
+                    <span className="slider"></span>
+                    <span className="label-text">Approved (can log in to the app)</span>
+                  </label>
+                </div>
+                <div className="form-group checkbox-group">
+                  <label className="switch-label">
+                    <input 
+                      type="checkbox" 
                       name="active" 
                       checked={formData.active} 
                       onChange={handleInputChange} 
                     />
                     <span className="slider"></span>
-                    <span className="label-text">User corresponds to an active account</span>
+                    <span className="label-text">Active account</span>
                   </label>
                 </div>
               </div>

@@ -22,9 +22,7 @@
 
 const String BASE_URL = String.fromEnvironment(
   'AGRaz_API_BASE',
-  defaultValue: 'http://88.222.242.192:8000',
-  //defaultValue: 'http://10.0.2.2:8000', 
-  //(physical phone must use PC LAN IP)
+  defaultValue: 'https://agrazllp.com',
 );
 
 /// Mirrors web `VITE_TENANT_ID` — sent as HTTP header `X-Tenant-ID` (marketplace / multi-tenant).

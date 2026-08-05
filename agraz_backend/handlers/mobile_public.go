@@ -137,11 +137,19 @@ func MobileRegisterUser(c *fiber.Ctx) error {
 		Password:      string(hash),
 		PlainPassword: body.Password,
 		Active:        true,
+		Approved:      false, // admin must verify before login
 		MobileNumber:  mobilePtr,
 	}
-	if err := userDB.Create(&user).Error; err != nil {
+	// Select required: GORM skips false bools as zero-values and would apply DB default true.
+	if err := userDB.Select(
+		"TenantID", "Firstname", "Lastname", "Email", "Password", "PlainPassword",
+		"Active", "Approved", "MobileNumber",
+	).Create(&user).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create user", "details": err.Error()})
 	}
+	// Belt-and-suspenders: force pending approval even if defaults change.
+	_ = userDB.Model(&user).Update("approved", false).Error
+	user.Approved = false
 	var role models.Role
 	if err := userDB.Where("role_name = ?", "User").First(&role).Error; err == nil {
 		_ = userDB.Create(&models.UserRoleMapping{UserID: user.ID, RoleID: role.ID}).Error
@@ -149,8 +157,10 @@ func MobileRegisterUser(c *fiber.Ctx) error {
 	user.Password = ""
 	user.PlainPassword = ""
 	return c.Status(201).JSON(fiber.Map{
-		"message": "Registration successful",
-		"user":    user,
+		"message":  "Registration successful. You are in cooling period. Please wait for approval.",
+		"code":     "cooling_period",
+		"approved": false,
+		"user":     user,
 	})
 }
 

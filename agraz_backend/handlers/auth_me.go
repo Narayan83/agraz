@@ -7,11 +7,15 @@ import (
 
 func userVendorPayload(user models.User) fiber.Map {
 	out := fiber.Map{
-		"id":        user.ID,
-		"firstname": user.Firstname,
-		"lastname":  user.Lastname,
-		"email":     user.Email,
-		"vendor_id": user.VendorID,
+		"id":            user.ID,
+		"firstname":     user.Firstname,
+		"lastname":      user.Lastname,
+		"email":         user.Email,
+		"mobile_number": user.MobileNumber,
+		"active":        user.Active,
+		"approved":      user.Approved,
+		"created_at":    user.CreatedAt,
+		"vendor_id":     user.VendorID,
 	}
 	if user.VendorID != nil && *user.VendorID > 0 {
 		var v models.Vendor

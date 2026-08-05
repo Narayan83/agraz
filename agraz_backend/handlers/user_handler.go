@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"erp.local/backend/models"
@@ -25,6 +26,7 @@ type CreateUserRequest struct {
 	Email         string  `json:"email"`
 	Password      string  `json:"password"`
 	Active        *bool   `json:"active"`
+	Approved      *bool   `json:"approved"`
 	VendorID      *uint   `json:"vendor_id"`
 }
 
@@ -36,6 +38,7 @@ type UpdateUserRequest struct {
 	Password      *string `json:"password"`
 	Username      *string `json:"username"`
 	Active        *bool   `json:"active"`
+	Approved      *bool   `json:"approved"`
 	VendorID      *uint   `json:"vendor_id"`
 	ClearVendor   *bool   `json:"clear_vendor"`
 }
@@ -88,6 +91,10 @@ func CreateUser(c *fiber.Ctx) error {
 	if body.Active != nil {
 		active = *body.Active
 	}
+	approved := true
+	if body.Approved != nil {
+		approved = *body.Approved
+	}
 
 	user := models.User{
 		TenantID:      tenantIDFromCtx(c),
@@ -99,6 +106,7 @@ func CreateUser(c *fiber.Ctx) error {
 		Password:      hashedPassword,
 		PlainPassword: body.Password,
 		Active:        active,
+		Approved:      approved,
 		VendorID:      body.VendorID,
 	}
 
@@ -132,6 +140,7 @@ func GetUsers(c *fiber.Ctx) error {
 	pageStr := c.Query("page", "1")
 	limitStr := c.Query("limit", "10")
 	search := c.Query("filter", "")
+	approval := strings.ToLower(strings.TrimSpace(c.Query("approval", "all")))
 
 	page := 1
 	limit := 10
@@ -152,12 +161,18 @@ func GetUsers(c *fiber.Ctx) error {
 		searchTerm := "%" + search + "%"
 		query = query.Where("firstname ILIKE ? OR lastname ILIKE ? OR email ILIKE ? OR username ILIKE ?", searchTerm, searchTerm, searchTerm, searchTerm)
 	}
+	switch approval {
+	case "pending":
+		query = query.Where("approved = ?", false)
+	case "approved":
+		query = query.Where("approved = ?", true)
+	}
 
 	if err := query.Count(&total).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	if err := query.Limit(limit).Offset(offset).Find(&users).Error; err != nil {
+	if err := query.Order("created_at DESC").Limit(limit).Offset(offset).Find(&users).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
@@ -214,6 +229,9 @@ func UpdateUser(c *fiber.Ctx) error {
 	}
 	if body.Active != nil {
 		updateData["active"] = *body.Active
+	}
+	if body.Approved != nil {
+		updateData["approved"] = *body.Approved
 	}
 	if body.ClearVendor != nil && *body.ClearVendor {
 		updateData["vendor_id"] = nil

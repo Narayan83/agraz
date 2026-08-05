@@ -42,6 +42,9 @@ func main() {
 		&models.EcomCart{},
 		&models.EcomCartItem{},
 		&models.StorefrontBannerSlide{},
+		&models.GovDepartment{},
+		&models.GovCrop{},
+		&models.GovFacility{},
 	)
 
 	if err != nil {
