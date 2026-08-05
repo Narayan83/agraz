@@ -102,7 +102,16 @@ class _LoginScreenState extends State<LoginScreen>
             SnackBar(content: Text("Login Failed: ${response.body}")),
           );
         }
-      } catch (_) {} finally {
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Login failed: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      } finally {
         if (mounted) setState(() => _isLoading = false);
       }
     }
