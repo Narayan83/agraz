@@ -15,7 +15,6 @@ dependencies:
   intl_phone_field: ^3.2.0
   intl: ^0.20.2
   shared_preferences: ^2.5.3
-  youtube_player_flutter: ^9.1.1
   url_launcher: ^6.3.1
 
 dev_dependencies:
@@ -69,7 +68,6 @@ flutter:
     - assets/images/144.png
     - assets/images/192.png
     - assets/images/512.png
-    - assets/images/agri.jpg
     - assets/images/agri1.jpg
     - assets/images/agri2.jpg
     - assets/images/agri3.jpg
@@ -86,5 +84,10 @@ flutter:
     - assets/images/areca_slice.jpg  
     - assets/images/coconut_shell.jpg  
     - assets/images/banana_chips.jpg  
+    - assets/images/bhatta.jpeg
+    - assets/images/coffee.jpeg
+    - assets/images/coconut.jpeg
+    - assets/images/areca.jpg
+    - assets/images/menulogo.jpeg
 
   uses-material-design: true

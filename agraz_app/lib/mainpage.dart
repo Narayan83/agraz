@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'dart:async';
 import 'profile_page.dart';
 import 'settings_page.dart';
 import 'about_page.dart';
@@ -38,28 +38,41 @@ class _ServiceFeature {
 
 class _MainPageState extends State<MainPage> {
   bool _isLoggedIn = false;
-  late YoutubePlayerController _youtubeController;
+
+  final List<String> _sliderImages = [
+    'assets/images/areca.jpg',
+    'assets/images/banana.jpeg',
+    'assets/images/pepper.jpg',
+    'assets/images/coffee.jpeg',
+    'assets/images/bhatta.jpeg',
+  ];
+
+  late PageController _pageController;
+  late Timer _autoSlideTimer;
+  int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
     _refreshAuthState();
-      _youtubeController = YoutubePlayerController(
-        initialVideoId: 'UPQZLboVsEE',
-        flags: const YoutubePlayerFlags(
-          autoPlay: false,
-          mute: true,
-          hideControls: true,
-          loop: false,
-          disableDragSeek: true,
-          enableCaption: false,
-        ),
-      );
+    _currentPage = 0;
+    _pageController = PageController(viewportFraction: 1.0);
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      _currentPage++;
+      if (_pageController.hasClients) {
+        _pageController.animateToPage(
+          _currentPage,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
-    _youtubeController.dispose();
+    _autoSlideTimer.cancel();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -110,8 +123,9 @@ class _MainPageState extends State<MainPage> {
         context,
         PageRouteBuilder(
           pageBuilder: (_, _, _) => const WelcomeScreen(),
-          transitionsBuilder: (_, anim, _, child) =>
-              FadeTransition(opacity: anim, child: child),
+          transitionsBuilder:
+              (_, anim, _, child) =>
+                  FadeTransition(opacity: anim, child: child),
           transitionDuration: const Duration(milliseconds: 600),
         ),
       );
@@ -122,9 +136,14 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           "AgRaz",
-          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+            color: Colors.white,
+          ),
         ),
         centerTitle: true,
         flexibleSpace: Container(
@@ -158,12 +177,10 @@ class _MainPageState extends State<MainPage> {
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-              ),
+              decoration: const BoxDecoration(color: Colors.white),
               child: Center(
                 child: Image.asset(
-                  'assets/images/app_logo.png',
+                  'assets/images/menulogo.jpeg',
                   fit: BoxFit.contain,
                   filterQuality: FilterQuality.high,
                 ),
@@ -177,7 +194,11 @@ class _MainPageState extends State<MainPage> {
                   color: const Color(0xFF2E7D32).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.home_filled, color: Color(0xFF2E7D32), size: 20),
+                child: const Icon(
+                  Icons.home_filled,
+                  color: Color(0xFF2E7D32),
+                  size: 20,
+                ),
               ),
               title: const Text('Home'),
               onTap: () {
@@ -187,82 +208,89 @@ class _MainPageState extends State<MainPage> {
             ListTile(
               leading: const Icon(Icons.app_registration, color: Colors.green),
               title: const Text('Service Register'),
-              onTap: () => _openProtected(
-                const ServiceRegisterPage(),
-                closeDrawer: true,
-              ),
+              onTap:
+                  () => _openProtected(
+                    const ServiceRegisterPage(),
+                    closeDrawer: true,
+                  ),
             ),
             ListTile(
-              leading: const Icon(Icons.account_balance_wallet, color: Colors.orange),
-              title: const Text('Income and Expense'),
-              onTap: () => _openProtected(
-                const IncomeExpensePage(),
-                closeDrawer: true,
+              leading: const Icon(
+                Icons.account_balance_wallet,
+                color: Colors.orange,
               ),
+              title: const Text('Income and Expense'),
+              onTap:
+                  () => _openProtected(
+                    const IncomeExpensePage(),
+                    closeDrawer: true,
+                  ),
             ),
             ListTile(
               leading: const Icon(Icons.engineering, color: Colors.blueGrey),
               title: const Text('Labour Management'),
-              onTap: () => _openProtected(
-                const LaborManagementPage(),
-                closeDrawer: true,
-              ),
+              onTap:
+                  () => _openProtected(
+                    const LaborManagementPage(),
+                    closeDrawer: true,
+                  ),
             ),
             ListTile(
               leading: const Icon(Icons.trending_up, color: Colors.purple),
               title: const Text('Market Reports'),
-              onTap: () => _openProtected(
-                const RatesComparisonPage(),
-                closeDrawer: true,
-              ),
+              onTap:
+                  () => _openProtected(
+                    const RatesComparisonPage(),
+                    closeDrawer: true,
+                  ),
             ),
             ListTile(
               leading: const Icon(Icons.store, color: Colors.teal),
               title: const Text('Buy and Sell'),
-              onTap: () => _openProtected(
-                const BuySellApp(),
-                closeDrawer: true,
-              ),
+              onTap:
+                  () => _openProtected(const BuySellApp(), closeDrawer: true),
             ),
             ListTile(
               leading: const Icon(Icons.menu_book, color: Colors.indigo),
               title: const Text('Farmer Education'),
-              onTap: () => _openProtected(
-                const FarmerEducationPage(),
-                closeDrawer: true,
-              ),
+              onTap:
+                  () => _openProtected(
+                    const FarmerEducationPage(),
+                    closeDrawer: true,
+                  ),
             ),
             ListTile(
-              leading: const Icon(Icons.account_balance, color: Colors.deepOrange),
+              leading: const Icon(
+                Icons.account_balance,
+                color: Colors.deepOrange,
+              ),
               title: const Text('Government Facilities'),
-              onTap: () => _openProtected(
-                const GovernmentFacilitiesPage(),
-                closeDrawer: true,
-              ),
+              onTap:
+                  () => _openProtected(
+                    const GovernmentFacilitiesPage(),
+                    closeDrawer: true,
+                  ),
             ),
             ListTile(
-              leading: const Icon(Icons.miscellaneous_services, color: Colors.brown),
-              title: const Text('General Services'),
-              onTap: () => _openProtected(
-                ServiceListingPage(),
-                closeDrawer: true,
+              leading: const Icon(
+                Icons.miscellaneous_services,
+                color: Colors.brown,
               ),
+              title: const Text('General Services'),
+              onTap:
+                  () => _openProtected(ServiceListingPage(), closeDrawer: true),
             ),
             ListTile(
               leading: const Icon(Icons.account_circle, color: Colors.blue),
               title: const Text('Profile'),
-              onTap: () => _openProtected(
-                const ProfilePage(),
-                closeDrawer: true,
-              ),
+              onTap:
+                  () => _openProtected(const ProfilePage(), closeDrawer: true),
             ),
             ListTile(
               leading: const Icon(Icons.settings, color: Colors.grey),
               title: const Text('Settings'),
-              onTap: () => _openProtected(
-                const SettingsPage(),
-                closeDrawer: true,
-              ),
+              onTap:
+                  () => _openProtected(const SettingsPage(), closeDrawer: true),
             ),
             ListTile(
               leading: const Icon(Icons.groups, color: Colors.cyan),
@@ -317,24 +345,70 @@ class _MainPageState extends State<MainPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Hero Section ---
+            // --- Hero Section (Image Slider) ---
             SizedBox(
               height: 260,
               width: double.infinity,
               child: Stack(
                 children: [
-                  Container(color: Colors.black),
-                  ClipRRect(
-                    child: YoutubePlayer(
-                      controller: _youtubeController,
-                      showVideoProgressIndicator: false,
-                      progressIndicatorColor: Colors.transparent,
-                      bottomActions: const [],
-                      topActions: const [],
-
+                  PageView.builder(
+                    controller: _pageController,
+                    itemCount: null,
+                    onPageChanged: (index) {
+                      setState(() {
+                        _currentPage = index;
+                      });
+                    },
+                    itemBuilder: (context, index) {
+                      final imageIndex = index % _sliderImages.length;
+                      return Image.asset(
+                        _sliderImages[imageIndex],
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: 260,
+                      );
+                    },
+                  ),
+                  Positioned(
+                    bottom: 10,
+                    left: 0,
+                    right: 0,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(_sliderImages.length, (i) {
+                        final isActive =
+                            _currentPage % _sliderImages.length == i;
+                        return GestureDetector(
+                          onTap: () {
+                            int target =
+                                (_currentPage ~/ _sliderImages.length) *
+                                    _sliderImages.length +
+                                i;
+                            if (target < _currentPage)
+                              target += _sliderImages.length;
+                            _pageController.animateToPage(
+                              target,
+                              duration: const Duration(milliseconds: 400),
+                              curve: Curves.easeInOut,
+                            );
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
+                            width: isActive ? 18 : 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color:
+                                  isActive
+                                      ? const Color(0xFF2E7D32)
+                                      : Colors.white,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        );
+                      }),
                     ),
                   ),
-
                 ],
               ),
             ),
@@ -355,7 +429,10 @@ class _MainPageState extends State<MainPage> {
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFC8E6C9), width: 1),
+                      border: Border.all(
+                        color: const Color(0xFFC8E6C9),
+                        width: 1,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,7 +445,11 @@ class _MainPageState extends State<MainPage> {
                                 color: const Color(0xFF4CAF50),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Icon(Icons.agriculture, color: Colors.white, size: 28),
+                              child: const Icon(
+                                Icons.agriculture,
+                                color: Colors.white,
+                                size: 28,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             const Text(
@@ -386,7 +467,11 @@ class _MainPageState extends State<MainPage> {
                           'AgRaz is a smart Agriculture ERP platform built for modern farmers and agribusinesses. '
                           'Whether you\'re managing a small farm or large-scale operations, AgRaz helps you digitize, '
                           'simplify, and grow your agricultural journey.',
-                          style: TextStyle(fontSize: 15, color: Color(0xFF33691E), height: 1.5),
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: Color(0xFF33691E),
+                            height: 1.5,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Center(
@@ -395,12 +480,19 @@ class _MainPageState extends State<MainPage> {
                             child: ElevatedButton.icon(
                               onPressed: _isLoggedIn ? null : _goToLogin,
                               icon: const Icon(Icons.login),
-                              label: const Text('Login',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              label: const Text(
+                                'Login',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF4CAF50),
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -414,12 +506,12 @@ class _MainPageState extends State<MainPage> {
                   ),
                   const SizedBox(height: 32),
                   // --- Services ---
-                  _buildSectionHeader('🌾 Our Services for Farmers'),
+                  _buildSectionHeader('Our Services for Farmers'),
                   const SizedBox(height: 16),
                   _buildServicesGrid(),
                   const SizedBox(height: 32),
                   // --- Why Choose AgRaz? ---
-                  _buildSectionHeader('🌟 Why Choose AgRaz?'),
+                  _buildSectionHeader('Why Choose AgRaz?'),
                   const SizedBox(height: 16),
                   _buildWhyChooseCard(
                     icon: Icons.auto_awesome,
@@ -476,7 +568,11 @@ class _MainPageState extends State<MainPage> {
                                 color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.phone_android, color: Colors.white, size: 28),
+                              child: const Icon(
+                                Icons.phone_android,
+                                color: Colors.white,
+                                size: 28,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             const Text(
@@ -493,17 +589,26 @@ class _MainPageState extends State<MainPage> {
                         const SizedBox(height: 16),
                         const Text(
                           'AgRaz empowers farmers with the right tools to:',
-                          style: TextStyle(fontSize: 15, color: Colors.white70, height: 1.4),
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: Colors.white70,
+                            height: 1.4,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         _buildBenefitRow('Make informed decisions'),
                         _buildBenefitRow('Maximize profits'),
                         _buildBenefitRow('Reduce risks'),
-                        _buildBenefitRow('Access real-time support and services'),
+                        _buildBenefitRow(
+                          'Access real-time support and services',
+                        ),
                         const SizedBox(height: 20),
                         Center(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(10),
@@ -564,66 +669,114 @@ class _MainPageState extends State<MainPage> {
     await clearAuthToken();
     if (!mounted) return;
     setState(() => _isLoggedIn = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Logged out successfully')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Logged out successfully')));
   }
 
   void _showHelpCenter(BuildContext context) {
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(Icons.help_center, color: Color(0xFF2E7D32), size: 48),
-              ),
-              const SizedBox(height: 16),
-              const Text('Help Center',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
-              const SizedBox(height: 4),
-              Text('How can we help you?',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-              const SizedBox(height: 20),
-              _buildHelpItem(Icons.article, 'Getting Started', 'Learn how to use AgRaz', const Color(0xFF1565C0)),
-              const SizedBox(height: 8),
-              _buildHelpItem(Icons.contact_support, 'Contact Support', 'Reach out to our team', const Color(0xFFE65100)),
-              const SizedBox(height: 8),
-              _buildHelpItem(Icons.quiz, 'FAQ', 'Frequently asked questions', const Color(0xFF7B1FA2)),
-              const SizedBox(height: 8),
-              _buildHelpItem(Icons.feedback, 'Send Feedback', 'Help us improve', const Color(0xFF2E7D32)),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE8F5E9),
-                    foregroundColor: const Color(0xFF2E7D32),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
+      builder:
+          (ctx) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.help_center,
+                      color: Color(0xFF2E7D32),
+                      size: 48,
+                    ),
                   ),
-                  child: const Text('Close', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Help Center',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1B5E20),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'How can we help you?',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildHelpItem(
+                    Icons.article,
+                    'Getting Started',
+                    'Learn how to use AgRaz',
+                    const Color(0xFF1565C0),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildHelpItem(
+                    Icons.contact_support,
+                    'Contact Support',
+                    'Reach out to our team',
+                    const Color(0xFFE65100),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildHelpItem(
+                    Icons.quiz,
+                    'FAQ',
+                    'Frequently asked questions',
+                    const Color(0xFF7B1FA2),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildHelpItem(
+                    Icons.feedback,
+                    'Send Feedback',
+                    'Help us improve',
+                    const Color(0xFF2E7D32),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE8F5E9),
+                        foregroundColor: const Color(0xFF2E7D32),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
     );
   }
 
-  Widget _buildHelpItem(IconData icon, String title, String subtitle, Color color) {
+  Widget _buildHelpItem(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -644,9 +797,19 @@ class _MainPageState extends State<MainPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: color)),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+              Text(
+                subtitle,
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              ),
             ],
           ),
         ],
@@ -657,74 +820,122 @@ class _MainPageState extends State<MainPage> {
   void _showServiceDetailModal(BuildContext context, _ServiceFeature service) {
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(service.icon, color: const Color(0xFF2E7D32), size: 40),
-              ),
-              const SizedBox(height: 16),
-              Text(service.title,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
-              const SizedBox(height: 8),
-              Text(service.description,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.4)),
-              const SizedBox(height: 20),
-              const Divider(),
-              const SizedBox(height: 12),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Key Features',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
-              ),
-              const SizedBox(height: 12),
-              ...service.details.map((d) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE8F5E9),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Icon(Icons.check, color: Color(0xFF2E7D32), size: 16),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(child: Text(d, style: const TextStyle(fontSize: 14, color: Color(0xFF33691E), height: 1.3))),
-                      ],
+      builder:
+          (ctx) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                  )),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E7D32),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Icon(
+                      service.icon,
+                      color: const Color(0xFF2E7D32),
+                      size: 40,
+                    ),
                   ),
-                  child: const Text('Close', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
+                  const SizedBox(height: 16),
+                  Text(
+                    service.title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1B5E20),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    service.description,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[700],
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Key Features',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1B5E20),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...service.details.map(
+                    (d) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F5E9),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(
+                              Icons.check,
+                              color: Color(0xFF2E7D32),
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              d,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF33691E),
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2E7D32),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
     );
   }
 
@@ -733,7 +944,8 @@ class _MainPageState extends State<MainPage> {
       _ServiceFeature(
         icon: Icons.assignment,
         title: 'Track Expenses',
-        description: 'Stay in control of your farm spending with easy logging of crop-wise, daily, and seasonal expenses.',
+        description:
+            'Stay in control of your farm spending with easy logging of crop-wise, daily, and seasonal expenses.',
         details: [
           'Record expenses by crop and season',
           'Categorize spending automatically',
@@ -743,8 +955,9 @@ class _MainPageState extends State<MainPage> {
       ),
       _ServiceFeature(
         icon: Icons.trending_up,
-        title: 'Forecast & Predict Yields',
-        description: 'Get AI-powered predictions on crop yield and productivity based on historical patterns, weather, and inputs.',
+        title: 'Forecast & Predict',
+        description:
+            'Get AI-powered predictions on crop yield and productivity based on historical patterns, weather, and inputs.',
         details: [
           'AI-driven yield predictions',
           'Weather pattern analysis',
@@ -754,8 +967,9 @@ class _MainPageState extends State<MainPage> {
       ),
       _ServiceFeature(
         icon: Icons.shopping_basket,
-        title: 'Buy & Sell Agri Products',
-        description: 'Trade seeds, fertilizers, pesticides, and harvested crops with trusted vendors and buyers right from your phone.',
+        title: 'Buy & Sell',
+        description:
+            'Trade seeds, fertilizers, pesticides, and harvested crops with trusted vendors and buyers right from your phone.',
         details: [
           'Verified vendors and buyers',
           'Secure payment gateway',
@@ -766,7 +980,8 @@ class _MainPageState extends State<MainPage> {
       _ServiceFeature(
         icon: Icons.attach_money,
         title: 'Price Optimization',
-        description: 'Use smart tools to identify the best market prices and optimize your selling strategies.',
+        description:
+            'Use smart tools to identify the best market prices and optimize your selling strategies.',
         details: [
           'Compare prices across markets',
           'Price trend analysis',
@@ -776,8 +991,9 @@ class _MainPageState extends State<MainPage> {
       ),
       _ServiceFeature(
         icon: Icons.account_balance,
-        title: 'Banking & Finance Solutions',
-        description: 'Get access to agricultural loans, credit tools, insurance services, and government schemes.',
+        title: 'Banking & Finance',
+        description:
+            'Get access to agricultural loans, credit tools, insurance services, and government schemes.',
         details: [
           'Easy loan applications',
           'Crop insurance management',
@@ -787,7 +1003,7 @@ class _MainPageState extends State<MainPage> {
       ),
       _ServiceFeature(
         icon: Icons.dashboard,
-        title: 'Farm Analytics Dashboard',
+        title: 'Farm Analytics',
         description: 'See all your key data in one simple, visual dashboard.',
         details: [
           'Visual data representations',
@@ -848,7 +1064,11 @@ class _MainPageState extends State<MainPage> {
                       color: const Color(0xFFE8F5E9),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(service.icon, size: 28, color: const Color(0xFF2E7D32)),
+                    child: Icon(
+                      service.icon,
+                      size: 28,
+                      color: const Color(0xFF2E7D32),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -866,7 +1086,11 @@ class _MainPageState extends State<MainPage> {
                         ? '${service.description.substring(0, 60)}...'
                         : service.description,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600], height: 1.3),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey[600],
+                      height: 1.3,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -906,7 +1130,12 @@ class _MainPageState extends State<MainPage> {
           Expanded(
             child: Text(
               text,
-              style: TextStyle(fontSize: 15, color: color, fontWeight: FontWeight.w500, height: 1.3),
+              style: TextStyle(
+                fontSize: 15,
+                color: color,
+                fontWeight: FontWeight.w500,
+                height: 1.3,
+              ),
             ),
           ),
         ],
@@ -933,7 +1162,11 @@ class _MainPageState extends State<MainPage> {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(fontSize: 15, color: Colors.white, height: 1.4),
+              style: const TextStyle(
+                fontSize: 15,
+                color: Colors.white,
+                height: 1.4,
+              ),
             ),
           ),
         ],
@@ -968,5 +1201,4 @@ class _MainPageState extends State<MainPage> {
       ],
     );
   }
-
 }

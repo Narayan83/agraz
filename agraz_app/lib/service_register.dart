@@ -108,7 +108,9 @@ class _ServiceRegisterPageState extends State<ServiceRegisterPage>
 
   List<String> getSubCategories() {
     if (selectedMainCategory == null ||
-        !categories.containsKey(selectedMainCategory)) return [];
+        !categories.containsKey(selectedMainCategory)) {
+      return [];
+    }
     return categories[selectedMainCategory]!;
   }
 
@@ -483,7 +485,7 @@ class _ServiceRegisterPageState extends State<ServiceRegisterPage>
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: DropdownButtonFormField<String>(
-        value: value,
+        initialValue: value,
         validator: (v) => v == null ? 'Please select $label' : null,
         onChanged: onChanged,
         decoration: InputDecoration(

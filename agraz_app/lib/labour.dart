@@ -1035,7 +1035,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: DropdownButtonFormField<String>(
-        value: value,
+        initialValue: value,
         onChanged: onChanged,
         isDense: true,
         decoration: InputDecoration(
@@ -1077,7 +1077,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: DropdownButtonFormField<String>(
-        value: value != null && items.contains(value) ? value : null,
+        initialValue: value != null && items.contains(value) ? value : null,
         onChanged: onChanged,
         isDense: true,
         decoration: InputDecoration(
