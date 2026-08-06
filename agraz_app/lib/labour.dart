@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import 'api_service.dart';
+import 'labor_categories.dart';
 
 class _PendingLabour {
   final String name;
+  final String? mobile;
   final String shift;
   final double daysHour;
   final String gender;
@@ -13,6 +18,7 @@ class _PendingLabour {
 
   const _PendingLabour({
     required this.name,
+    this.mobile,
     required this.shift,
     required this.daysHour,
     required this.gender,
@@ -36,6 +42,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   final List<_PendingLabour> _pending = [];
 
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _mobileController = TextEditingController();
   final TextEditingController _daysHourController = TextEditingController();
   final TextEditingController _rateController = TextEditingController();
   final TextEditingController _labourHeadController = TextEditingController();
@@ -51,14 +58,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   final List<String> _workTypes = ['Daily Wages', 'Contract'];
   final List<String> _shifts = ['fullday', 'morning', 'evening', 'hour'];
   final List<String> _genders = ['Male', 'Female'];
-  final List<String> _categories = [
-    'Plucking',
-    'Cutting',
-    'Drying',
-    'Grading',
-    'Packing',
-    'Transport',
-  ];
+  final List<String> _categories = List<String>.from(kLaborWorkCategories);
   final List<String> _locations = [
     'Farm',
     'Warehouse',
@@ -72,6 +72,9 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   bool _loading = true;
   bool _submitting = false;
   final ApiService _api = ApiService();
+  /// Cached rates keyed by category for the current labourer name.
+  Map<String, double> _ratesForLabourer = {};
+  Timer? _rateLookupDebounce;
 
   static const Color _primaryGreen = Color(0xFF2E7D32);
   static const Color _darkGreen = Color(0xFF1B5E20);
@@ -90,18 +93,71 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _animController.forward();
+    _nameController.addListener(_onLabourerIdentityChanged);
+    _mobileController.addListener(_onLabourerIdentityChanged);
     _loadLabors();
   }
 
   @override
   void dispose() {
+    _rateLookupDebounce?.cancel();
+    _nameController.removeListener(_onLabourerIdentityChanged);
+    _mobileController.removeListener(_onLabourerIdentityChanged);
     _animController.dispose();
     _nameController.dispose();
+    _mobileController.dispose();
     _daysHourController.dispose();
     _rateController.dispose();
     _labourHeadController.dispose();
     _narrationController.dispose();
     super.dispose();
+  }
+
+  void _onLabourerIdentityChanged() {
+    setState(() {}); // refresh rates icon visibility
+    _rateLookupDebounce?.cancel();
+    final mobile = _mobileController.text.trim();
+    final name = _nameController.text.trim();
+    if (mobile.length == 10) {
+      _rateLookupDebounce = Timer(const Duration(milliseconds: 350), () {
+        _loadRatesForLabourer(mobile: mobile, name: name);
+      });
+      return;
+    }
+    if (name.length < 2) {
+      _ratesForLabourer = {};
+      return;
+    }
+    _rateLookupDebounce = Timer(const Duration(milliseconds: 400), () {
+      _loadRatesForLabourer(name: name);
+    });
+  }
+
+  Future<void> _loadRatesForLabourer({String? mobile, String? name}) async {
+    final rows = await _api.fetchLaborRates(
+      mobile: mobile,
+      name: name,
+    );
+    if (!mounted) return;
+    final map = <String, double>{};
+    for (final r in rows) {
+      final cat = r['category']?.toString() ?? '';
+      final rate = r['rate'];
+      final value = rate is num
+          ? rate.toDouble()
+          : double.tryParse(rate?.toString() ?? '');
+      if (cat.isNotEmpty && value != null && value > 0) {
+        map[cat] = value;
+      }
+    }
+    setState(() => _ratesForLabourer = map);
+    _applyRateForSelectedCategory();
+  }
+
+  void _applyRateForSelectedCategory() {
+    final rate = _ratesForLabourer[_selectedCategory];
+    if (rate == null || rate <= 0) return;
+    _rateController.text = rate.toStringAsFixed(0);
   }
 
   Future<void> _loadLabors() async {
@@ -159,6 +215,211 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     );
   }
 
+  Future<void> _showLaborRatesPopup() async {
+    final mobile = _mobileController.text.trim();
+    if (mobile.length != 10) {
+      _showSnack('Enter 10-digit mobile first', error: true);
+      return;
+    }
+
+    final existing = await _api.fetchLaborRates(mobile: mobile);
+    if (!mounted) return;
+
+    final controllers = <String, TextEditingController>{};
+    for (final cat in kLaborWorkCategories) {
+      String rateVal = '';
+      for (final r in existing) {
+        if (r['category']?.toString() == cat) {
+          final raw = r['rate'];
+          rateVal = raw is num
+              ? raw.toStringAsFixed(0)
+              : (raw?.toString() ?? '');
+          break;
+        }
+      }
+      if (rateVal.isEmpty && _ratesForLabourer[cat] != null) {
+        rateVal = _ratesForLabourer[cat]!.toStringAsFixed(0);
+      }
+      controllers[cat] = TextEditingController(text: rateVal);
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          titlePadding: const EdgeInsets.fromLTRB(16, 14, 8, 0),
+          contentPadding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Labour Rates',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: _darkGreen,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 20),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Edit rates for this labourer. Tap category to apply to Rate field.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 8),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: 1.55,
+                  ),
+                  itemCount: kLaborWorkCategories.length,
+                  itemBuilder: (_, i) {
+                    final cat = kLaborWorkCategories[i];
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: _fieldBg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          InkWell(
+                            onTap: () {
+                              final rate = double.tryParse(
+                                  controllers[cat]!.text.trim());
+                              setState(() => _selectedCategory = cat);
+                              if (rate != null && rate > 0) {
+                                _rateController.text = rate.toStringAsFixed(0);
+                              }
+                              Navigator.pop(ctx);
+                            },
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    cat,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: _darkGreen,
+                                    ),
+                                  ),
+                                ),
+                                Icon(Icons.check_circle_outline,
+                                    size: 14, color: Colors.green.shade700),
+                              ],
+                            ),
+                          ),
+                          const Spacer(),
+                          TextField(
+                            controller: controllers[cat],
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              prefixText: '₹ ',
+                              hintText: 'Rate',
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 6,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide:
+                                    BorderSide(color: Colors.grey.shade300),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide:
+                                    BorderSide(color: Colors.grey.shade300),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryGreen,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                final rates = <String, double>{};
+                for (final cat in kLaborWorkCategories) {
+                  final v = double.tryParse(controllers[cat]!.text.trim());
+                  if (v != null && v >= 0) rates[cat] = v;
+                }
+                if (rates.isEmpty) {
+                  Navigator.pop(ctx);
+                  return;
+                }
+                final messenger = ScaffoldMessenger.of(context);
+                final ok = await _api.saveLaborRates(
+                  mobile: mobile,
+                  name: _nameController.text.trim(),
+                  rates: rates,
+                );
+                if (ok) {
+                  setState(() => _ratesForLabourer = rates);
+                  _applyRateForSelectedCategory();
+                }
+                if (ctx.mounted) Navigator.pop(ctx);
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        ok ? 'Labour rates saved' : 'Failed to save rates'),
+                    backgroundColor: ok ? _primaryGreen : Colors.red,
+                  ),
+                );
+              },
+              child: const Text('Save Rates'),
+            ),
+          ],
+        );
+      },
+    );
+
+    for (final c in controllers.values) {
+      c.dispose();
+    }
+  }
+
   Future<void> _addLocation() async {
     final controller = TextEditingController();
     final result = await showDialog<String>(
@@ -205,11 +466,16 @@ class _LaborManagementPageState extends State<LaborManagementPage>
 
   void _addPendingLabour() {
     final name = _nameController.text.trim();
+    final mobile = _mobileController.text.trim();
     final daysHourText = _daysHourController.text.trim();
     final rateText = _rateController.text.trim();
 
     if (name.isEmpty) {
       _showSnack('Enter labourer name', error: true);
+      return;
+    }
+    if (mobile.isNotEmpty && mobile.length != 10) {
+      _showSnack('Mobile must be 10 digits', error: true);
       return;
     }
     final daysHour = double.tryParse(daysHourText);
@@ -226,14 +492,17 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     setState(() {
       _pending.add(_PendingLabour(
         name: name,
+        mobile: mobile.isEmpty ? null : mobile,
         shift: _selectedShift,
         daysHour: daysHour,
         gender: _selectedGender,
         rate: rate,
         category: _selectedCategory,
       ));
-      // Only clear name — keep shift, days/hour, gender, rate, category
+      // Only clear name/mobile — keep shift, days/hour, gender, rate, category
       _nameController.clear();
+      _mobileController.clear();
+      _ratesForLabourer = {};
     });
   }
 
@@ -276,6 +545,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               'location': _selectedLocation,
               'narration': narration,
               'date': _selectedDate.toIso8601String(),
+              if (row.mobile != null && row.mobile!.isNotEmpty)
+                'mobile': row.mobile,
             })
         .toList();
 
@@ -305,6 +576,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       _laborers.insertAll(0, created);
       _pending.clear();
       _nameController.clear();
+      _mobileController.clear();
+      _ratesForLabourer = {};
       _narrationController.clear();
       _labourHeadController.clear();
       _selectedDate = DateTime.now();
@@ -544,6 +817,44 @@ class _LaborManagementPageState extends State<LaborManagementPage>
           ),
           const SizedBox(height: 8),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildTextField(
+                  controller: _mobileController,
+                  label: 'Mobile',
+                  icon: Icons.phone_rounded,
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
+                ),
+              ),
+              if (_mobileController.text.trim().length == 10) ...[
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: _fieldHeight,
+                  width: _fieldHeight,
+                  child: Material(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(10),
+                    child: InkWell(
+                      onTap: _showLaborRatesPopup,
+                      borderRadius: BorderRadius.circular(10),
+                      child: const Icon(
+                        Icons.grid_view_rounded,
+                        color: _primaryGreen,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
             children: [
               Expanded(
                 child: _buildDropdown(
@@ -600,7 +911,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                   value: _selectedCategory,
                   items: _categories,
                   icon: Icons.category_rounded,
-                  onChanged: (v) => setState(() => _selectedCategory = v!),
+                  onChanged: (v) {
+                    setState(() => _selectedCategory = v!);
+                    _applyRateForSelectedCategory();
+                  },
                 ),
               ),
               const SizedBox(width: 8),
@@ -988,6 +1302,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     required IconData icon,
     TextInputType? keyboardType,
     int maxLines = 1,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     final isMulti = maxLines > 1;
     return Container(
@@ -1002,6 +1317,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
         style: const TextStyle(
             fontSize: 13, fontWeight: FontWeight.w500, color: _darkGreen),
         keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
         maxLines: maxLines,
         decoration: InputDecoration(
           border: InputBorder.none,

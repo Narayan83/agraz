@@ -28,6 +28,8 @@ func init() {
 		&models.ServiceRegistration{},
 		&models.Vendor{},
 		&models.Labor{},
+		&models.LaborRate{},
+		&models.IncomeExpense{},
 		&models.EcomCategory{},
 		&models.EcomSubCategory{},
 		&models.EcomProduct{},
@@ -63,6 +65,7 @@ func main() {
 	handler.SetEmployeeDB(initializers.DB)
 	handler.SetIncomeExpenseDB(initializers.DB)
 	handler.SetLaborDB(initializers.DB)
+	handler.SetLaborRateDB(initializers.DB)
 	handler.SetServiceRegistrationDB(initializers.DB)
 	handler.SetEcomDB(initializers.DB)
 	handler.SetVendorDB(initializers.DB)
@@ -97,6 +100,7 @@ func main() {
 	api.Post("/register-business", handler.RegisterBusinessPublic)
 	api.Get("/services", handler.ListApprovedServicesPublic)
 	api.Get("/income_expense/summary", handler.GetIncomeExpenseSummaryPublic)
+	api.Get("/income_expense/balance/:mobile", handler.GetPartyBalancePublic)
 	api.Get("/income_expense/mobile/:mobile", handler.GetIncomeExpensesByMobilePublic)
 	api.Get("/income_expense", handler.GetIncomeExpenses)
 	api.Get("/income_expense/:id", handler.GetIncomeExpense)
@@ -111,6 +115,10 @@ func main() {
 	api.Get("/labors/:id", handler.GetLabor)
 	api.Put("/labors/:id", handler.UpdateLabor)
 	api.Delete("/labors/:id", handler.DeleteLabor)
+
+	// Per-labourer category rates
+	api.Get("/labor_rates", handler.GetLaborRates)
+	api.Put("/labor_rates", handler.UpsertLaborRates)
 
 	// Public storefront catalog (no JWT; same data admin manages)
 	api.Get("/store/categories", handler.GetStoreCategories)

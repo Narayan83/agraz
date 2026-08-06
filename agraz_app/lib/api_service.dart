@@ -325,4 +325,101 @@ class ApiService {
       return false;
     }
   }
+
+  /// Party ledger balance for a mobile. Positive side=credit, negative=debit.
+  Future<Map<String, dynamic>?> fetchPartyBalance(String mobile) async {
+    try {
+      final headers = await authGetHeaders();
+      final response = await http.get(
+        Uri.parse('$BASE_URL/api/income_expense/balance/$mobile'),
+        headers: headers,
+      );
+      if (response.statusCode != 200) return null;
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return null;
+    } catch (e) {
+      print('Error fetching party balance: $e');
+      return null;
+    }
+  }
+
+  /// Lookup latest income/expense row by name (for autofill).
+  Future<Map<String, dynamic>?> fetchUserByName(String name) async {
+    try {
+      final headers = await authGetHeaders();
+      final uri = Uri.parse('$BASE_URL/api/income_expense').replace(
+        queryParameters: {
+          'name': name.trim(),
+          'limit': '1',
+          'page': '1',
+        },
+      );
+      final response = await http.get(uri, headers: headers);
+      if (response.statusCode != 200) return null;
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map && decoded['data'] is List && (decoded['data'] as List).isNotEmpty) {
+        final first = (decoded['data'] as List).first;
+        if (first is Map) return Map<String, dynamic>.from(first);
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching user by name: $e');
+      return null;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchLaborRates({
+    String? mobile,
+    String? name,
+  }) async {
+    try {
+      final headers = await authGetHeaders();
+      final uri = Uri.parse('$BASE_URL/api/labor_rates').replace(
+        queryParameters: {
+          if (mobile != null && mobile.isNotEmpty) 'mobile': mobile,
+          if (name != null && name.isNotEmpty) 'name': name,
+        },
+      );
+      final response = await http.get(uri, headers: headers);
+      if (response.statusCode != 200) return [];
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map && decoded['data'] is List) {
+        return (decoded['data'] as List)
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching labor rates: $e');
+      return [];
+    }
+  }
+
+  Future<bool> saveLaborRates({
+    required String mobile,
+    String? name,
+    required Map<String, double> rates,
+  }) async {
+    try {
+      final headers = await authJsonHeaders();
+      final body = {
+        'mobile': mobile,
+        'name': name ?? '',
+        'rates': rates.entries
+            .map((e) => {'category': e.key, 'rate': e.value})
+            .toList(),
+      };
+      final response = await http.put(
+        Uri.parse('$BASE_URL/api/labor_rates'),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print('Error saving labor rates: $e');
+      return false;
+    }
+  }
 }
