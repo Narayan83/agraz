@@ -672,9 +672,18 @@ class AppDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final selected =
+        (value == null || !items.contains(value)) ? null : value;
     return DropdownButtonFormField<String>(
-      initialValue: (value == null || !items.contains(value)) ? null : value,
-      onChanged: onChanged,
+      key: ValueKey('dd-$label-$selected'),
+      initialValue: selected,
+      onChanged: (v) {
+        // Defer so dropdown overlay can close before parent rebuilds
+        // (avoids InheritedWidget _dependents.isEmpty crash).
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          onChanged(v);
+        });
+      },
       isExpanded: true,
       validator:
           validator ??

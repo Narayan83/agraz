@@ -362,6 +362,36 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> updateLabor(
+      int id, Map<String, dynamic> data) async {
+    try {
+      final headers = await authJsonHeaders();
+      final response = await http.put(
+        Uri.parse('$BASE_URL/api/labors/$id'),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+      final decoded = response.body.isNotEmpty
+          ? jsonDecode(response.body)
+          : <String, dynamic>{};
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          'success': true,
+          'data': decoded is Map ? (decoded['data'] ?? decoded) : decoded,
+          'message': decoded is Map
+              ? (decoded['message'] ?? 'Labor record updated')
+              : 'Labor record updated',
+        };
+      }
+      final err = decoded is Map
+          ? (decoded['error']?.toString() ?? 'Failed to update laborer')
+          : 'Failed to update laborer';
+      return {'success': false, 'message': err};
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to update laborer: $e'};
+    }
+  }
+
   /// Party ledger balance for a mobile. Positive side=credit, negative=debit.
   Future<Map<String, dynamic>?> fetchPartyBalance(String mobile) async {
     try {

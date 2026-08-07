@@ -16,7 +16,8 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.agraz.app"
-    compileSdk = flutter.compileSdkVersion
+    // Google Play (from Aug 31, 2026): updates must target API 36+
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -42,7 +43,7 @@ android {
     defaultConfig {
         applicationId = "com.agraz.app"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode?.toInt() ?: 1
         versionName = flutter.versionName
     }

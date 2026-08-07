@@ -154,7 +154,7 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
                     : RefreshIndicator(
                         onRefresh: () => _load(q: _currentQuery()),
                         child: ListView(
-                          padding: const EdgeInsets.only(bottom: 24),
+                          padding: const EdgeInsets.fromLTRB(0, 0, 0, 12),
                           children: [
                             if (mains.isEmpty)
                               const Padding(
@@ -162,7 +162,8 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
                                 child: EmptyState(
                                   icon: Icons.search_off_rounded,
                                   title: 'No approved services yet',
-                                  subtitle: 'Pull down to refresh or register a new service',
+                                  subtitle:
+                                      'Pull down to refresh or register a new service',
                                 ),
                               )
                             else
@@ -172,34 +173,43 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
                                   subCategories: grouped[main]!,
                                 ),
                               ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                              child: Center(
-                                child: TextButton.icon(
-                                  onPressed: _openRegister,
-                                  icon: const Icon(Icons.add_business_rounded, size: 18),
-                                  label: const Text('Register your Business or Service'),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: AppColors.primary,
-                                    backgroundColor: AppColors.primarySoft,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    textStyle: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
                           ],
                         ),
                       ),
+          ),
+          SafeArea(
+            top: false,
+            child: Material(
+              color: AppColors.surface,
+              elevation: 8,
+              shadowColor: Colors.black26,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: TextButton.icon(
+                    onPressed: _openRegister,
+                    icon: const Icon(Icons.add_business_rounded, size: 18),
+                    label: const Text('Register your Business or Service'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      backgroundColor: AppColors.primarySoft,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
