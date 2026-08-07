@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'api_service.dart';
 import 'config.dart';
 import 'service_register.dart';
+import 'app_theme.dart';
 
 class ServiceListingPage extends StatefulWidget {
   const ServiceListingPage({super.key});
@@ -52,6 +53,9 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
     }
   }
 
+  String? _currentQuery() =>
+      _searchController.text.trim().isEmpty ? null : _searchController.text.trim();
+
   Map<String, Map<String, List<ServiceProvider>>> _grouped() {
     final map = <String, Map<String, List<ServiceProvider>>>{};
     for (final s in _all) {
@@ -69,7 +73,7 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
   Future<void> _openRegister() async {
     final ok = await showServiceRegisterSheet(context);
     if (ok == true && mounted) {
-      _load(q: _searchController.text.trim().isEmpty ? null : _searchController.text.trim());
+      _load(q: _currentQuery());
     }
   }
 
@@ -79,41 +83,45 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
     final mains = grouped.keys.toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F5),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('General Services'),
-        backgroundColor: const Color(0xFF2E7D32),
-        foregroundColor: Colors.white,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.white),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: AppColors.headerGradient,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => _load(
-              q: _searchController.text.trim().isEmpty
-                  ? null
-                  : _searchController.text.trim(),
-            ),
+            icon: const Icon(Icons.add_rounded),
+            tooltip: 'Register Service',
+            onPressed: _openRegister,
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh',
+            onPressed: () => _load(q: _currentQuery()),
           ),
         ],
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Search services, place, category…',
-                prefixIcon: const Icon(Icons.search, size: 22),
-                isDense: true,
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
                 suffixIcon: IconButton(
-                  icon: const Icon(Icons.clear, size: 20),
+                  icon: const Icon(Icons.clear_rounded, size: 20),
+                  tooltip: 'Clear',
                   onPressed: () {
                     _searchController.clear();
                     _load();
@@ -136,7 +144,7 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
                               Text(_error!, textAlign: TextAlign.center),
                               const SizedBox(height: 12),
                               ElevatedButton(
-                                onPressed: () => _load(),
+                                onPressed: () => _load(q: _currentQuery()),
                                 child: const Text('Retry'),
                               ),
                             ],
@@ -144,21 +152,17 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
                         ),
                       )
                     : RefreshIndicator(
-                        onRefresh: () => _load(
-                          q: _searchController.text.trim().isEmpty
-                              ? null
-                              : _searchController.text.trim(),
-                        ),
+                        onRefresh: () => _load(q: _currentQuery()),
                         child: ListView(
                           padding: const EdgeInsets.only(bottom: 24),
                           children: [
                             if (mains.isEmpty)
                               const Padding(
-                                padding: EdgeInsets.fromLTRB(24, 40, 24, 16),
-                                child: Text(
-                                  'No approved services yet.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: Colors.black54),
+                                padding: EdgeInsets.only(top: 60),
+                                child: EmptyState(
+                                  icon: Icons.search_off_rounded,
+                                  title: 'No approved services yet',
+                                  subtitle: 'Pull down to refresh or register a new service',
                                 ),
                               )
                             else
@@ -169,27 +173,25 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
                                 ),
                               ),
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
                               child: Center(
-                                child: TextButton(
+                                child: TextButton.icon(
                                   onPressed: _openRegister,
+                                  icon: const Icon(Icons.add_business_rounded, size: 18),
+                                  label: const Text('Register your Business or Service'),
                                   style: TextButton.styleFrom(
-                                    foregroundColor: const Color(0xFF2E7D32),
+                                    foregroundColor: AppColors.primary,
+                                    backgroundColor: AppColors.primarySoft,
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
+                                      horizontal: 16,
+                                      vertical: 12,
                                     ),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  child: const Text(
-                                    'Register your Business or Service',
-                                    style: TextStyle(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    textStyle: const TextStyle(
                                       fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      decoration: TextDecoration.underline,
-                                      decorationColor: Color(0xFF2E7D32),
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
@@ -254,7 +256,9 @@ class ServiceProvider {
       } catch (_) {}
     }
     return ServiceProvider(
-      id: json['id'] is int ? json['id'] as int : int.tryParse('${json['id']}') ?? 0,
+      id: json['id'] is int
+          ? json['id'] as int
+          : int.tryParse('${json['id']}') ?? 0,
       name: json['name']?.toString() ?? '',
       businessName: json['business_name']?.toString() ?? '',
       mobile: json['mobile']?.toString() ?? '',
@@ -277,34 +281,77 @@ class _CategoryBlock extends StatelessWidget {
     required this.subCategories,
   });
 
+  IconData _iconForCategory(String category) {
+    switch (category.toLowerCase()) {
+      case 'farming services':
+        return Icons.agriculture_rounded;
+      case 'animal husbandry':
+        return Icons.pets_rounded;
+      case 'passenger vehicle':
+        return Icons.airport_shuttle_rounded;
+      case 'goods vehicle':
+        return Icons.local_shipping_rounded;
+      case 'jcb/hitachi':
+        return Icons.precision_manufacturing_rounded;
+      case 'medicine':
+        return Icons.medication_rounded;
+      default:
+        return Icons.miscellaneous_services_rounded;
+    }
+  }
+
+  Color _colorForCategory(String category) {
+    switch (category.toLowerCase()) {
+      case 'farming services':
+        return AppColors.primary;
+      case 'animal husbandry':
+        return AppColors.warning;
+      case 'passenger vehicle':
+        return AppColors.info;
+      case 'goods vehicle':
+        return AppColors.accent;
+      case 'jcb/hitachi':
+        return AppColors.expense;
+      case 'medicine':
+        return AppColors.primaryLight;
+      default:
+        return AppColors.textMuted;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            mainCategory,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1B5E20),
-            ),
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
+          child: Row(
+            children: [
+              TintedIcon(
+                icon: _iconForCategory(mainCategory),
+                color: _colorForCategory(mainCategory),
+                boxSize: 38,
+                size: 19,
+                radius: 11,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  mainCategory,
+                  style: AppText.h3,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
         ),
         ...subCategories.entries.expand((e) {
           return [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Text(
-                e.key,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF388E3C),
-                ),
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
+              child: Text(e.key, style: AppText.subtitle),
             ),
             ...e.value.map((b) => _BusinessCard(provider: b)),
           ];
@@ -329,71 +376,119 @@ class _BusinessCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final img = provider.displayImage;
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [AppColors.softShadow],
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: SizedBox(
-              height: 150,
-              child: img.isEmpty
-                  ? Container(
-                      color: Colors.grey.shade300,
-                      child: const Icon(Icons.store, size: 48, color: Colors.grey),
-                    )
-                  : Image.network(
-                      img,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.grey.shade300,
-                        child: const Icon(Icons.broken_image, size: 48),
+          SizedBox(
+            height: 150,
+            child: img.isEmpty
+                ? Container(
+                    color: AppColors.primarySoft,
+                    child: const Icon(
+                      Icons.storefront_rounded,
+                      size: 48,
+                      color: AppColors.primaryLight,
+                    ),
+                  )
+                : Image.network(
+                    img,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      color: AppColors.surfaceAlt,
+                      child: const Icon(
+                        Icons.broken_image_rounded,
+                        size: 48,
+                        color: AppColors.textMuted,
                       ),
                     ),
-            ),
+                  ),
           ),
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   provider.businessName,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  style: AppText.h3,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  provider.name,
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
-                ),
+                const SizedBox(height: 2),
+                Text(provider.name, style: AppText.small),
                 if (provider.businessAddress != null &&
                     provider.businessAddress!.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.place, size: 16, color: Colors.grey.shade600),
+                      const Icon(
+                        Icons.place_rounded,
+                        size: 15,
+                        color: AppColors.textMuted,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           provider.businessAddress!,
-                          style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                          style: AppText.small,
                         ),
                       ),
                     ],
                   ),
                 ],
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Row(
                   children: [
-                    const Icon(Icons.phone, size: 18, color: Colors.blue),
-                    const SizedBox(width: 6),
-                    Text(provider.mobile, style: const TextStyle(fontSize: 15)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.infoSoft,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.phone_rounded, size: 14, color: AppColors.info),
+                          SizedBox(width: 6),
+                          Text(
+                            'Contact',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.info,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const Spacer(),
-                    TextButton(onPressed: _call, child: const Text('CALL')),
+                    FilledButton.icon(
+                      onPressed: _call,
+                      icon: const Icon(Icons.call_rounded, size: 16),
+                      label: const Text('Call'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'api_service.dart';
+import 'app_theme.dart';
 
 class _PendingLabour {
   final String name;
@@ -73,12 +74,6 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   bool _submitting = false;
   final ApiService _api = ApiService();
 
-  static const Color _primaryGreen = Color(0xFF2E7D32);
-  static const Color _darkGreen = Color(0xFF1B5E20);
-  static const Color _fieldBg = Color(0xFFF5F7F5);
-  static const Color _cardBg = Colors.white;
-  static const double _fieldHeight = 40;
-
   bool get _isContract => _selectedWorkType == 'Contract';
 
   @override
@@ -131,12 +126,12 @@ class _LaborManagementPageState extends State<LaborManagementPage>
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: _primaryGreen,
+              primary: AppColors.primary,
               onPrimary: Colors.white,
-              onSurface: Colors.black,
+              onSurface: AppColors.textPrimary,
             ),
             textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(foregroundColor: _primaryGreen),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
             ),
           ),
           child: child!,
@@ -152,9 +147,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: error ? Colors.red.shade600 : _primaryGreen,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: error ? AppColors.expense : AppColors.primary,
       ),
     );
   }
@@ -170,9 +163,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
             controller: controller,
             autofocus: true,
             decoration: const InputDecoration(
-              hintText: 'Enter location name',
-              border: OutlineInputBorder(),
-              isDense: true,
+              labelText: 'Location name',
+              prefixIcon: Icon(Icons.location_on_rounded),
             ),
             textCapitalization: TextCapitalization.words,
           ),
@@ -181,11 +173,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               onPressed: () => Navigator.pop(ctx),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primaryGreen,
-                foregroundColor: Colors.white,
-              ),
+            FilledButton(
               onPressed: () => Navigator.pop(ctx, controller.text.trim()),
               child: const Text('Add'),
             ),
@@ -349,20 +337,22 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F5),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnim,
           child: Column(
             children: [
-              _buildHeader(),
+              const AppHeader(
+                icon: Icons.engineering_rounded,
+                title: 'Labour Management',
+                subtitle: 'Daily wages & contract labour',
+              ),
               Expanded(
                 child: _loading
-                    ? const Center(
-                        child: CircularProgressIndicator(color: _primaryGreen),
-                      )
+                    ? const Center(child: CircularProgressIndicator())
                     : SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                         child: Column(
                           children: [
                             _buildAddFormCard(),
@@ -381,133 +371,42 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF1B5E20), Color(0xFF388E3C), Color(0xFF4CAF50)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: IconButton(
-                  padding: EdgeInsets.zero,
-                  icon: const Icon(Icons.arrow_back_rounded,
-                      color: Colors.white, size: 22),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.engineering_rounded,
-                    color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Labour Management',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Daily wages & contract labour',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sectionTitle(String title, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: _primaryGreen),
-          const SizedBox(width: 6),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: _darkGreen,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildAddFormCard() {
-    return _card(
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle('Add Labour Entry', Icons.person_add_alt_1_rounded),
+          const SectionTitle(
+            icon: Icons.person_add_alt_1_rounded,
+            title: 'Add Labour Entry',
+            subtitle: 'Record daily wages or contract labour',
+          ),
+          const SizedBox(height: 14),
           _compactDateField(),
-          const SizedBox(height: 8),
-          _buildDropdown(
+          const SizedBox(height: 10),
+          AppDropdown(
             label: 'Work Type',
             value: _selectedWorkType,
             items: _workTypes,
             icon: Icons.work_outline_rounded,
             onChanged: (v) => setState(() {
-              _selectedWorkType = v!;
+              _selectedWorkType = v ?? 'Daily Wages';
               if (!_isContract) _labourHeadController.clear();
             }),
           ),
           if (_isContract) ...[
-            const SizedBox(height: 8),
-            _buildTextField(
+            const SizedBox(height: 10),
+            AppField(
               controller: _labourHeadController,
               label: 'Labour Head',
               icon: Icons.supervisor_account_rounded,
             ),
           ],
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
-                child: _buildNullableDropdown(
+                child: AppDropdown(
                   label: 'Location',
                   value: _selectedLocation,
                   items: _locations,
@@ -515,160 +414,139 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                   onChanged: (v) => setState(() => _selectedLocation = v),
                 ),
               ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: _fieldHeight,
-                width: _fieldHeight,
-                child: ElevatedButton(
-                  onPressed: _addLocation,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryGreen,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Icon(Icons.add_rounded, size: 22),
-                ),
-              ),
+              const SizedBox(width: 10),
+              _addLocationButton(),
             ],
           ),
+          const SizedBox(height: 16),
+          const SectionTitle(
+            icon: Icons.badge_outlined,
+            title: 'Labourer details',
+            subtitle: 'Add one labourer at a time',
+          ),
           const SizedBox(height: 14),
-          _sectionTitle('Labourer details', Icons.badge_outlined),
-          _buildTextField(
+          AppField(
             controller: _nameController,
             label: 'Name',
             icon: Icons.person_rounded,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
-                child: _buildDropdown(
+                child: AppDropdown(
                   label: 'Shift',
                   value: _selectedShift,
                   items: _shifts,
                   icon: Icons.wb_sunny_rounded,
-                  onChanged: (v) => setState(() => _selectedShift = v!),
+                  onChanged: (v) => setState(() => _selectedShift = v ?? 'fullday'),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
-                child: _buildTextField(
+                child: AppField(
                   controller: _daysHourController,
                   label: 'Days / Hour',
                   icon: Icons.access_time_rounded,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
-                child: _buildDropdown(
+                child: AppDropdown(
                   label: 'Gender',
                   value: _selectedGender,
                   items: _genders,
                   icon: Icons.wc_rounded,
-                  onChanged: (v) => setState(() => _selectedGender = v!),
+                  onChanged: (v) => setState(() => _selectedGender = v ?? 'Male'),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
-                child: _buildTextField(
+                child: AppField(
                   controller: _rateController,
                   label: 'Rate',
                   icon: Icons.currency_rupee_rounded,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 flex: 3,
-                child: _buildDropdown(
+                child: AppDropdown(
                   label: 'Category',
                   value: _selectedCategory,
                   items: _categories,
                   icon: Icons.category_rounded,
-                  onChanged: (v) => setState(() => _selectedCategory = v!),
+                  onChanged: (v) =>
+                      setState(() => _selectedCategory = v ?? 'Plucking'),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
                 flex: 1,
-                child: SizedBox(
-                  height: _fieldHeight,
-                  child: ElevatedButton(
-                    onPressed: _addPendingLabour,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryGreen,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text('Add',
-                        style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w700)),
-                  ),
+                child: PrimaryButton(
+                  label: 'Add',
+                  icon: Icons.add_rounded,
+                  onPressed: _addPendingLabour,
+                  height: 58,
                 ),
               ),
             ],
           ),
           if (_pending.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            _sectionTitle('Added labourers', Icons.grid_on_rounded),
+            const SizedBox(height: 16),
+            SectionTitle(
+              icon: Icons.grid_on_rounded,
+              title: 'Added labourers (${_pending.length})',
+            ),
+            const SizedBox(height: 10),
             _buildPendingGrid(),
           ],
-          const SizedBox(height: 12),
-          _buildTextField(
+          const SizedBox(height: 14),
+          AppField(
             controller: _narrationController,
-            label: 'Narration *',
+            label: 'Narration',
             icon: Icons.description_rounded,
             maxLines: 2,
+            required: true,
           ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            height: 42,
-            child: ElevatedButton(
-              onPressed: _submitting ? null : _submitLabours,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _darkGreen,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: _primaryGreen.withValues(alpha: 0.6),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: _submitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Save Entry',
-                      style:
-                          TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-            ),
+          const SizedBox(height: 14),
+          PrimaryButton(
+            label: _submitting ? 'Saving…' : 'Save Entry',
+            icon: Icons.save_rounded,
+            onPressed: _submitting ? null : _submitLabours,
+            loading: _submitting,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _addLocationButton() {
+    return SizedBox(
+      width: 56,
+      height: 56,
+      child: Material(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: _addLocation,
+          child: const Icon(Icons.add_rounded, color: Colors.white),
+        ),
       ),
     );
   }
@@ -677,9 +555,9 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: _fieldBg,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
+        color: AppColors.field,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -688,19 +566,19 @@ class _LaborManagementPageState extends State<LaborManagementPage>
             minWidth: MediaQuery.of(context).size.width - 64,
           ),
           child: DataTable(
-            columnSpacing: 12,
-            horizontalMargin: 10,
-            headingRowHeight: 34,
-            dataRowMinHeight: 36,
-            dataRowMaxHeight: 42,
+            columnSpacing: 14,
+            horizontalMargin: 12,
+            headingRowHeight: 36,
+            dataRowMinHeight: 38,
+            dataRowMaxHeight: 44,
             headingTextStyle: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: _darkGreen,
+              color: AppColors.primary,
             ),
             dataTextStyle: const TextStyle(
               fontSize: 11,
-              color: _darkGreen,
+              color: AppColors.textPrimary,
             ),
             columns: const [
               DataColumn(label: Text('Name')),
@@ -715,22 +593,30 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               final row = _pending[index];
               return DataRow(
                 cells: [
-                  DataCell(Text(row.name,
+                  DataCell(
+                    Text(
+                      row.name,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600))),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
                   DataCell(Text(row.shift)),
                   DataCell(Text(row.daysHour.toString())),
                   DataCell(Text(row.gender)),
                   DataCell(Text(row.rate.toStringAsFixed(0))),
-                  DataCell(Text(row.category,
-                      overflow: TextOverflow.ellipsis)),
+                  DataCell(Text(row.category, overflow: TextOverflow.ellipsis)),
                   DataCell(
                     IconButton(
                       padding: EdgeInsets.zero,
-                      constraints:
-                          const BoxConstraints(minWidth: 28, minHeight: 28),
-                      icon: Icon(Icons.close_rounded,
-                          size: 16, color: Colors.red.shade400),
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 16,
+                        color: AppColors.expense,
+                      ),
                       onPressed: () => _removePending(index),
                     ),
                   ),
@@ -746,31 +632,28 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   Widget _compactDateField() {
     return InkWell(
       onTap: () => _selectDate(context),
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        height: _fieldHeight,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: _fieldBg,
-          borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(14),
+      child: InputDecorator(
+        decoration: const InputDecoration(
+          labelText: 'Date',
+          prefixIcon: Icon(Icons.calendar_today_rounded, size: 18),
+          prefixIconConstraints: BoxConstraints(minWidth: 44, minHeight: 0),
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_rounded,
-                color: _primaryGreen, size: 16),
-            const SizedBox(width: 8),
             Text(
               DateFormat('dd MMM yyyy').format(_selectedDate),
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 14.5,
                 fontWeight: FontWeight.w600,
-                color: _darkGreen,
+                color: AppColors.textPrimary,
               ),
             ),
             const Spacer(),
-            Text(
-              'Date',
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+            const Icon(
+              Icons.expand_more_rounded,
+              color: AppColors.textMuted,
+              size: 18,
             ),
           ],
         ),
@@ -780,7 +663,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
 
   Widget _buildSummaryCard() {
     final entries = _filteredLaborers.length;
-    return _card(
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
           Expanded(
@@ -788,16 +672,31 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               Icons.group_rounded,
               '$entries',
               'Entries',
-              const Color(0xFF42A5F5),
+              AppColors.info,
             ),
           ),
-          Container(width: 1, height: 36, color: Colors.grey.shade200),
+          const SizedBox(
+            height: 40,
+            child: VerticalDivider(color: AppColors.border, width: 1),
+          ),
           Expanded(
             child: _summaryItem(
               Icons.currency_rupee_rounded,
               '₹${_totalLaborCost.toStringAsFixed(0)}',
               'Total Cost',
-              const Color(0xFF4CAF50),
+              AppColors.income,
+            ),
+          ),
+          const SizedBox(
+            height: 40,
+            child: VerticalDivider(color: AppColors.border, width: 1),
+          ),
+          Expanded(
+            child: _summaryItem(
+              Icons.hourglass_bottom_rounded,
+              '${_pending.length}',
+              'In Queue',
+              AppColors.warning,
             ),
           ),
         ],
@@ -808,48 +707,28 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   Widget _summaryItem(IconData icon, String value, String label, Color color) {
     return Column(
       children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: color, size: 18),
-        ),
+        TintedIcon(icon: icon, color: color, boxSize: 38, size: 18, radius: 11),
         const SizedBox(height: 6),
         Text(
           value,
           style: const TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: _darkGreen,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
           ),
         ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-        ),
+        Text(label, style: AppText.caption),
       ],
     );
   }
 
   Widget _buildLaborerList() {
     if (_laborers.isEmpty) {
-      return _card(
-        child: Column(
-          children: [
-            Icon(Icons.people_alt_outlined,
-                size: 48, color: Colors.grey.shade400),
-            const SizedBox(height: 10),
-            Text(
-              'No labourers saved yet',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade700),
-            ),
-          ],
+      return const AppCard(
+        child: EmptyState(
+          icon: Icons.people_alt_outlined,
+          title: 'No labourers saved yet',
+          subtitle: 'Add your first labour entry above',
         ),
       );
     }
@@ -857,33 +736,18 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (_laborers.length > 1)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Container(
-              height: _fieldHeight,
-              decoration: BoxDecoration(
-                color: _fieldBg,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: TextField(
-                onChanged: (v) => setState(() => _searchQuery = v),
-                style: const TextStyle(fontSize: 13, color: _darkGreen),
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  isDense: true,
-                  prefixIcon: Icon(Icons.search_rounded,
-                      color: _primaryGreen, size: 18),
-                  prefixIconConstraints:
-                      BoxConstraints(minWidth: 30, minHeight: 0),
-                  hintText: 'Search labourers',
-                  hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
-                  contentPadding: EdgeInsets.symmetric(vertical: 10),
-                ),
-              ),
+        if (_laborers.length > 1) ...[
+          TextField(
+            onChanged: (v) => setState(() => _searchQuery = v),
+            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+            decoration: const InputDecoration(
+              labelText: 'Search labourers',
+              prefixIcon: Icon(Icons.search_rounded, size: 20),
+              prefixIconConstraints: BoxConstraints(minWidth: 44, minHeight: 0),
             ),
           ),
+          const SizedBox(height: 10),
+        ],
         ..._filteredLaborers.asMap().entries.map((entry) {
           final index = _laborers.indexOf(entry.value);
           return _laborerCard(entry.value, index);
@@ -894,72 +758,59 @@ class _LaborManagementPageState extends State<LaborManagementPage>
 
   Widget _laborerCard(Laborer laborer, int index) {
     final cost = laborer.totalCost;
-    return Container(
+    return AppCard(
+      padding: const EdgeInsets.all(14),
       margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: _cardBg,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(12),
+      radius: 16,
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: _primaryGreen.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.person_rounded,
-                color: _primaryGreen, size: 20),
+          TintedIcon(
+            icon: Icons.person_rounded,
+            color: AppColors.primary,
+            boxSize: 42,
+            size: 20,
+            radius: 12,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  laborer.name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: _darkGreen,
-                  ),
-                ),
-                const SizedBox(height: 4),
+                Text(laborer.name, style: AppText.bodyStrong),
+                const SizedBox(height: 5),
                 Wrap(
-                  spacing: 4,
+                  spacing: 5,
                   runSpacing: 4,
                   children: [
-                    if (laborer.workType.isNotEmpty) _chip(laborer.workType),
-                    _chip(laborer.shift),
-                    _chip(laborer.gender),
-                    if (laborer.category.isNotEmpty) _chip(laborer.category),
-                    if (laborer.location.isNotEmpty) _chip(laborer.location),
+                    if (laborer.workType.isNotEmpty)
+                      _chip(laborer.workType, AppColors.info),
+                    _chip(laborer.shift, AppColors.warning),
+                    _chip(laborer.gender, AppColors.primary),
+                    if (laborer.category.isNotEmpty)
+                      _chip(laborer.category, AppColors.expense),
+                    if (laborer.location.isNotEmpty)
+                      _chip(laborer.location, AppColors.textMuted),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
                 Text(
                   '₹${laborer.wage.toStringAsFixed(0)} × ${laborer.hours} = ₹${cost.toStringAsFixed(0)}',
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                  style: AppText.small,
                 ),
                 Text(
                   DateFormat('dd MMM yyyy').format(laborer.date),
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                  style: AppText.caption,
                 ),
               ],
             ),
           ),
           IconButton(
-            icon: Icon(Icons.delete_outline_rounded,
-                color: Colors.red.shade500, size: 22),
+            icon: const Icon(
+              Icons.delete_outline_rounded,
+              color: AppColors.expense,
+              size: 22,
+            ),
+            tooltip: 'Delete',
             onPressed: () => _removeLaborer(index),
           ),
         ],
@@ -967,158 +818,17 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     );
   }
 
-  Widget _chip(String text) {
+  Widget _chip(String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: _primaryGreen.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(7),
       ),
       child: Text(
         text,
-        style: const TextStyle(
-            fontSize: 10, color: _primaryGreen, fontWeight: FontWeight.w600),
+        style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600),
       ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType? keyboardType,
-    int maxLines = 1,
-  }) {
-    final isMulti = maxLines > 1;
-    return Container(
-      height: isMulti ? null : _fieldHeight,
-      decoration: BoxDecoration(
-        color: _fieldBg,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: TextField(
-        controller: controller,
-        style: const TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w500, color: _darkGreen),
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          isDense: true,
-          prefixIcon: Icon(icon, color: _primaryGreen, size: 16),
-          prefixIconConstraints:
-              const BoxConstraints(minWidth: 28, minHeight: 0),
-          labelText: label,
-          labelStyle: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-          contentPadding: EdgeInsets.symmetric(
-            vertical: isMulti ? 10 : 8,
-          ),
-          alignLabelWithHint: isMulti,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDropdown({
-    required String label,
-    required String value,
-    required List<String> items,
-    required IconData icon,
-    required void Function(String?) onChanged,
-  }) {
-    return Container(
-      height: _fieldHeight,
-      decoration: BoxDecoration(
-        color: _fieldBg,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: DropdownButtonFormField<String>(
-        initialValue: value,
-        onChanged: onChanged,
-        isDense: true,
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          isDense: true,
-          prefixIcon: Icon(icon, color: _primaryGreen, size: 16),
-          prefixIconConstraints:
-              const BoxConstraints(minWidth: 28, minHeight: 0),
-          labelText: label,
-          labelStyle: TextStyle(color: Colors.grey.shade500, fontSize: 11),
-          contentPadding: const EdgeInsets.only(bottom: 4, top: 0),
-        ),
-        style: const TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w500, color: _darkGreen),
-        icon: const Icon(Icons.keyboard_arrow_down_rounded,
-            color: _primaryGreen, size: 18),
-        items: items
-            .map((item) => DropdownMenuItem(
-                  value: item,
-                  child: Text(item, overflow: TextOverflow.ellipsis),
-                ))
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _buildNullableDropdown({
-    required String label,
-    required String? value,
-    required List<String> items,
-    required IconData icon,
-    required void Function(String?) onChanged,
-  }) {
-    return Container(
-      height: _fieldHeight,
-      decoration: BoxDecoration(
-        color: _fieldBg,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: DropdownButtonFormField<String>(
-        initialValue: value != null && items.contains(value) ? value : null,
-        onChanged: onChanged,
-        isDense: true,
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          isDense: true,
-          prefixIcon: Icon(icon, color: _primaryGreen, size: 16),
-          prefixIconConstraints:
-              const BoxConstraints(minWidth: 28, minHeight: 0),
-          labelText: label,
-          labelStyle: TextStyle(color: Colors.grey.shade500, fontSize: 11),
-          contentPadding: const EdgeInsets.only(bottom: 4, top: 0),
-        ),
-        style: const TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w500, color: _darkGreen),
-        icon: const Icon(Icons.keyboard_arrow_down_rounded,
-            color: _primaryGreen, size: 18),
-        items: items
-            .map((item) => DropdownMenuItem(
-                  value: item,
-                  child: Text(item, overflow: TextOverflow.ellipsis),
-                ))
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _card({required Widget child}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _cardBg,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(14),
-      child: child,
     );
   }
 }
