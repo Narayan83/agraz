@@ -112,7 +112,7 @@ func main() {
 	api.Get("/income_expense", handler.GetIncomeExpenses)
 	api.Get("/income_expense/:id", handler.GetIncomeExpense)
 	api.Post("/income_expense", handler.CreateIncomeExpenseMobile)
-	api.Put("/income_expense/:id", handler.UpdateIncomeExpense)
+	api.Put("/income_expense/:id", handler.UpdateIncomeExpenseMobile)
 	api.Delete("/income_expense/:id", handler.DeleteIncomeExpense)
 
 	// Labor management (public JSON API for Flutter app)

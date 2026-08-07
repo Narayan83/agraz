@@ -38,8 +38,38 @@ type laborPayload struct {
 	LabourHead      string          `json:"labour_head"`
 	Location        string          `json:"location"`
 	Narration       string          `json:"narration"`
-	Date            time.Time       `json:"date"`
-	Mobile          *string         `json:"mobile"`
+	// Date accepts RFC3339 and common Flutter layouts (with/without timezone).
+	Date   flexibleTime `json:"date"`
+	Mobile *string      `json:"mobile"`
+}
+
+// flexibleTime unmarshals common date strings Flutter may send.
+type flexibleTime struct {
+	time.Time
+}
+
+func (t *flexibleTime) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), `"`)
+	if s == "" || s == "null" {
+		t.Time = time.Time{}
+		return nil
+	}
+	layouts := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02T15:04:05.999999999Z07:00",
+		"2006-01-02T15:04:05.999999",
+		"2006-01-02T15:04:05",
+		"2006-01-02 15:04:05",
+		"2006-01-02",
+	}
+	for _, layout := range layouts {
+		if parsed, err := time.Parse(layout, s); err == nil {
+			t.Time = parsed
+			return nil
+		}
+	}
+	return fiber.NewError(400, "invalid date format: "+s)
 }
 
 func validateLaborPayload(body *laborPayload) string {
@@ -86,7 +116,7 @@ func validateLaborPayload(body *laborPayload) string {
 	if strings.TrimSpace(body.Narration) == "" {
 		return "narration is required"
 	}
-	if body.Date.IsZero() {
+	if body.Date.Time.IsZero() {
 		return "date is required"
 	}
 	return ""
@@ -104,7 +134,7 @@ func applyLaborPayload(row *models.Labor, body *laborPayload) {
 	row.LabourHead = body.LabourHead
 	row.Location = strings.TrimSpace(body.Location)
 	row.Narration = strings.TrimSpace(body.Narration)
-	row.Date = body.Date
+	row.Date = body.Date.Time
 	row.Mobile = body.Mobile
 }
 

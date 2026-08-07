@@ -3,30 +3,65 @@ import 'api_service.dart';
 import 'app_theme.dart';
 
 /// Shows service registration as a modal bottom sheet. Returns true on success.
+/// Sheet is non-dismissible by swipe/outside tap so typed data is not lost.
 Future<bool?> showServiceRegisterSheet(BuildContext context) {
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
+    isDismissible: false,
+    enableDrag: false,
     backgroundColor: Colors.transparent,
     builder: (ctx) {
-      return DraggableScrollableSheet(
-        initialChildSize: 0.92,
-        minChildSize: 0.5,
-        maxChildSize: 0.98,
-        builder: (_, scrollController) {
-          return Container(
-            decoration: const BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: ServiceRegisterForm(
-              scrollController: scrollController,
-              asSheet: true,
-            ),
-          );
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (didPop) return;
+          final discard = await _confirmDiscardRegistration(ctx);
+          if (discard == true && ctx.mounted) {
+            Navigator.pop(ctx, false);
+          }
         },
+        child: DraggableScrollableSheet(
+          initialChildSize: 0.92,
+          minChildSize: 0.5,
+          maxChildSize: 0.98,
+          builder: (_, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: ServiceRegisterForm(
+                scrollController: scrollController,
+                asSheet: true,
+              ),
+            );
+          },
+        ),
       );
     },
+  );
+}
+
+Future<bool?> _confirmDiscardRegistration(BuildContext context) {
+  return showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Discard registration?'),
+      content: const Text(
+        'Entered details will be lost if you close now.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Keep editing'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Discard'),
+        ),
+      ],
+    ),
   );
 }
 
@@ -262,7 +297,12 @@ class _ServiceRegisterFormState extends State<ServiceRegisterForm> {
           bottomRadius: widget.asSheet ? 0 : 24,
           trailing: widget.asSheet
               ? IconButton(
-                  onPressed: () => Navigator.pop(context, false),
+                  onPressed: () async {
+                    final discard = await _confirmDiscardRegistration(context);
+                    if (discard == true && context.mounted) {
+                      Navigator.pop(context, false);
+                    }
+                  },
                   icon: const Icon(Icons.close_rounded, color: Colors.white),
                 )
               : null,

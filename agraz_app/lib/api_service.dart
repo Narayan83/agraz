@@ -44,6 +44,42 @@ class ApiService {
     }
   }
 
+  Future<bool> updateTransaction(int id, IncomeExpenseData data) async {
+    try {
+      final headers = await authJsonHeaders();
+      final response = await http.put(
+        Uri.parse('$BASE_URL/api/income_expense/$id'),
+        headers: headers,
+        body: jsonEncode(data.toJson()),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      }
+      String msg = 'Failed to update (${response.statusCode})';
+      try {
+        final err = jsonDecode(response.body);
+        if (err is Map && err['error'] != null) msg = err['error'].toString();
+      } catch (_) {}
+      throw Exception(msg);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<bool> deleteTransaction(int id) async {
+    try {
+      final headers = await authGetHeaders();
+      final response = await http.delete(
+        Uri.parse('$BASE_URL/api/income_expense/$id'),
+        headers: headers,
+      );
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      print('Error deleting transaction: $e');
+      return false;
+    }
+  }
+
   Future<List<Map<String, dynamic>>> fetchApprovedServices({String? query}) async {
     final headers = await authGetHeaders();
     final uri = Uri.parse('$BASE_URL/api/services').replace(

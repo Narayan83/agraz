@@ -124,6 +124,8 @@ const ServiceRegistrations = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [formDirty, setFormDirty] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toggleBusyId, setToggleBusyId] = useState(null);
   const [uploadingImages, setUploadingImages] = useState(false);
@@ -157,83 +159,69 @@ const ServiceRegistrations = () => {
 
   const totalPages = Math.max(1, Math.ceil(total / limit) || 1);
 
+  const rowToForm = (row) => ({
+    ...emptyForm(),
+    mobile: row.mobile || "",
+    secondary_contact: row.secondary_contact || "",
+    whatsapp: row.whatsapp || "",
+    name: row.name || "",
+    email: row.email || "",
+    remarks: row.remarks || "",
+    business_name: row.business_name || "",
+    business_address: row.business_address || "",
+    customer_address: row.customer_address || "",
+    service_provider_photo: row.service_provider_photo || "",
+    aadhar: row.aadhar || "",
+    main_category: row.main_category || "",
+    sub_category: row.sub_category || "",
+    image_paths_json: formatImagePathsForForm(row.image_paths),
+    approved: !!row.approved,
+    latitude: row.latitude != null && row.latitude !== "" ? String(row.latitude) : "",
+    longitude: row.longitude != null && row.longitude !== "" ? String(row.longitude) : "",
+    custom_services: normalizeCustomServices(row.custom_services),
+    social_facebook: row.social_facebook || "",
+    social_website: row.social_website || "",
+    social_instagram: row.social_instagram || "",
+    social_youtube: row.social_youtube || "",
+  });
+
   const openEdit = async (row) => {
     setSelected(row);
-    setForm({
-      ...emptyForm(),
-      mobile: row.mobile || "",
-      secondary_contact: row.secondary_contact || "",
-      whatsapp: row.whatsapp || "",
-      name: row.name || "",
-      email: row.email || "",
-      remarks: row.remarks || "",
-      business_name: row.business_name || "",
-      business_address: row.business_address || "",
-      customer_address: row.customer_address || "",
-      service_provider_photo: row.service_provider_photo || "",
-      aadhar: row.aadhar || "",
-      main_category: row.main_category || "",
-      sub_category: row.sub_category || "",
-      image_paths_json: formatImagePathsForForm(row.image_paths),
-      approved: !!row.approved,
-      latitude: row.latitude != null && row.latitude !== "" ? String(row.latitude) : "",
-      longitude: row.longitude != null && row.longitude !== "" ? String(row.longitude) : "",
-      custom_services: normalizeCustomServices(row.custom_services),
-      social_facebook: row.social_facebook || "",
-      social_website: row.social_website || "",
-      social_instagram: row.social_instagram || "",
-      social_youtube: row.social_youtube || "",
-    });
+    setForm(rowToForm(row));
+    setFormDirty(false);
     setModalOpen(true);
-    // Refresh full record so email/remarks and other fields always appear
+    setDetailLoading(true);
+    // Load full record before allowing edits to be overwritten
     try {
       const fresh = await getServiceRegistration(row.id);
       if (fresh && fresh.id) {
         setSelected(fresh);
-        setForm((prev) => ({
-          ...prev,
-          mobile: fresh.mobile || "",
-          secondary_contact: fresh.secondary_contact || "",
-          whatsapp: fresh.whatsapp || "",
-          name: fresh.name || "",
-          email: fresh.email || "",
-          remarks: fresh.remarks || "",
-          business_name: fresh.business_name || "",
-          business_address: fresh.business_address || "",
-          customer_address: fresh.customer_address || "",
-          service_provider_photo: fresh.service_provider_photo || "",
-          aadhar: fresh.aadhar || "",
-          main_category: fresh.main_category || "",
-          sub_category: fresh.sub_category || "",
-          image_paths_json: formatImagePathsForForm(fresh.image_paths),
-          approved: !!fresh.approved,
-          latitude:
-            fresh.latitude != null && fresh.latitude !== ""
-              ? String(fresh.latitude)
-              : "",
-          longitude:
-            fresh.longitude != null && fresh.longitude !== ""
-              ? String(fresh.longitude)
-              : "",
-          custom_services: normalizeCustomServices(fresh.custom_services),
-          social_facebook: fresh.social_facebook || "",
-          social_website: fresh.social_website || "",
-          social_instagram: fresh.social_instagram || "",
-          social_youtube: fresh.social_youtube || "",
-        }));
+        setForm(rowToForm(fresh));
+        setFormDirty(false);
       }
     } catch (e) {
       console.warn("Could not refresh registration detail", e);
+    } finally {
+      setDetailLoading(false);
     }
   };
 
-  const closeModal = () => {
+  const closeModal = (force = false) => {
+    if (!force && formDirty) {
+      const ok = window.confirm(
+        "You have unsaved changes. Close and discard them?"
+      );
+      if (!ok) return;
+    }
     setModalOpen(false);
     setSelected(null);
+    setFormDirty(false);
+    setDetailLoading(false);
   };
 
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target;
+    setFormDirty(true);
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -294,7 +282,7 @@ const ServiceRegistrations = () => {
         ...payload,
         image_paths,
       });
-      closeModal();
+      closeModal(true);
       fetchRows();
     } catch (err) {
       alert(err.response?.data?.error || err.message || "Save failed");
@@ -637,18 +625,24 @@ const ServiceRegistrations = () => {
       </div>
 
       {modalOpen && selected && (
-        <div className="modal-overlay" onClick={closeModal}>
+        <div className="modal-overlay" onClick={() => closeModal()}>
           <div
             className="modal-content sr-modal sr-modal-wide"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header sr-modal-header">
               <h3>Edit registration #{selected.id}</h3>
-              <button type="button" className="close-btn" onClick={closeModal}>
+              <button type="button" className="close-btn" onClick={() => closeModal()}>
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleSave} className="sr-form sr-form-compact">
+            {detailLoading && (
+              <div className="sr-detail-loading" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+                <Loader2 size={18} className="spinner" />
+                <span>Loading full details…</span>
+              </div>
+            )}
+            <form onSubmit={handleSave} className="sr-form sr-form-compact" style={{ opacity: detailLoading ? 0.6 : 1, pointerEvents: detailLoading ? "none" : "auto" }}>
               <section className="sr-form-section">
                 <h4>Contact</h4>
                 <div className="sr-form-grid sr-form-grid-3">
@@ -1028,10 +1022,10 @@ const ServiceRegistrations = () => {
               </section>
 
               <div className="modal-footer">
-                <button type="button" className="secondary-btn" onClick={closeModal}>
+                <button type="button" className="secondary-btn" onClick={() => closeModal()}>
                   Cancel
                 </button>
-                <button type="submit" className="primary-btn" disabled={saving}>
+                <button type="submit" className="primary-btn" disabled={saving || detailLoading}>
                   {saving ? <Loader2 size={18} className="spinner" /> : "Save changes"}
                 </button>
               </div>

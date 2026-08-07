@@ -258,6 +258,130 @@ func CreateIncomeExpenseMobile(c *fiber.Ctx) error {
 	return c.Status(201).JSON(fiber.Map{"message": "Transaction created successfully", "data": row})
 }
 
+// UpdateIncomeExpenseMobile handles PUT /api/income_expense/:id (camelCase body from Flutter).
+func UpdateIncomeExpenseMobile(c *fiber.Ctx) error {
+	var row models.IncomeExpense
+	if err := incomeExpenseDB.First(&row, c.Params("id")).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Record not found"})
+	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal(c.Body(), &raw); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid JSON", "details": err.Error()})
+	}
+	if v, ok := raw["type"].(string); ok && strings.TrimSpace(v) != "" {
+		t := strings.TrimSpace(v)
+		if t != "Income" && t != "Expense" {
+			return c.Status(400).JSON(fiber.Map{"error": "type must be Income or Expense"})
+		}
+		row.Type = t
+	}
+	if v, ok := raw["category"].(string); ok && strings.TrimSpace(v) != "" {
+		row.Category = strings.TrimSpace(v)
+	}
+	sub := ""
+	if v, ok := raw["subCategory"].(string); ok && v != "" {
+		sub = v
+	} else if v, ok := raw["sub_category"].(string); ok {
+		sub = v
+	}
+	if strings.TrimSpace(sub) != "" {
+		row.SubCategory = strings.TrimSpace(sub)
+	}
+	if amtF, ok := toFloat64(raw["amount"]); ok {
+		if amtF <= 0 {
+			return c.Status(400).JSON(fiber.Map{"error": "amount must be greater than 0"})
+		}
+		row.Amount = decimal.NewFromFloat(amtF)
+	}
+	if v, ok := raw["mobile"].(string); ok {
+		row.Mobile = strings.TrimSpace(v)
+	}
+	if v, ok := raw["name"].(string); ok {
+		row.Name = strings.TrimSpace(v)
+	}
+	if ds, ok := raw["date"].(string); ok && strings.TrimSpace(ds) != "" {
+		var dt time.Time
+		var parseErr error
+		for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05.999999", "2006-01-02T15:04:05", "2006-01-02"} {
+			dt, parseErr = time.Parse(layout, strings.TrimSpace(ds))
+			if parseErr == nil {
+				break
+			}
+		}
+		if dt.IsZero() {
+			return c.Status(400).JSON(fiber.Map{"error": "invalid date format"})
+		}
+		row.Date = dt
+	}
+	if _, ok := raw["narration"]; ok {
+		narr := strFromAny(raw["narration"])
+		if narr == "" {
+			row.Narration = nil
+		} else {
+			row.Narration = &narr
+		}
+	}
+	if _, ok := raw["village"]; ok {
+		v := strFromAny(raw["village"])
+		if v == "" {
+			row.Village = nil
+		} else {
+			row.Village = &v
+		}
+	}
+	if _, ok := raw["post"]; ok {
+		v := strFromAny(raw["post"])
+		if v == "" {
+			row.Post = nil
+		} else {
+			row.Post = &v
+		}
+	}
+	if _, ok := raw["taluk"]; ok {
+		v := strFromAny(raw["taluk"])
+		if v == "" {
+			row.Taluk = nil
+		} else {
+			row.Taluk = &v
+		}
+	}
+	if _, ok := raw["district"]; ok {
+		v := strFromAny(raw["district"])
+		if v == "" {
+			row.District = nil
+		} else {
+			row.District = &v
+		}
+	}
+	if _, hasCamel := raw["extraAddress"]; hasCamel {
+		extra := strFromAny(raw["extraAddress"])
+		if extra == "" {
+			row.ExtraAddr = nil
+		} else {
+			row.ExtraAddr = &extra
+		}
+	} else if _, hasSnake := raw["extra_address"]; hasSnake {
+		extra := strFromAny(raw["extra_address"])
+		if extra == "" {
+			row.ExtraAddr = nil
+		} else {
+			row.ExtraAddr = &extra
+		}
+	}
+	if _, ok := raw["pincode"]; ok {
+		v := strFromAny(raw["pincode"])
+		if v == "" {
+			row.Pincode = nil
+		} else {
+			row.Pincode = &v
+		}
+	}
+	if err := incomeExpenseDB.Save(&row).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to update", "details": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "Transaction updated successfully", "data": row})
+}
+
 func toFloat64(v interface{}) (float64, bool) {
 	switch t := v.(type) {
 	case float64:

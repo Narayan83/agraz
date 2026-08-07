@@ -5,7 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import 'api_service.dart';
+import 'app_theme.dart';
 import 'labor_categories.dart';
+
+const double _fieldHeight = 48;
 
 class _PendingLabour {
   final String name;
@@ -50,7 +53,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
 
   DateTime _selectedDate = DateTime.now();
   String _selectedWorkType = 'Daily Wages';
-  String? _selectedLocation;
+  String? _selectedLocation = 'Farm';
   String _selectedShift = 'fullday';
   String _selectedGender = 'Male';
   String _selectedCategory = 'Plucking';
@@ -252,7 +255,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: _darkGreen,
+                    color: AppColors.primaryDeep,
                   ),
                 ),
               ),
@@ -287,7 +290,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                     final cat = kLaborWorkCategories[i];
                     return Container(
                       decoration: BoxDecoration(
-                        color: _fieldBg,
+                        color: AppColors.field,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: Colors.grey.shade300),
                       ),
@@ -313,7 +316,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                                     style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
-                                      color: _darkGreen,
+                                      color: AppColors.primaryDeep,
                                     ),
                                   ),
                                 ),
@@ -368,7 +371,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: _primaryGreen,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
@@ -396,7 +399,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                   SnackBar(
                     content: Text(
                         ok ? 'Labour rates saved' : 'Failed to save rates'),
-                    backgroundColor: ok ? _primaryGreen : Colors.red,
+                    backgroundColor: ok ? AppColors.primary : Colors.red,
                   ),
                 );
               },
@@ -509,6 +512,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       _showSnack('Labour head is required for Contract', error: true);
       return;
     }
+    // If fields are filled but user forgot "Add", queue them automatically.
+    if (_pending.isEmpty && _nameController.text.trim().isNotEmpty) {
+      _addPendingLabour();
+    }
     if (_pending.isEmpty) {
       _showSnack('Add at least one labourer', error: true);
       return;
@@ -518,6 +525,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       return;
     }
 
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
     final payloads = _pending
         .map((row) => {
               'name': row.name,
@@ -531,7 +539,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               'labour_head': _isContract ? labourHead : '',
               'location': _selectedLocation,
               'narration': narration,
-              'date': _selectedDate.toIso8601String(),
+              'date': dateStr,
               if (row.mobile != null && row.mobile!.isNotEmpty)
                 'mobile': row.mobile,
             })
@@ -731,7 +739,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                       borderRadius: BorderRadius.circular(10),
                       child: const Icon(
                         Icons.grid_view_rounded,
-                        color: _primaryGreen,
+                        color: AppColors.primary,
                         size: 20,
                       ),
                     ),
@@ -1139,8 +1147,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       ),
       child: Text(
         text,
-        style: const TextStyle(
-            fontSize: 10, color: _primaryGreen, fontWeight: FontWeight.w600),
+        style: TextStyle(
+            fontSize: 10, color: color, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -1157,21 +1165,21 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     return Container(
       height: isMulti ? null : _fieldHeight,
       decoration: BoxDecoration(
-        color: _fieldBg,
+        color: AppColors.field,
         borderRadius: BorderRadius.circular(10),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: TextField(
         controller: controller,
         style: const TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w500, color: _darkGreen),
+            fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.primaryDeep),
         keyboardType: keyboardType,
         inputFormatters: inputFormatters,
         maxLines: maxLines,
         decoration: InputDecoration(
           border: InputBorder.none,
           isDense: true,
-          prefixIcon: Icon(icon, color: _primaryGreen, size: 16),
+          prefixIcon: Icon(icon, color: AppColors.primary, size: 16),
           prefixIconConstraints:
               const BoxConstraints(minWidth: 28, minHeight: 0),
           labelText: label,
@@ -1195,7 +1203,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     return Container(
       height: _fieldHeight,
       decoration: BoxDecoration(
-        color: _fieldBg,
+        color: AppColors.field,
         borderRadius: BorderRadius.circular(10),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -1206,7 +1214,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
         decoration: InputDecoration(
           border: InputBorder.none,
           isDense: true,
-          prefixIcon: Icon(icon, color: _primaryGreen, size: 16),
+          prefixIcon: Icon(icon, color: AppColors.primary, size: 16),
           prefixIconConstraints:
               const BoxConstraints(minWidth: 28, minHeight: 0),
           labelText: label,
@@ -1214,9 +1222,9 @@ class _LaborManagementPageState extends State<LaborManagementPage>
           contentPadding: const EdgeInsets.only(bottom: 4, top: 0),
         ),
         style: const TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w500, color: _darkGreen),
+            fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.primaryDeep),
         icon: const Icon(Icons.keyboard_arrow_down_rounded,
-            color: _primaryGreen, size: 18),
+            color: AppColors.primary, size: 18),
         items: items
             .map((item) => DropdownMenuItem(
                   value: item,
@@ -1237,7 +1245,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     return Container(
       height: _fieldHeight,
       decoration: BoxDecoration(
-        color: _fieldBg,
+        color: AppColors.field,
         borderRadius: BorderRadius.circular(10),
       ),
     );

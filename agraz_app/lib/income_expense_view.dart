@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'api_service.dart';
 import 'auth_token.dart';
 import 'config.dart';
 import 'app_theme.dart';
+import 'income_expense_data.dart';
 
 class IncomeExpenseListScreen extends StatefulWidget {
   const IncomeExpenseListScreen({super.key});
@@ -276,104 +279,131 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
     final String amountPrefix = isIncome ? '+' : '−';
     final name = transaction['name']?.toString() ?? '';
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 14),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [AppColors.softShadow],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TintedIcon(
-            icon: isIncome
-                ? Icons.south_west_rounded
-                : Icons.north_east_rounded,
-            color: amountColor,
-            boxSize: 40,
-            size: 20,
-            radius: 12,
+        onTap: () => _openTransactionDetail(transaction),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 14),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [AppColors.softShadow],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  transaction['category'] ?? 'No Category',
-                  style: AppText.bodyStrong,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (transaction['sub_category'] != null)
-                  Text(
-                    transaction['sub_category'],
-                    style: AppText.small,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TintedIcon(
+                icon: isIncome
+                    ? Icons.south_west_rounded
+                    : Icons.north_east_rounded,
+                color: amountColor,
+                boxSize: 40,
+                size: 20,
+                radius: 12,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (name.isNotEmpty)
-                      InfoChip(
-                        label: _truncate(name, 20),
-                        color: AppColors.info,
-                        icon: Icons.person_outline_rounded,
-                      ),
-                    InfoChip(
-                      label: _formatDate(transaction['date'] ?? ''),
-                      color: AppColors.textMuted,
-                      icon: Icons.event_rounded,
+                    Text(
+                      transaction['category'] ?? 'No Category',
+                      style: AppText.bodyStrong,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    if (transaction['sub_category'] != null)
+                      Text(
+                        transaction['sub_category'],
+                        style: AppText.small,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (name.isNotEmpty)
+                          InfoChip(
+                            label: _truncate(name, 20),
+                            color: AppColors.info,
+                            icon: Icons.person_outline_rounded,
+                          ),
+                        InfoChip(
+                          label: _formatDate(transaction['date'] ?? ''),
+                          color: AppColors.textMuted,
+                          icon: Icons.event_rounded,
+                        ),
+                      ],
+                    ),
+                    if (transaction['narration'] != null &&
+                        transaction['narration'].toString().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        transaction['narration'].toString(),
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontStyle: FontStyle.italic,
+                          color: AppColors.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ],
                 ),
-                if (transaction['narration'] != null &&
-                    transaction['narration'].toString().isNotEmpty) ...[
-                  const SizedBox(height: 6),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Text(
-                    transaction['narration'].toString(),
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontStyle: FontStyle.italic,
-                      color: AppColors.textSecondary,
+                    '$amountPrefix ₹${_formatAmount(transaction['amount'])}',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: amountColor,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  InfoChip(
+                    label: isIncome ? 'Income' : 'Expense',
+                    color: amountColor,
+                  ),
+                  const SizedBox(height: 4),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: AppColors.textMuted.withValues(alpha: 0.7),
                   ),
                 ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$amountPrefix ₹${_formatAmount(transaction['amount'])}',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: amountColor,
-                ),
-              ),
-              const SizedBox(height: 6),
-              InfoChip(
-                label: isIncome ? 'Income' : 'Expense',
-                color: amountColor,
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
+  }
+
+  Future<void> _openTransactionDetail(Map<String, dynamic> transaction) async {
+    final changed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _TransactionDetailSheet(
+        transaction: Map<String, dynamic>.from(transaction),
+      ),
+    );
+    if (changed == true && mounted) {
+      _fetchTransactions();
+    }
   }
 
   Widget _buildPaginationControls() {
@@ -593,6 +623,456 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TransactionDetailSheet extends StatefulWidget {
+  final Map<String, dynamic> transaction;
+
+  const _TransactionDetailSheet({required this.transaction});
+
+  @override
+  State<_TransactionDetailSheet> createState() =>
+      _TransactionDetailSheetState();
+}
+
+class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _api = ApiService();
+  final _cats = IncomeExpenseData();
+
+  late String _type;
+  late String? _category;
+  late String? _subCategory;
+  late DateTime _date;
+  final _amountCtrl = TextEditingController();
+  final _nameCtrl = TextEditingController();
+  final _mobileCtrl = TextEditingController();
+  final _narrationCtrl = TextEditingController();
+  final _villageCtrl = TextEditingController();
+  final _postCtrl = TextEditingController();
+  final _talukCtrl = TextEditingController();
+  final _districtCtrl = TextEditingController();
+  final _extraCtrl = TextEditingController();
+  final _pincodeCtrl = TextEditingController();
+
+  bool _editing = false;
+  bool _saving = false;
+  bool _deleting = false;
+
+  List<String> get _categories {
+    if (_type == 'Income') return ['Farming Income', 'Non-Farming Income'];
+    if (_type == 'Expense') return ['Farming Expense', 'Living Expense'];
+    return [];
+  }
+
+  List<String> get _subCategories =>
+      _cats.categorySubCategoryMap[_category ?? '']?.keys.toList() ?? [];
+
+  @override
+  void initState() {
+    super.initState();
+    final t = widget.transaction;
+    _type = t['type']?.toString() ?? 'Income';
+    _category = t['category']?.toString();
+    _subCategory = t['sub_category']?.toString();
+    _amountCtrl.text = _numStr(t['amount']);
+    _nameCtrl.text = t['name']?.toString() ?? '';
+    _mobileCtrl.text = t['mobile']?.toString() ?? '';
+    _narrationCtrl.text = t['narration']?.toString() ?? '';
+    _villageCtrl.text = t['village']?.toString() ?? '';
+    _postCtrl.text = t['post']?.toString() ?? '';
+    _talukCtrl.text = t['taluk']?.toString() ?? '';
+    _districtCtrl.text = t['district']?.toString() ?? '';
+    _extraCtrl.text =
+        (t['extra_address'] ?? t['extraAddress'])?.toString() ?? '';
+    _pincodeCtrl.text = t['pincode']?.toString() ?? '';
+    _date = DateTime.tryParse(t['date']?.toString() ?? '') ?? DateTime.now();
+  }
+
+  String _numStr(dynamic v) {
+    if (v is num) return v.toStringAsFixed(2);
+    return double.tryParse(v?.toString() ?? '')?.toStringAsFixed(2) ?? '';
+  }
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    _nameCtrl.dispose();
+    _mobileCtrl.dispose();
+    _narrationCtrl.dispose();
+    _villageCtrl.dispose();
+    _postCtrl.dispose();
+    _talukCtrl.dispose();
+    _districtCtrl.dispose();
+    _extraCtrl.dispose();
+    _pincodeCtrl.dispose();
+    super.dispose();
+  }
+
+  int? get _id {
+    final v = widget.transaction['id'];
+    if (v is int) return v;
+    return int.tryParse(v?.toString() ?? '');
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null) setState(() => _date = picked);
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    final id = _id;
+    if (id == null) return;
+    final amount = double.tryParse(_amountCtrl.text.trim());
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid amount')),
+      );
+      return;
+    }
+    if (_category == null || _subCategory == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Category and sub-category required')),
+      );
+      return;
+    }
+
+    final data = IncomeExpenseData()
+      ..receiptPaymentType = _type
+      ..category = _category
+      ..subCategory = _subCategory
+      ..amount = amount
+      ..narration = _narrationCtrl.text.trim()
+      ..mobile = _mobileCtrl.text.trim()
+      ..transactionDate = _date
+      ..name = _nameCtrl.text.trim()
+      ..village = _villageCtrl.text.trim()
+      ..post = _postCtrl.text.trim()
+      ..taluk = _talukCtrl.text.trim()
+      ..district = _districtCtrl.text.trim()
+      ..extraAddress = _extraCtrl.text.trim()
+      ..pincode = _pincodeCtrl.text.trim();
+
+    setState(() => _saving = true);
+    try {
+      await _api.updateTransaction(id, data);
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$e'), backgroundColor: AppColors.expense),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _delete() async {
+    final id = _id;
+    if (id == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete entry?'),
+        content: const Text('This income/expense record will be removed.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.expense),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _deleting = true);
+    final deleted = await _api.deleteTransaction(id);
+    if (!mounted) return;
+    setState(() => _deleting = false);
+    if (deleted) {
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to delete'),
+          backgroundColor: AppColors.expense,
+        ),
+      );
+    }
+  }
+
+  Widget _field(
+    String label,
+    TextEditingController ctrl, {
+    TextInputType? keyboard,
+    int maxLines = 1,
+    bool required = false,
+    List<TextInputFormatter>? formatters,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextFormField(
+        controller: ctrl,
+        enabled: _editing,
+        keyboardType: keyboard,
+        maxLines: maxLines,
+        inputFormatters: formatters,
+        validator: required
+            ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
+            : null,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor: AppColors.field,
+        ),
+      ),
+    );
+  }
+
+  Widget _readonlyRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(label, style: AppText.small),
+          ),
+          Expanded(
+            child: Text(
+              value.isEmpty ? '—' : value,
+              style: AppText.bodyStrong,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final isIncome = _type == 'Income';
+    final accent = isIncome ? AppColors.income : AppColors.expense;
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.92,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(16, 10, 16, 16 + bottom),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.textMuted.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _editing ? 'Edit entry' : 'Entry details',
+                    style: AppText.title,
+                  ),
+                ),
+                if (!_editing)
+                  IconButton(
+                    tooltip: 'Edit',
+                    onPressed: () => setState(() => _editing = true),
+                    icon: const Icon(Icons.edit_rounded, color: AppColors.primary),
+                  ),
+                IconButton(
+                  tooltip: 'Delete',
+                  onPressed: _deleting ? null : _delete,
+                  icon: Icon(
+                    Icons.delete_outline_rounded,
+                    color: AppColors.expense.withValues(alpha: _deleting ? 0.4 : 1),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+            InfoChip(label: _type, color: accent),
+            const SizedBox(height: 10),
+            Flexible(
+              child: SingleChildScrollView(
+                child: _editing ? _buildEditForm() : _buildReadonly(),
+              ),
+            ),
+            if (_editing) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _saving
+                          ? null
+                          : () => setState(() => _editing = false),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _saving ? null : _save,
+                      child: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Save'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReadonly() {
+    final t = widget.transaction;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _readonlyRow('Category', t['category']?.toString() ?? ''),
+        _readonlyRow('Sub-category', t['sub_category']?.toString() ?? ''),
+        _readonlyRow('Amount', '₹${_numStr(t['amount'])}'),
+        _readonlyRow(
+          'Date',
+          '${_date.day.toString().padLeft(2, '0')}/'
+              '${_date.month.toString().padLeft(2, '0')}/'
+              '${_date.year}',
+        ),
+        _readonlyRow('Name', t['name']?.toString() ?? ''),
+        _readonlyRow('Mobile', t['mobile']?.toString() ?? ''),
+        _readonlyRow('Narration', t['narration']?.toString() ?? ''),
+        _readonlyRow('Village', t['village']?.toString() ?? ''),
+        _readonlyRow('Post', t['post']?.toString() ?? ''),
+        _readonlyRow('Taluk', t['taluk']?.toString() ?? ''),
+        _readonlyRow('District', t['district']?.toString() ?? ''),
+        _readonlyRow(
+          'Extra address',
+          (t['extra_address'] ?? t['extraAddress'])?.toString() ?? '',
+        ),
+        _readonlyRow('Pincode', t['pincode']?.toString() ?? ''),
+        const SizedBox(height: 8),
+        Text(
+          'Tap the edit icon to change this entry.',
+          style: AppText.caption,
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEditForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DropdownButtonFormField<String>(
+          value: _type,
+          decoration: const InputDecoration(labelText: 'Type', filled: true),
+          items: const [
+            DropdownMenuItem(value: 'Income', child: Text('Income')),
+            DropdownMenuItem(value: 'Expense', child: Text('Expense')),
+          ],
+          onChanged: (v) {
+            if (v == null) return;
+            setState(() {
+              _type = v;
+              _category = null;
+              _subCategory = null;
+            });
+          },
+        ),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          value: _categories.contains(_category) ? _category : null,
+          decoration:
+              const InputDecoration(labelText: 'Category', filled: true),
+          items: _categories
+              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+              .toList(),
+          onChanged: (v) {
+            setState(() {
+              _category = v;
+              _subCategory = null;
+            });
+          },
+        ),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          value: _subCategories.contains(_subCategory) ? _subCategory : null,
+          decoration:
+              const InputDecoration(labelText: 'Sub-category', filled: true),
+          items: _subCategories
+              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+              .toList(),
+          onChanged: (v) => setState(() => _subCategory = v),
+        ),
+        const SizedBox(height: 10),
+        _field(
+          'Amount',
+          _amountCtrl,
+          keyboard: const TextInputType.numberWithOptions(decimal: true),
+          required: true,
+        ),
+        InkWell(
+          onTap: _pickDate,
+          child: InputDecorator(
+            decoration: const InputDecoration(
+              labelText: 'Date',
+              filled: true,
+              prefixIcon: Icon(Icons.event_rounded),
+            ),
+            child: Text(
+              '${_date.year}-${_date.month.toString().padLeft(2, '0')}-${_date.day.toString().padLeft(2, '0')}',
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _field('Name', _nameCtrl),
+        _field('Mobile', _mobileCtrl, keyboard: TextInputType.phone),
+        _field('Narration', _narrationCtrl, maxLines: 2),
+        _field('Village', _villageCtrl),
+        _field('Post', _postCtrl),
+        _field('Taluk', _talukCtrl),
+        _field('District', _districtCtrl),
+        _field('Extra address', _extraCtrl),
+        _field('Pincode', _pincodeCtrl, keyboard: TextInputType.number),
+      ],
     );
   }
 }
