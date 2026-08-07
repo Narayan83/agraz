@@ -21,6 +21,7 @@ func SeedAll() {
 	SeedMenus()
 	SeedStorefrontBannerMenu()
 	SeedGovFacilities()
+	SeedMarketReports()
 }
 
 func SeedEcomDefaults() {

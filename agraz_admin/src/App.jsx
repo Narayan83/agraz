@@ -14,6 +14,7 @@ import VendorUserMapping from "./pages/VendorUserMapping";
 import EcomAdmin from "./pages/EcomAdmin";
 import StorefrontHero from "./pages/StorefrontHero";
 import GovFacilities from "./pages/GovFacilities";
+import MarketReports from "./pages/MarketReports";
 import Login from "./pages/Login";
 import { logoutAndRedirect } from "./lib/authStorage";
 import "./App.css";
@@ -109,6 +110,10 @@ function App() {
 
         <Route path="/gov-facilities" element={
           <ProtectedRoute><GovFacilities /></ProtectedRoute>
+        } />
+
+        <Route path="/market-reports" element={
+          <ProtectedRoute><MarketReports /></ProtectedRoute>
         } />
         
         <Route path="/auditlogs" element={

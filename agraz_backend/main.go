@@ -45,6 +45,12 @@ func init() {
 		&models.GovDepartment{},
 		&models.GovCrop{},
 		&models.GovFacility{},
+		&models.MarketAgent{},
+		&models.MarketAPMC{},
+		&models.MarketVariety{},
+		&models.MarketDailyPrice{},
+		&models.MarketLot{},
+		&models.MarketQuantity{},
 	)
 	seeds.SeedAll()
 }
@@ -71,6 +77,7 @@ func main() {
 	handler.SetVendorDB(initializers.DB)
 	handler.SetStorefrontBannerDB(initializers.DB)
 	handler.SetGovDB(initializers.DB)
+	handler.SetMarketDB(initializers.DB)
 
 	// set up fiber (large body limit for multi-image uploads)
 	app := fiber.New(fiber.Config{
@@ -135,6 +142,16 @@ func main() {
 	api.Get("/gov/categories", handler.GetGovCategories)
 	api.Get("/gov/facilities", handler.GetGovFacilities)
 	api.Get("/gov/facilities/:id", handler.GetGovFacility)
+
+	// Market reports (public browse / filters for Flutter app)
+	api.Get("/market/agents", handler.GetMarketAgentsPublic)
+	api.Get("/market/apmcs", handler.GetMarketAPMCsPublic)
+	api.Get("/market/varieties", handler.GetMarketVarietiesPublic)
+	api.Get("/market/taluks", handler.GetMarketTaluksPublic)
+	api.Get("/market/daily-prices", handler.GetMarketDailyPricesPublic)
+	api.Get("/market/lots", handler.GetMarketLotsPublic)
+	api.Get("/market/quantities", handler.GetMarketQuantitiesPublic)
+	api.Get("/market/analytics", handler.GetMarketAnalyticsPublic)
 
 	// Use Middleware
 	api.Use(middleware.Protected())
@@ -281,6 +298,39 @@ func main() {
 	api.Put("/admin/gov/facilities/:id", handler.AdminUpdateGovFacility)
 	api.Delete("/admin/gov/facilities/:id", handler.AdminDeleteGovFacility)
 	api.Post("/admin/gov/facilities/upload", handler.UploadGovFacilityApplication)
+
+	// Admin market reports
+	api.Get("/admin/market/agents", handler.AdminListMarketAgents)
+	api.Post("/admin/market/agents", handler.AdminCreateMarketAgent)
+	api.Put("/admin/market/agents/:id", handler.AdminUpdateMarketAgent)
+	api.Delete("/admin/market/agents/:id", handler.AdminDeleteMarketAgent)
+
+	api.Get("/admin/market/apmcs", handler.AdminListMarketAPMCs)
+	api.Post("/admin/market/apmcs", handler.AdminCreateMarketAPMC)
+	api.Put("/admin/market/apmcs/:id", handler.AdminUpdateMarketAPMC)
+	api.Delete("/admin/market/apmcs/:id", handler.AdminDeleteMarketAPMC)
+
+	api.Get("/admin/market/varieties", handler.AdminListMarketVarieties)
+	api.Post("/admin/market/varieties", handler.AdminCreateMarketVariety)
+	api.Put("/admin/market/varieties/:id", handler.AdminUpdateMarketVariety)
+	api.Delete("/admin/market/varieties/:id", handler.AdminDeleteMarketVariety)
+
+	api.Get("/admin/market/daily-prices", handler.AdminListMarketDailyPrices)
+	api.Post("/admin/market/daily-prices", handler.AdminCreateMarketDailyPrice)
+	api.Put("/admin/market/daily-prices/:id", handler.AdminUpdateMarketDailyPrice)
+	api.Delete("/admin/market/daily-prices/:id", handler.AdminDeleteMarketDailyPrice)
+
+	api.Get("/admin/market/lots", handler.AdminListMarketLots)
+	api.Post("/admin/market/lots", handler.AdminCreateMarketLot)
+	api.Put("/admin/market/lots/:id", handler.AdminUpdateMarketLot)
+	api.Delete("/admin/market/lots/:id", handler.AdminDeleteMarketLot)
+
+	api.Get("/admin/market/quantities", handler.AdminListMarketQuantities)
+	api.Post("/admin/market/quantities", handler.AdminCreateMarketQuantity)
+	api.Put("/admin/market/quantities/:id", handler.AdminUpdateMarketQuantity)
+	api.Delete("/admin/market/quantities/:id", handler.AdminDeleteMarketQuantity)
+
+	api.Get("/admin/market/analytics", handler.GetMarketAnalyticsAdmin)
 
 	// start server
 	port := os.Getenv("PORT")
