@@ -512,4 +512,37 @@ export const uploadGovFacilityApplication = async (file) => {
   return response.data;
 };
 
+// Market reports
+export const getAdminMarketAgents = async () => (await api.get('/admin/market/agents')).data;
+export const createAdminMarketAgent = async (data) => (await api.post('/admin/market/agents', data)).data;
+export const updateAdminMarketAgent = async (id, data) => (await api.put(`/admin/market/agents/${id}`, data)).data;
+export const deleteAdminMarketAgent = async (id) => (await api.delete(`/admin/market/agents/${id}`)).data;
+
+export const getAdminMarketAPMCs = async () => (await api.get('/admin/market/apmcs')).data;
+export const createAdminMarketAPMC = async (data) => (await api.post('/admin/market/apmcs', data)).data;
+export const updateAdminMarketAPMC = async (id, data) => (await api.put(`/admin/market/apmcs/${id}`, data)).data;
+export const deleteAdminMarketAPMC = async (id) => (await api.delete(`/admin/market/apmcs/${id}`)).data;
+
+export const getAdminMarketVarieties = async () => (await api.get('/admin/market/varieties')).data;
+export const createAdminMarketVariety = async (data) => (await api.post('/admin/market/varieties', data)).data;
+export const updateAdminMarketVariety = async (id, data) => (await api.put(`/admin/market/varieties/${id}`, data)).data;
+export const deleteAdminMarketVariety = async (id) => (await api.delete(`/admin/market/varieties/${id}`)).data;
+
+export const getAdminMarketDailyPrices = async (params = {}) => (await api.get('/admin/market/daily-prices', { params })).data;
+export const createAdminMarketDailyPrice = async (data) => (await api.post('/admin/market/daily-prices', data)).data;
+export const updateAdminMarketDailyPrice = async (id, data) => (await api.put(`/admin/market/daily-prices/${id}`, data)).data;
+export const deleteAdminMarketDailyPrice = async (id) => (await api.delete(`/admin/market/daily-prices/${id}`)).data;
+
+export const getAdminMarketLots = async (params = {}) => (await api.get('/admin/market/lots', { params })).data;
+export const createAdminMarketLot = async (data) => (await api.post('/admin/market/lots', data)).data;
+export const updateAdminMarketLot = async (id, data) => (await api.put(`/admin/market/lots/${id}`, data)).data;
+export const deleteAdminMarketLot = async (id) => (await api.delete(`/admin/market/lots/${id}`)).data;
+
+export const getAdminMarketQuantities = async (params = {}) => (await api.get('/admin/market/quantities', { params })).data;
+export const createAdminMarketQuantity = async (data) => (await api.post('/admin/market/quantities', data)).data;
+export const updateAdminMarketQuantity = async (id, data) => (await api.put(`/admin/market/quantities/${id}`, data)).data;
+export const deleteAdminMarketQuantity = async (id) => (await api.delete(`/admin/market/quantities/${id}`)).data;
+
+export const getAdminMarketAnalytics = async (params = {}) => (await api.get('/admin/market/analytics', { params })).data;
+
 export default api;

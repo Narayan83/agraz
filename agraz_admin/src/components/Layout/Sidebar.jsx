@@ -25,6 +25,7 @@ import {
   Image,
   Images,
   Landmark,
+  BarChart3,
 } from "lucide-react";
 import "./Sidebar.css";
 
@@ -53,6 +54,7 @@ const iconMap = {
   Image: <Image size={18} strokeWidth={1.75} />,
   Images: <Images size={18} strokeWidth={1.75} />,
   Landmark: <Landmark size={18} strokeWidth={1.75} />,
+  BarChart3: <BarChart3 size={18} strokeWidth={1.75} />,
 };
 
 /** Normalize menu rows from `/my-menus` (snake_case + occasional PascalCase). */

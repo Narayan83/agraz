@@ -109,6 +109,9 @@ func GetIncomeExpenses(c *fiber.Ctx) error {
 	if m := c.Query("mobile"); m != "" {
 		q = q.Where("mobile = ?", m)
 	}
+	if n := c.Query("name"); n != "" {
+		q = q.Where("name ILIKE ?", "%"+n+"%")
+	}
 	if err := q.Count(&total).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

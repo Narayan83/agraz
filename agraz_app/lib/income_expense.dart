@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -35,6 +37,12 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   List<String> subCategories = [];
   bool isLoading = false;
 
+  /// Signed party balance (Income − Expense). Null when unknown / not loaded.
+  double? _partyBalance;
+  String _partyBalanceSide = 'settled';
+  bool _partyDetailsLoaded = false;
+  Timer? _nameSearchDebounce;
+
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
 
@@ -54,6 +62,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
 
   @override
   void dispose() {
+    _nameSearchDebounce?.cancel();
     _animController.dispose();
     _nameController.dispose();
     _mobileController.dispose();
@@ -121,28 +130,86 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     }
   }
 
+  void _clearPartyBalance() {
+    _partyBalance = null;
+    _partyBalanceSide = 'settled';
+    _partyDetailsLoaded = false;
+  }
+
+  Future<void> _loadPartyBalance(String mobile) async {
+    if (mobile.length != 10) {
+      setState(_clearPartyBalance);
+      return;
+    }
+    final bal = await _apiService.fetchPartyBalance(mobile);
+    if (!mounted) return;
+    if (bal == null) {
+      setState(_clearPartyBalance);
+      return;
+    }
+    setState(() {
+      _partyBalance = (bal['balance'] as num?)?.toDouble() ?? 0;
+      _partyBalanceSide = bal['side']?.toString() ?? 'settled';
+      _partyDetailsLoaded = true;
+    });
+  }
+
+  void _applyTransactionDetails(Map transaction) {
+    if (_nameController.text.isEmpty) {
+      _nameController.text = transaction['name']?.toString() ?? '';
+    }
+    final mobile = transaction['mobile']?.toString() ?? '';
+    if (_mobileController.text.isEmpty && mobile.isNotEmpty) {
+      _mobileController.text = mobile;
+    }
+    _villageController.text = transaction['village']?.toString() ?? '';
+    _postController.text = transaction['post']?.toString() ?? '';
+    _talukController.text = transaction['taluk']?.toString() ?? '';
+    _districtController.text = transaction['district']?.toString() ?? '';
+    _extraAddressController.text =
+        transaction['extra_address']?.toString() ??
+            transaction['extraAddress']?.toString() ??
+            '';
+    _pincodeController.text = transaction['pincode']?.toString() ?? '';
+  }
+
   Future<void> _prefetchByMobile(String mobile) async {
-    if (mobile.length != 10) return;
+    if (mobile.length != 10) {
+      setState(_clearPartyBalance);
+      return;
+    }
     try {
       final responseData = await _apiService.fetchUserByMobile(mobile);
+      if (!mounted) return;
       if (responseData != null &&
           responseData['data'] != null &&
           responseData['data'].isNotEmpty) {
         final transaction = responseData['data'][0];
-        setState(() {
-          if (_nameController.text.isEmpty) {
-            _nameController.text = transaction['name']?.toString() ?? '';
-          }
-          _villageController.text = transaction['village']?.toString() ?? '';
-          _postController.text = transaction['post']?.toString() ?? '';
-          _talukController.text = transaction['taluk']?.toString() ?? '';
-          _districtController.text = transaction['district']?.toString() ?? '';
-          _extraAddressController.text =
-              transaction['extra_address']?.toString() ??
-                  transaction['extraAddress']?.toString() ??
-                  '';
-          _pincodeController.text = transaction['pincode']?.toString() ?? '';
-        });
+        setState(() => _applyTransactionDetails(transaction));
+      }
+      await _loadPartyBalance(mobile);
+    } catch (_) {
+      if (mounted) await _loadPartyBalance(mobile);
+    }
+  }
+
+  void _onNameChanged(String value) {
+    _nameSearchDebounce?.cancel();
+    final name = value.trim();
+    if (name.length < 2) return;
+    _nameSearchDebounce = Timer(const Duration(milliseconds: 450), () {
+      _prefetchByName(name);
+    });
+  }
+
+  Future<void> _prefetchByName(String name) async {
+    try {
+      final row = await _apiService.fetchUserByName(name);
+      if (!mounted || row == null) return;
+      setState(() => _applyTransactionDetails(row));
+      final mobile = _mobileController.text.trim();
+      if (mobile.length == 10) {
+        await _loadPartyBalance(mobile);
       }
     } catch (_) {}
   }
@@ -202,6 +269,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       _formData.pincode = null;
       _formData.transactionDate = DateTime.now();
       _formData.receiptPaymentType = keptType;
+      _clearPartyBalance();
       _updateCategories();
     });
     _formKey.currentState?.reset();
@@ -402,14 +470,15 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
               ),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 16),
                   child: Form(
                     key: _formKey,
                     child: Column(
                       children: [
                         _buildTransactionTypeCard(),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 8),
                         _buildDateAmountCard(),
+                        const SizedBox(height: 8),
                         if (_formData.receiptPaymentType != null &&
                             categories.isNotEmpty) ...[
                           const SizedBox(height: 14),
@@ -419,16 +488,15 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                             subCategories.isNotEmpty) ...[
                           const SizedBox(height: 14),
                           _buildSubCategorySection(),
-                        ],
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 8),
                         _buildPartyCard(),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 8),
                         _buildNarrationCard(),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 8),
                         _buildViewAllButton(),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
                         _buildOtherInfoButton(),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 6),
                         _buildSubmitButton(),
                       ],
                     ),
@@ -438,6 +506,94 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF1B5E20), Color(0xFF388E3C), Color(0xFF4CAF50)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(18),
+          bottomRight: Radius.circular(18),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 18),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.account_balance_wallet_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Record Transaction',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Income & Expense',
+                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: const Color(0xFF2E7D32)),
+          const SizedBox(width: 6),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1B5E20),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -488,11 +644,10 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(vertical: 18),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? color : AppColors.field,
-          borderRadius: BorderRadius.circular(16),
+          color: selected ? color : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? color : AppColors.border,
             width: selected ? 1.5 : 1,
@@ -511,15 +666,15 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           children: [
             Icon(
               icon,
-              color: selected ? Colors.white : AppColors.textSecondary,
-              size: 28,
+              color: selected ? Colors.white : Colors.grey.shade600,
+              size: 22,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
               type,
               style: TextStyle(
-                color: selected ? Colors.white : AppColors.textPrimary,
-                fontSize: 14,
+                color: selected ? Colors.white : Colors.grey.shade700,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -564,44 +719,69 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     return InkWell(
       onTap: () => _selectDate(context),
       borderRadius: BorderRadius.circular(14),
-      child: InputDecorator(
-        decoration: const InputDecoration(
-          labelText: 'Date',
-          prefixIcon: Icon(Icons.calendar_today_rounded, size: 18),
-          prefixIconConstraints: BoxConstraints(minWidth: 44, minHeight: 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F7F5),
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(
-          DateFormat('dd MMM yyyy').format(_formData.transactionDate!),
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.calendar_today_rounded,
+              color: Color(0xFF2E7D32),
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              DateFormat('dd MMM yyyy').format(_formData.transactionDate!),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1B5E20),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildAmountField() {
-    return TextFormField(
-      controller: _amountController,
-      style: const TextStyle(
-        fontSize: 14.5,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textPrimary,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F7F5),
+        borderRadius: BorderRadius.circular(12),
       ),
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      validator: (value) {
-        if (value == null || value.isEmpty) return 'Required';
-        if (double.tryParse(value) == null) return 'Invalid';
-        if (double.parse(value) <= 0) return 'Must be > 0';
-        return null;
-      },
-      onSaved: (value) => _formData.amount = double.tryParse(value!),
-      decoration: const InputDecoration(
-        labelText: 'Amount',
-        prefixIcon: Icon(Icons.currency_rupee_rounded, size: 18),
-        prefixIconConstraints: BoxConstraints(minWidth: 44, minHeight: 0),
+      child: TextFormField(
+        controller: _amountController,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF1B5E20),
+        ),
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        validator: (value) {
+          if (value == null || value.isEmpty) return 'Required';
+          if (double.tryParse(value) == null) return 'Invalid';
+          if (double.parse(value) <= 0) return 'Must be > 0';
+          return null;
+        },
+        onSaved: (value) => _formData.amount = double.tryParse(value!),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          isDense: true,
+          prefixIcon: const Icon(
+            Icons.currency_rupee_rounded,
+            color: Color(0xFF2E7D32),
+            size: 16,
+          ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+          hintText: 'Amount',
+          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        ),
       ),
     );
   }
@@ -618,8 +798,8 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           ),
           const SizedBox(height: 14),
           Wrap(
-            spacing: 10,
-            runSpacing: 10,
+            spacing: 6,
+            runSpacing: 6,
             children: categories.map((cat) => _categoryChip(cat)).toList(),
           ),
         ],
@@ -639,11 +819,10 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? color : color.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(12),
+          color: selected ? color : color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: selected ? color : color.withValues(alpha: 0.3),
             width: 1.4,
@@ -658,42 +837,29 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                 ]
               : null,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              selected ? Icons.check_circle_rounded : Icons.circle_outlined,
-              size: 14,
-              color: selected ? Colors.white : color,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: selected ? Colors.white : color,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : color,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
   }
 
   Widget _buildSubCategorySection() {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionTitle(
-            icon: Icons.list_alt_rounded,
-            title: 'Sub Category',
-            subtitle: 'Choose the exact item',
-          ),
-          const SizedBox(height: 14),
-          _buildSubCategoryGrid(),
-        ],
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      child: _card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle('Sub Category', Icons.list_alt_rounded),
+            _buildSubCategoryGrid(),
+          ],
+        ),
       ),
     );
   }
@@ -704,10 +870,10 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: 1.05,
+        crossAxisCount: 4,
+        mainAxisSpacing: 6,
+        crossAxisSpacing: 6,
+        childAspectRatio: 1.0,
       ),
       itemCount: subCategories.length,
       itemBuilder: (context, index) {
@@ -721,8 +887,8 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             decoration: BoxDecoration(
-              color: selected ? color : AppColors.surface,
-              borderRadius: BorderRadius.circular(14),
+              color: selected ? color : Colors.white,
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: selected ? color : AppColors.border,
                 width: 1.4,
@@ -740,15 +906,15 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(emoji, style: const TextStyle(fontSize: 22)),
-                const SizedBox(height: 4),
+                Text(emoji, style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 2),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
                   child: Text(
                     option,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 9,
                       fontWeight: FontWeight.w600,
                       color: selected ? Colors.white : AppColors.textPrimary,
                     ),
@@ -769,38 +935,134 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionTitle(
-            icon: Icons.person_rounded,
-            title: 'By / To',
-            subtitle: 'Who is involved in this transaction',
+          _sectionTitle('By / To', Icons.person_rounded),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F7F5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: TextFormField(
+              controller: _nameController,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1B5E20),
+              ),
+              onChanged: _onNameChanged,
+              onSaved: (v) => _formData.name = v?.trim() ?? '',
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                prefixIcon: const Icon(
+                  Icons.badge_rounded,
+                  color: Color(0xFF2E7D32),
+                  size: 16,
+                ),
+                prefixIconConstraints:
+                    const BoxConstraints(minWidth: 0, minHeight: 0),
+                hintText: 'Name (optional, for search)',
+                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
           ),
-          const SizedBox(height: 14),
-          AppField(
-            controller: _nameController,
-            label: 'Name',
-            icon: Icons.badge_rounded,
-            hint: 'Name (optional, for search)',
-            onSaved: (v) => _formData.name = v?.trim() ?? '',
+          const SizedBox(height: 6),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F7F5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: TextFormField(
+              controller: _mobileController,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1B5E20),
+              ),
+              keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ],
+              validator: (value) {
+                if (value != null &&
+                    value.isNotEmpty &&
+                    value.length != 10) {
+                  return '10 digits required';
+                }
+                return null;
+              },
+              onChanged: _prefetchByMobile,
+              onSaved: (v) => _formData.mobile = v?.trim() ?? '',
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                prefixIcon: const Icon(
+                  Icons.phone_rounded,
+                  color: Color(0xFF2E7D32),
+                  size: 16,
+                ),
+                prefixIconConstraints:
+                    const BoxConstraints(minWidth: 0, minHeight: 0),
+                hintText: 'By/To mobile',
+                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
           ),
-          const SizedBox(height: 12),
-          AppField(
-            controller: _mobileController,
-            label: 'By/To mobile',
-            icon: Icons.phone_rounded,
-            hint: 'Mobile (optional)',
-            keyboardType: TextInputType.phone,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(10),
-            ],
-            validator: (value) {
-              if (value != null && value.isNotEmpty && value.length != 10) {
-                return '10 digits required';
-              }
-              return null;
-            },
-            onChanged: _prefetchByMobile,
-            onSaved: (v) => _formData.mobile = v?.trim() ?? '',
+          if (_partyDetailsLoaded && _partyBalance != null) ...[
+            const SizedBox(height: 6),
+            _buildBalanceChip(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBalanceChip() {
+    final amount = _partyBalance!.abs();
+    final isCredit = _partyBalanceSide == 'credit' || (_partyBalance! > 0);
+    final isDebit = _partyBalanceSide == 'debit' || (_partyBalance! < 0);
+    final color = isDebit
+        ? const Color(0xFFD32F2F)
+        : isCredit
+            ? const Color(0xFF2E7D32)
+            : Colors.grey.shade700;
+    final label = isDebit
+        ? 'Debit'
+        : isCredit
+            ? 'Credit'
+            : 'Settled';
+    final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isDebit
+                ? Icons.arrow_downward_rounded
+                : isCredit
+                    ? Icons.arrow_upward_rounded
+                    : Icons.check_circle_outline,
+            size: 14,
+            color: color,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Balance: $label ${fmt.format(amount)}',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -812,26 +1074,33 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionTitle(
-            icon: Icons.description_rounded,
-            title: 'Narration (optional)',
-            subtitle: 'Add a short note about this transaction',
-          ),
-          const SizedBox(height: 14),
-          AppField(
-            controller: _narrationController,
-            label: 'Narration',
-            icon: Icons.description_outlined,
-            hint: 'Describe the transaction...',
-            maxLines: 3,
-            validator: (value) {
-              if (value != null && value.length > 200) {
-                return 'Max 200 characters';
-              }
-              return null;
-            },
-            onSaved: (value) => _formData.narration =
-                (value == null || value.trim().isEmpty) ? null : value.trim(),
+          _sectionTitle('Narration (optional)', Icons.description_rounded),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F7F5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: TextFormField(
+              controller: _narrationController,
+              style: const TextStyle(fontSize: 13, color: Color(0xFF1B5E20)),
+              maxLines: 2,
+              validator: (value) {
+                if (value != null && value.length > 200) {
+                  return 'Max 200 characters';
+                }
+                return null;
+              },
+              onSaved: (value) => _formData.narration =
+                  (value == null || value.trim().isEmpty) ? null : value.trim(),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                hintText: 'Describe the transaction (optional)...',
+                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+              ),
+            ),
           ),
         ],
       ),
@@ -846,26 +1115,97 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
         context,
         MaterialPageRoute(builder: (context) => const IncomeExpenseListScreen()),
       ),
+      icon: const Icon(Icons.receipt_long_rounded, size: 16),
+      label: const Text('View All Transactions'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFF2E7D32),
+        side: const BorderSide(color: Color(0xFF2E7D32), width: 1.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      ),
     );
   }
 
   Widget _buildOtherInfoButton() {
-    return SecondaryButton(
-      label: _hasOtherInfo
-          ? 'Other Information (filled)'
-          : 'Other Information (optional)',
-      icon: _hasOtherInfo ? Icons.check_circle_rounded : Icons.info_outline_rounded,
-      color: AppColors.info,
-      onPressed: _showOtherInfoSheet,
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _showOtherInfoSheet,
+        icon: Icon(
+          _hasOtherInfo ? Icons.check_circle_outline : Icons.info_outline,
+          size: 16,
+        ),
+        label: Text(
+          _hasOtherInfo
+              ? 'Other Information (filled)'
+              : 'Other Information (optional)',
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF1565C0),
+          side: const BorderSide(color: Color(0xFF1565C0), width: 1.5),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+      ),
     );
   }
 
   Widget _buildSubmitButton() {
-    return PrimaryButton(
-      label: 'Submit Transaction',
-      icon: Icons.save_rounded,
-      onPressed: isLoading ? null : _submitForm,
-      loading: isLoading,
+    return SizedBox(
+      width: double.infinity,
+      height: 46,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : _submitForm,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2E7D32),
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: const Color(0xFFA5D6A7),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
+              )
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.save_rounded, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Submit',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _card({required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(12),
+      child: child,
     );
   }
 }

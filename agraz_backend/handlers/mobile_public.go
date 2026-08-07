@@ -328,6 +328,58 @@ func GetIncomeExpensesByMobilePublic(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"data": rows, "total": total, "page": page, "limit": limit})
 }
 
+// GetPartyBalancePublic handles GET /api/income_expense/balance/:mobile
+// Balance = Income - Expense. Positive => credit (party paid us more), negative => debit.
+func GetPartyBalancePublic(c *fiber.Ctx) error {
+	mobile := strings.TrimSpace(c.Params("mobile"))
+	if mobile == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "mobile is required"})
+	}
+	type sumRow struct {
+		Type        string  `gorm:"column:type"`
+		TotalAmount float64 `gorm:"column:total_amount"`
+	}
+	var rows []sumRow
+	if err := incomeExpenseDB.Model(&models.IncomeExpense{}).
+		Select("type, COALESCE(SUM(amount),0)::float8 as total_amount").
+		Where("mobile = ?", mobile).
+		Group("type").
+		Scan(&rows).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	var income, expense float64
+	for _, r := range rows {
+		switch strings.TrimSpace(r.Type) {
+		case "Income":
+			income = r.TotalAmount
+		case "Expense":
+			expense = r.TotalAmount
+		}
+	}
+	balance := income - expense
+	side := "settled"
+	if balance > 0 {
+		side = "credit"
+	} else if balance < 0 {
+		side = "debit"
+	}
+	return c.JSON(fiber.Map{
+		"mobile":  mobile,
+		"income":  income,
+		"expense": expense,
+		"balance": balance,
+		"side":    side,
+		"amount":  absFloat(balance),
+	})
+}
+
+func absFloat(v float64) float64 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
 // GetUserByMobilePublic handles GET /api/mobile/users/by-phone/:phone (optional; for future app flows).
 func GetUserByMobilePublic(c *fiber.Ctx) error {
 	phone := strings.TrimSpace(c.Params("phone"))
