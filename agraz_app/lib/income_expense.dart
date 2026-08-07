@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'income_expense_data.dart';
 import 'income_expense_view.dart';
 import 'api_service.dart';
+import 'app_theme.dart';
 
 class IncomeExpensePage extends StatefulWidget {
   const IncomeExpensePage({super.key});
@@ -108,13 +109,13 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF2E7D32),
+              primary: AppColors.primary,
               onPrimary: Colors.white,
-              onSurface: Color(0xFF1B5E20),
+              onSurface: AppColors.textPrimary,
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF2E7D32),
+                foregroundColor: AppColors.primary,
               ),
             ),
           ),
@@ -283,7 +284,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select Income or Expense'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.expense,
         ),
       );
       return;
@@ -292,7 +293,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select category and sub category'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.expense,
         ),
       );
       return;
@@ -307,7 +308,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Transaction recorded successfully!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.income,
           ),
         );
         _clearFormForNextEntry();
@@ -318,7 +319,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.expense,
         ),
       );
     }
@@ -334,11 +335,11 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
           child: Container(
             decoration: const BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -348,63 +349,76 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade400,
+                        color: AppColors.textMuted.withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   Row(
                     children: [
+                      TintedIcon(
+                        icon: Icons.location_on_rounded,
+                        color: AppColors.primary,
+                        boxSize: 40,
+                        size: 20,
+                        radius: 12,
+                      ),
+                      const SizedBox(width: 10),
                       const Expanded(
-                        child: Text(
-                          'Other Information',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1B5E20),
-                          ),
-                        ),
+                        child: Text('Other Information', style: AppText.h3),
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(ctx),
-                        icon: const Icon(Icons.close),
+                        icon: const Icon(Icons.close_rounded),
                       ),
                     ],
                   ),
-                  Text(
-                    'Optional address details',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                  ),
+                  const SizedBox(height: 4),
+                  Text('Optional address details', style: AppText.small),
                   const SizedBox(height: 16),
-                  _sheetField('Village', Icons.location_city, _villageController),
-                  _sheetField('Post', Icons.local_post_office, _postController),
-                  _sheetField('Taluk', Icons.map, _talukController),
-                  _sheetField('District', Icons.place, _districtController),
-                  _sheetField(
-                    'Extra Address',
-                    Icons.note_add,
-                    _extraAddressController,
+                  AppField(
+                    label: 'Village',
+                    icon: Icons.location_city_rounded,
+                    controller: _villageController,
+                  ),
+                  const SizedBox(height: 12),
+                  AppField(
+                    label: 'Post',
+                    icon: Icons.local_post_office_rounded,
+                    controller: _postController,
+                  ),
+                  const SizedBox(height: 12),
+                  AppField(
+                    label: 'Taluk',
+                    icon: Icons.map_rounded,
+                    controller: _talukController,
+                  ),
+                  const SizedBox(height: 12),
+                  AppField(
+                    label: 'District',
+                    icon: Icons.place_rounded,
+                    controller: _districtController,
+                  ),
+                  const SizedBox(height: 12),
+                  AppField(
+                    label: 'Extra Address',
+                    icon: Icons.note_add_rounded,
+                    controller: _extraAddressController,
                     maxLines: 2,
                   ),
-                  _sheetField(
-                    'Pincode',
-                    Icons.pin_drop,
-                    _pincodeController,
+                  const SizedBox(height: 12),
+                  AppField(
+                    label: 'Pincode',
+                    icon: Icons.pin_drop_rounded,
+                    controller: _pincodeController,
                     keyboardType: TextInputType.number,
                   ),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
+                  const SizedBox(height: 18),
+                  PrimaryButton(
+                    label: 'Done',
+                    icon: Icons.check_rounded,
                     onPressed: () => Navigator.pop(ctx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2E7D32),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: const Text('Done'),
                   ),
                 ],
               ),
@@ -416,45 +430,18 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     setState(() {});
   }
 
-  Widget _sheetField(
-    String label,
-    IconData icon,
-    TextEditingController controller, {
-    TextInputType keyboardType = TextInputType.text,
-    int maxLines = 1,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon, color: const Color(0xFF2E7D32)),
-          filled: true,
-          fillColor: const Color(0xFFF5F7F5),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
-    );
-  }
-
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'Farming Income':
-        return const Color(0xFF4CAF50);
+        return AppColors.income;
       case 'Non-Farming Income':
-        return const Color(0xFF42A5F5);
+        return AppColors.info;
       case 'Farming Expense':
-        return const Color(0xFFFF9800);
+        return AppColors.warning;
       case 'Living Expense':
-        return const Color(0xFFAB47BC);
+        return AppColors.expense;
       default:
-        return const Color(0xFF78909C);
+        return AppColors.textMuted;
     }
   }
 
@@ -470,13 +457,17 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F5),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnim,
           child: Column(
             children: [
-              _buildHeader(),
+              const AppHeader(
+                icon: Icons.account_balance_wallet_rounded,
+                title: 'Record Transaction',
+                subtitle: 'Income & Expense',
+              ),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(12, 6, 12, 16),
@@ -489,10 +480,13 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                         _buildDateAmountCard(),
                         const SizedBox(height: 8),
                         if (_formData.receiptPaymentType != null &&
-                            categories.isNotEmpty)
+                            categories.isNotEmpty) ...[
+                          const SizedBox(height: 14),
                           _buildCategorySection(),
+                        ],
                         if (_formData.category != null &&
-                            subCategories.isNotEmpty)
+                            subCategories.isNotEmpty) ...[
+                          const SizedBox(height: 14),
                           _buildSubCategorySection(),
                         const SizedBox(height: 8),
                         _buildPartyCard(),
@@ -605,18 +599,23 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   }
 
   Widget _buildTransactionTypeCard() {
-    return _card(
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle('Transaction Type', Icons.swap_horiz_rounded),
+          const SectionTitle(
+            icon: Icons.swap_horiz_rounded,
+            title: 'Transaction Type',
+            subtitle: 'Is this money in or money out?',
+          ),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
                 child: _typeToggle(
                   'Income',
                   Icons.trending_up_rounded,
-                  const Color(0xFF4CAF50),
+                  AppColors.income,
                 ),
               ),
               const SizedBox(width: 12),
@@ -624,7 +623,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                 child: _typeToggle(
                   'Expense',
                   Icons.trending_down_rounded,
-                  const Color(0xFFE53935),
+                  AppColors.expense,
                 ),
               ),
             ],
@@ -650,9 +649,18 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           color: selected ? color : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? color : Colors.transparent,
-            width: 2,
+            color: selected ? color : AppColors.border,
+            width: selected ? 1.5 : 1,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.25),
+                    blurRadius: 12,
+                    offset: const Offset(0, 5),
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           children: [
@@ -670,6 +678,14 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                 fontWeight: FontWeight.w700,
               ),
             ),
+            const SizedBox(height: 2),
+            Text(
+              selected ? 'Selected' : 'Tap to select',
+              style: TextStyle(
+                color: selected ? Colors.white70 : AppColors.textMuted,
+                fontSize: 10.5,
+              ),
+            ),
           ],
         ),
       ),
@@ -677,11 +693,16 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   }
 
   Widget _buildDateAmountCard() {
-    return _card(
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle('Date & Amount', Icons.calendar_month_rounded),
+          const SectionTitle(
+            icon: Icons.calendar_month_rounded,
+            title: 'Date & Amount',
+            subtitle: 'When and how much?',
+          ),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(child: _buildDateField()),
@@ -766,11 +787,16 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   }
 
   Widget _buildCategorySection() {
-    return _card(
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle('Category', Icons.category_rounded),
+          const SectionTitle(
+            icon: Icons.category_rounded,
+            title: 'Category',
+            subtitle: 'Pick the type of income or expense',
+          ),
+          const SizedBox(height: 14),
           Wrap(
             spacing: 6,
             runSpacing: 6,
@@ -799,8 +825,17 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: selected ? color : color.withValues(alpha: 0.3),
-            width: 1.5,
+            width: 1.4,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
@@ -855,9 +890,18 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
               color: selected ? color : Colors.white,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: selected ? color : color.withValues(alpha: 0.25),
-                width: 1.5,
+                color: selected ? color : AppColors.border,
+                width: 1.4,
               ),
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.18),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : null,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -872,7 +916,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : const Color(0xFF1B5E20),
+                      color: selected ? Colors.white : AppColors.textPrimary,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -887,7 +931,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   }
 
   Widget _buildPartyCard() {
-    return _card(
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1026,7 +1070,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   }
 
   Widget _buildNarrationCard() {
-    return _card(
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1064,7 +1108,9 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   }
 
   Widget _buildViewAllButton() {
-    return OutlinedButton.icon(
+    return SecondaryButton(
+      label: 'View All Transactions',
+      icon: Icons.receipt_long_rounded,
       onPressed: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const IncomeExpenseListScreen()),

@@ -96,10 +96,15 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               color: Colors.white.withValues(alpha: 0.25),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
-                              Icons.eco,
-                              color: Colors.white,
-                              size: 64,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(40),
+                              child: Image.asset(
+                                'assets/images/logo.jpeg',
+                                width: 72,
+                                height: 72,
+                                fit: BoxFit.contain,
+                                filterQuality: FilterQuality.high,
+                              ),
                             ),
                           ),
                         ),

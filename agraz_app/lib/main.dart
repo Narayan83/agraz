@@ -9,6 +9,7 @@ import 'mainpage.dart';
 import 'app_splash.dart';
 import 'theme_controller.dart';
 import 'reset_password_page.dart';
+import 'app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,18 +20,6 @@ Future<void> main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  static final ThemeData _light = ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.light,
-    colorSchemeSeed: Colors.green,
-  );
-
-  static final ThemeData _dark = ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.dark,
-    colorSchemeSeed: Colors.green,
-  );
-
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -39,8 +28,8 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'AgRaz',
-          theme: _light,
-          darkTheme: _dark,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
           themeMode: ThemeController.instance.themeMode,
           home: const AppSplashPage(),
           routes: {

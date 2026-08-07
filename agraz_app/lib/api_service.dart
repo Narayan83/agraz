@@ -192,14 +192,14 @@ class ApiService {
       return {
         'success': false,
         'message':
-            'Cannot connect to server. Please check if server is running',
+            'Cannot connect to server. Please check if the server is running.',
         'error': e.toString(),
       };
     } on TimeoutException catch (e) {
       print('⏱️ Request timeout: $e');
       return {
         'success': false,
-        'message': 'Request timeout. Server might be slow or unresponsive',
+        'message': 'Request timeout. The server might be slow or unresponsive.',
         'error': e.toString(),
       };
     } on FormatException catch (e) {
@@ -214,7 +214,7 @@ class ApiService {
       return {
         'success': false,
         'message':
-            'Network error: Check your internet connection and server URL',
+            'Network error: check your internet connection and server URL.',
         'error': e.toString(),
       };
     } catch (e, stackTrace) {

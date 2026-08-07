@@ -21,7 +21,7 @@ class FarmerEducationPage extends StatelessWidget {
             _buildCategorySection(context, 'Nursery & Planting', Icons.spa, [
               'Areca plant nursery guide',
               'How to plant arecanut',
-              'How to make new plantation',
+              'How to start a new plantation',
               'Spacing and soil requirements',
             ]),
             const SizedBox(height: 20),
