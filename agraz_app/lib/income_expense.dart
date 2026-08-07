@@ -488,6 +488,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                             subCategories.isNotEmpty) ...[
                           const SizedBox(height: 14),
                           _buildSubCategorySection(),
+                        ],
                         const SizedBox(height: 8),
                         _buildPartyCard(),
                         const SizedBox(height: 8),
@@ -1111,18 +1112,10 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     return SecondaryButton(
       label: 'View All Transactions',
       icon: Icons.receipt_long_rounded,
+      color: const Color(0xFF2E7D32),
       onPressed: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const IncomeExpenseListScreen()),
-      ),
-      icon: const Icon(Icons.receipt_long_rounded, size: 16),
-      label: const Text('View All Transactions'),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: const Color(0xFF2E7D32),
-        side: const BorderSide(color: Color(0xFF2E7D32), width: 1.5),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
       ),
     );
   }
