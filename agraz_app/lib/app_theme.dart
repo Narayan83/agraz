@@ -473,6 +473,7 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final content = Padding(padding: padding, child: child);
     return Container(
       margin: margin,
       decoration: BoxDecoration(
@@ -481,15 +482,19 @@ class AppCard extends StatelessWidget {
         border: border,
         boxShadow: hasShadow ? [AppColors.cardShadow] : null,
       ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(radius),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(radius),
-          onTap: onTap,
-          child: Padding(padding: padding, child: child),
-        ),
-      ),
+      // Only wrap with InkWell when tappable — a null-onTap InkWell can
+      // still compete in the gesture arena and block child buttons.
+      child: onTap == null
+          ? content
+          : Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(radius),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(radius),
+                onTap: onTap,
+                child: content,
+              ),
+            ),
     );
   }
 }

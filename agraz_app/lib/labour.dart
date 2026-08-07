@@ -432,48 +432,39 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       },
     );
 
-    for (final c in controllers.values) {
-      c.dispose();
-    }
+    // Dispose after the dialog route finishes removing (avoids TextField
+    // using a disposed controller during the close animation).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final c in controllers.values) {
+        c.dispose();
+      }
+    });
   }
 
   Future<void> _addLocation() async {
-    final controller = TextEditingController();
+    // Unfocus form fields so the soft keyboard does not sit on top of
+    // dialog actions (common cause of "Cancel/Add do nothing" on phones).
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    if (!mounted) return;
+
     final result = await showDialog<String>(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Add Location'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(
-              labelText: 'Location name',
-              prefixIcon: Icon(Icons.location_on_rounded),
-            ),
-            textCapitalization: TextCapitalization.words,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
+      barrierDismissible: true,
+      builder: (ctx) => const _AddLocationDialog(),
     );
-    controller.dispose();
-    if (result == null || result.isEmpty) return;
+    if (!mounted || result == null) return;
+    if (result.isEmpty) {
+      _showSnack('Enter a location name', error: true);
+      return;
+    }
     setState(() {
       if (!_locations.contains(result)) {
         _locations.add(result);
       }
       _selectedLocation = result;
     });
+    _showSnack('Location "$result" added');
   }
 
   void _addPendingLabour() {
@@ -1292,6 +1283,88 @@ class _LaborManagementPageState extends State<LaborManagementPage>
           ),
           alignLabelWithHint: isMulti,
         ),
+      ),
+    );
+  }
+}
+
+/// Dedicated dialog so Cancel/Add keep reliable hit targets above the keyboard
+/// and the text controller is disposed with the dialog route (not after pop).
+class _AddLocationDialog extends StatefulWidget {
+  const _AddLocationDialog();
+
+  @override
+  State<_AddLocationDialog> createState() => _AddLocationDialogState();
+}
+
+class _AddLocationDialogState extends State<_AddLocationDialog> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _focusNode = FocusNode();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _cancel() {
+    _focusNode.unfocus();
+    Navigator.of(context).pop();
+  }
+
+  void _submit() {
+    final name = _controller.text.trim();
+    _focusNode.unfocus();
+    Navigator.of(context).pop(name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return AnimatedPadding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      duration: const Duration(milliseconds: 100),
+      curve: Curves.easeOut,
+      child: AlertDialog(
+        title: const Text('Add Location'),
+        content: TextField(
+          controller: _controller,
+          focusNode: _focusNode,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _submit(),
+          decoration: const InputDecoration(
+            labelText: 'Location name',
+            prefixIcon: Icon(Icons.location_on_rounded),
+          ),
+          textCapitalization: TextCapitalization.words,
+        ),
+        actionsAlignment: MainAxisAlignment.end,
+        actions: [
+          TextButton(
+            onPressed: _cancel,
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(72, 44),
+            ),
+            onPressed: _submit,
+            child: const Text('Add'),
+          ),
+        ],
       ),
     );
   }
