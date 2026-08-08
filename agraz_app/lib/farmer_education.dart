@@ -69,9 +69,17 @@ class FarmerEducationPage extends StatelessWidget {
           Container(
             width: 60,
             height: 60,
-            color: Colors.green[200],
-            alignment: Alignment.center,
-            child: const Icon(Icons.eco, color: Colors.green, size: 40),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.green[200]!),
+            ),
+            child: Image.asset(
+              'assets/images/logo.jpeg',
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(

@@ -1002,7 +1002,7 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         DropdownButtonFormField<String>(
-          value: _type,
+          initialValue: _type,
           decoration: const InputDecoration(labelText: 'Type', filled: true),
           items: const [
             DropdownMenuItem(value: 'Income', child: Text('Income')),
@@ -1019,7 +1019,7 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
         ),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
-          value: _categories.contains(_category) ? _category : null,
+          initialValue: _categories.contains(_category) ? _category : null,
           decoration:
               const InputDecoration(labelText: 'Category', filled: true),
           items: _categories
@@ -1034,7 +1034,7 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
         ),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
-          value: _subCategories.contains(_subCategory) ? _subCategory : null,
+          initialValue: _subCategories.contains(_subCategory) ? _subCategory : null,
           decoration:
               const InputDecoration(labelText: 'Sub-category', filled: true),
           items: _subCategories
