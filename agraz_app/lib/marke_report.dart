@@ -158,9 +158,9 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
         ),
       ]);
       setState(() {
-        _dayPrices = results[0] as List<Map<String, dynamic>>;
-        _history = results[1] as List<Map<String, dynamic>>;
-        _qty = results[2] as List<Map<String, dynamic>>;
+        _dayPrices = results[0];
+        _history = results[1];
+        _qty = results[2];
         _loading = false;
       });
     } catch (e) {
@@ -346,7 +346,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
             ],
           ),
         ),
-        if (trailing != null) trailing!,
+        if (trailing != null) trailing,
       ],
     );
   }

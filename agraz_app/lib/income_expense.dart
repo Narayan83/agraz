@@ -33,6 +33,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   final _pincodeController = TextEditingController();
 
   final List<String> receiptPaymentOptions = ['Income', 'Expense'];
+  String? _pressedToggle;
   List<String> categories = [];
   List<String> subCategories = [];
   bool isLoading = false;
@@ -617,6 +618,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                   'Income',
                   Icons.trending_up_rounded,
                   AppColors.income,
+                  AppColors.incomeSoft,
                 ),
               ),
               const SizedBox(width: 12),
@@ -625,6 +627,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                   'Expense',
                   Icons.trending_down_rounded,
                   AppColors.expense,
+                  AppColors.expenseSoft,
                 ),
               ),
             ],
@@ -634,60 +637,144 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     );
   }
 
-  Widget _typeToggle(String type, IconData icon, Color color) {
+  Widget _typeToggle(String type, IconData icon, Color color, Color softColor) {
     final selected = _formData.receiptPaymentType == type;
+    final pressed = _pressedToggle == type;
+
     return GestureDetector(
+      onTapDown: (_) => setState(() => _pressedToggle = type),
+      onTapUp: (_) => setState(() => _pressedToggle = null),
+      onTapCancel: () => setState(() => _pressedToggle = null),
       onTap: () {
         setState(() {
           _formData.receiptPaymentType = type;
           _updateCategories();
         });
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? color : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? color : AppColors.border,
-            width: selected ? 1.5 : 1,
+      child: AnimatedScale(
+        scale: pressed ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+          height: 92,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: selected
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color.lerp(color, Colors.white, 0.12)!, color],
+                  )
+                : null,
+            color: selected ? null : softColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected ? color : color.withValues(alpha: 0.35),
+              width: selected ? 1.6 : 1.2,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.35),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
           ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.25),
-                    blurRadius: 12,
-                    offset: const Offset(0, 5),
+          child: Stack(
+            children: [
+              Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: selected
+                          ? Colors.white.withValues(alpha: 0.22)
+                          : Colors.white,
+                      border: Border.all(
+                        color: selected
+                            ? Colors.white.withValues(alpha: 0.35)
+                            : color.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: selected ? Colors.white : color,
+                      size: 22,
+                    ),
                   ),
-                ]
-              : null,
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: selected ? Colors.white : Colors.grey.shade600,
-              size: 22,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              type,
-              style: TextStyle(
-                color: selected ? Colors.white : Colors.grey.shade700,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          type,
+                          style: TextStyle(
+                            color: selected ? Colors.white : color,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          selected ? 'Selected' : 'Tap to select',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: selected
+                                ? Colors.white.withValues(alpha: 0.9)
+                                : AppColors.textMuted,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              selected ? 'Selected' : 'Tap to select',
-              style: TextStyle(
-                color: selected ? Colors.white70 : AppColors.textMuted,
-                fontSize: 10.5,
-              ),
-            ),
-          ],
+              if (selected)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.18),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.check_rounded,
+                      color: color,
+                      size: 13,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
