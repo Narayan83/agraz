@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'l10n/app_l10n.dart';
+
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -27,7 +29,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       curve: const Interval(0.3, 1.0, curve: Curves.easeIn),
     );
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.4),
+      begin: Offset(0, 0.4),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
     _controller.forward();
@@ -42,9 +44,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   String _greeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
+    if (hour < 12) return tr('Good Morning');
+    if (hour < 17) return tr('Good Afternoon');
+    return tr('Good Evening');
   }
 
   @override
@@ -109,7 +111,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                         ),
                       ),
-                      const SizedBox(height: 40),
+                      SizedBox(height: 40),
                       FadeTransition(
                         opacity: _fadeAnim,
                         child: SlideTransition(
@@ -124,20 +126,20 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   letterSpacing: 1.5,
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Welcome to AgRaz',
+                              SizedBox(height: 8),
+                              Text(
+                                tr('Welcome to AgRaz'),
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 32,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 1,
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               Text(
-                                'Your agricultural journey begins here.\nLet\'s grow together!',
+                                tr("Your agricultural journey begins here.\nLet's grow together!"),
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.8),
@@ -145,7 +147,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   height: 1.5,
                                 ),
                               ),
-                              const SizedBox(height: 48),
+                              SizedBox(height: 48),
                               ElevatedButton(
                                 onPressed: () => Navigator.pop(context),
                                 style: ElevatedButton.styleFrom(
@@ -160,9 +162,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   ),
                                   elevation: 4,
                                 ),
-                                child: const Text(
-                                  'Continue',
-                                  style: TextStyle(
+                                child: Text(
+                                  tr('Continue'),
+                                  style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),

@@ -14,6 +14,8 @@ import 'auth_token.dart';
 import 'login.dart';
 import 'welcome_screen.dart';
 import 'app_theme.dart';
+import 'l10n/app_l10n.dart';
+import 'l10n/locale_controller.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -28,7 +30,7 @@ class _ServiceFeature {
   final String description;
   final List<String> details;
 
-  const _ServiceFeature({
+  _ServiceFeature({
     required this.icon,
     required this.title,
     required this.description,
@@ -80,6 +82,17 @@ class _MainPageState extends State<MainPage> {
     final token = await getAuthToken();
     if (!mounted) return;
     setState(() => _isLoggedIn = token != null);
+  }
+
+  /// Opens [page] without requiring login (modules remain visible to guests).
+  Future<void> _openModule(Widget page, {bool closeDrawer = false}) async {
+    if (closeDrawer) Navigator.pop(context);
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => page),
+    );
+    if (mounted) await _refreshAuthState();
   }
 
   /// Opens [page] if logged in; otherwise shows login, then opens [page] on success.
@@ -134,10 +147,12 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return ListenableBuilder(
+      listenable: LocaleController.instance,
+      builder: (context, _) => Scaffold(
       appBar: AppBar(
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
+        title: Text(
           "AgRaz",
           style: TextStyle(
             fontWeight: FontWeight.w800,
@@ -160,7 +175,7 @@ class _MainPageState extends State<MainPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline_rounded),
-            tooltip: 'About Team',
+            tooltip: tr('About Team'),
             onPressed: () {
               Navigator.push(
                 context,
@@ -170,7 +185,7 @@ class _MainPageState extends State<MainPage> {
           ),
           IconButton(
             icon: const Icon(Icons.settings_rounded),
-            tooltip: 'Settings',
+            tooltip: tr('Settings'),
             onPressed: () => _openProtected(const SettingsPage()),
           ),
         ],
@@ -193,58 +208,59 @@ class _MainPageState extends State<MainPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   // --- What is AgRaz? ---
                   _buildAboutCard(),
-                  const SizedBox(height: 28),
+                  SizedBox(height: 28),
                   // --- Services ---
                   _buildSectionHeader('Our Services for Farmers'),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   _buildServicesGrid(),
-                  const SizedBox(height: 28),
+                  SizedBox(height: 28),
                   // --- Why Choose AgRaz? ---
                   _buildSectionHeader('Why Choose AgRaz?'),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   _buildWhyChooseCard(
                     icon: Icons.auto_awesome_rounded,
-                    text: 'AI-driven insights tailored to your farm',
+                    text: tr('AI-driven insights tailored to your farm'),
                     color: AppColors.accent,
                     index: '01',
                   ),
                   _buildWhyChooseCard(
                     icon: Icons.wifi_off_rounded,
-                    text: 'Works offline & syncs automatically',
+                    text: tr('Works offline & syncs automatically'),
                     color: AppColors.info,
                     index: '02',
                   ),
                   _buildWhyChooseCard(
                     icon: Icons.language_rounded,
-                    text: 'Available in local languages',
+                    text: tr('Available in local languages'),
                     color: AppColors.warning,
                     index: '03',
                   ),
                   _buildWhyChooseCard(
                     icon: Icons.verified_rounded,
-                    text: 'Backed by agriculture experts',
+                    text: tr('Backed by agriculture experts'),
                     color: AppColors.primary,
                     index: '04',
                   ),
                   _buildWhyChooseCard(
                     icon: Icons.shield_rounded,
-                    text: 'Secure and farmer-first design',
+                    text: tr('Secure and farmer-first design'),
                     color: AppColors.expense,
                     index: '05',
                   ),
-                  const SizedBox(height: 28),
+                  SizedBox(height: 28),
                   // --- Let AgRaz Work For You ---
                   _buildCtaCard(),
-                  const SizedBox(height: 30),
+                  SizedBox(height: 30),
                 ],
               ),
             ),
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -265,84 +281,84 @@ class _MainPageState extends State<MainPage> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 children: [
-                  _drawerSectionLabel('MENU'),
+                  _drawerSectionLabel(tr('MENU')),
                   _drawerTile(
                     Icons.home_filled,
-                    'Home',
+                    tr('Home'),
                     AppColors.primary,
                     () => Navigator.pop(context),
                     active: true,
                   ),
                   _drawerTile(
                     Icons.account_balance_wallet_rounded,
-                    'Income & Expense',
+                    tr('Income & Expense'),
                     AppColors.income,
-                    () => _openProtected(
+                    () => _openModule(
                       const IncomeExpensePage(),
                       closeDrawer: true,
                     ),
                   ),
                   _drawerTile(
                     Icons.engineering_rounded,
-                    'Labour Management',
+                    tr('Labour Management'),
                     AppColors.warning,
-                    () => _openProtected(
+                    () => _openModule(
                       const LaborManagementPage(),
                       closeDrawer: true,
                     ),
                   ),
                   _drawerTile(
                     Icons.trending_up_rounded,
-                    'Market Reports',
+                    tr('Market Reports'),
                     AppColors.info,
-                    () => _openProtected(
+                    () => _openModule(
                       const RatesComparisonPage(),
                       closeDrawer: true,
                     ),
                   ),
                   _drawerTile(
                     Icons.miscellaneous_services_rounded,
-                    'General Services',
+                    tr('General Services'),
                     AppColors.expense,
-                    () => _openProtected(
+                    () => _openModule(
                       const ServiceListingPage(),
                       closeDrawer: true,
                     ),
                   ),
                   _drawerTile(
                     Icons.store_rounded,
-                    'Buy & Sell',
+                    tr('Buy & Sell'),
                     AppColors.primaryLight,
-                    () => _openProtected(const BuySellApp(), closeDrawer: true),
+                    () => _openModule(const BuySellApp(), closeDrawer: true),
                   ),
                   _drawerTile(
                     Icons.menu_book_rounded,
-                    'Farmer Education',
+                    tr('Farmer Education'),
                     AppColors.accent,
-                    () => _openProtected(
+                    () => _openModule(
                       const FarmerEducationPage(),
                       closeDrawer: true,
                     ),
                   ),
                   _drawerTile(
                     Icons.account_balance_rounded,
-                    'Government Facilities',
+                    tr('Government Facilities'),
                     AppColors.info,
-                    () => _openProtected(
+                    () => _openModule(
                       const GovernmentFacilitiesPage(),
                       closeDrawer: true,
                     ),
                   ),
-                  _drawerSectionLabel('ACCOUNT'),
+                  _drawerSectionLabel(tr('ACCOUNT')),
                   _drawerTile(
                     Icons.person_rounded,
-                    'Profile',
+                    tr('Profile'),
                     AppColors.info,
                     () => _openProtected(const ProfilePage(), closeDrawer: true),
                   ),
                   _drawerTile(
                     Icons.settings_rounded,
-                    'Settings',
+                    tr('Settings'),
                     AppColors.textSecondary,
                     () => _openProtected(
                       const SettingsPage(),
@@ -351,7 +367,7 @@ class _MainPageState extends State<MainPage> {
                   ),
                   _drawerTile(
                     Icons.groups_rounded,
-                    'About Team',
+                    tr('About Team'),
                     AppColors.primaryLight,
                     () {
                       Navigator.pop(context);
@@ -378,7 +394,7 @@ class _MainPageState extends State<MainPage> {
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 4),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: AppColors.headerGradient,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -401,8 +417,8 @@ class _MainPageState extends State<MainPage> {
               filterQuality: FilterQuality.high,
             ),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
+          SizedBox(width: 12),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -461,7 +477,7 @@ class _MainPageState extends State<MainPage> {
                   size: 18,
                   radius: 10,
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     title,
@@ -516,7 +532,7 @@ class _MainPageState extends State<MainPage> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     colors: [Color(0xFF3FA97E), AppColors.primary],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -526,7 +542,7 @@ class _MainPageState extends State<MainPage> {
                     BoxShadow(
                       color: AppColors.primary.withValues(alpha: 0.3),
                       blurRadius: 8,
-                      offset: const Offset(0, 3),
+                      offset: Offset(0, 3),
                     ),
                   ],
                 ),
@@ -536,8 +552,8 @@ class _MainPageState extends State<MainPage> {
                   size: 20,
                 ),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
+              SizedBox(width: 12),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -590,7 +606,7 @@ class _MainPageState extends State<MainPage> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     colors: [Color(0xFFF88B83), AppColors.expense],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -600,7 +616,7 @@ class _MainPageState extends State<MainPage> {
                     BoxShadow(
                       color: AppColors.expense.withValues(alpha: 0.3),
                       blurRadius: 8,
-                      offset: const Offset(0, 3),
+                      offset: Offset(0, 3),
                     ),
                   ],
                 ),
@@ -610,8 +626,8 @@ class _MainPageState extends State<MainPage> {
                   size: 20,
                 ),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
+              SizedBox(width: 12),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -710,7 +726,7 @@ class _MainPageState extends State<MainPage> {
                     color: AppColors.accent,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text(
+                  child: Text(
                     'AGRICULTURE ERP',
                     style: TextStyle(
                       fontSize: 10,
@@ -720,8 +736,8 @@ class _MainPageState extends State<MainPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
-                const Text(
+                SizedBox(height: 10),
+                Text(
                   'Smart Farming,\nSimplified.',
                   style: TextStyle(
                     color: Colors.white,
@@ -795,18 +811,18 @@ class _MainPageState extends State<MainPage> {
                 size: 24,
                 radius: 14,
               ),
-              const SizedBox(width: 12),
-              const Expanded(child: Text('What is AgRaz?', style: AppText.h3)),
+              SizedBox(width: 12),
+              Expanded(child: Text(tr('What is AgRaz?'), style: AppText.h3)),
             ],
           ),
-          const SizedBox(height: 14),
-          const Text(
-            'AgRaz is a smart Agriculture ERP platform built for modern farmers and agribusinesses. '
-            'Whether you\'re managing a small farm or large-scale operations, AgRaz helps you digitize, '
-            'simplify, and grow your agricultural journey.',
-            style: AppText.body,
+          SizedBox(height: 14),
+          Text(
+            tr(
+              'AgRaz is a smart Agriculture ERP platform built for modern farmers and agribusinesses. Whether you\'re managing a small farm or large-scale operations, AgRaz helps you digitize, simplify, and grow your agricultural journey.',
+            ),
+            style: AppText.body.copyWith(height: 1.55),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (_isLoggedIn)
             Container(
               width: double.infinity,
@@ -815,7 +831,7 @@ class _MainPageState extends State<MainPage> {
                 color: AppColors.incomeSoft,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
+              child: Row(
                 children: [
                   Icon(
                     Icons.check_circle_rounded,
@@ -825,11 +841,12 @@ class _MainPageState extends State<MainPage> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'You\'re logged in — explore all features',
+                      tr('You\'re logged in — explore all features'),
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: AppColors.income,
                         fontSize: 13.5,
+                        height: 1.4,
                       ),
                     ),
                   ),
@@ -838,7 +855,7 @@ class _MainPageState extends State<MainPage> {
             )
           else
             PrimaryButton(
-              label: 'Login to Get Started',
+              label: tr('Login to Get Started'),
               icon: Icons.login_rounded,
               onPressed: _goToLogin,
               height: 48,
@@ -855,7 +872,7 @@ class _MainPageState extends State<MainPage> {
           width: 4,
           height: 26,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               colors: [AppColors.primary, AppColors.primaryLight],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -863,17 +880,22 @@ class _MainPageState extends State<MainPage> {
             borderRadius: BorderRadius.circular(2),
           ),
         ),
-        const SizedBox(width: 12),
-        Text(title, style: AppText.h3),
+        SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            tr(title),
+            style: AppText.h3.copyWith(height: 1.35),
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildServicesGrid() {
-    const services = [
+    final services = [
       _ServiceFeature(
         icon: Icons.assignment_rounded,
-        title: 'Track Expenses',
+        title: tr('Track Expenses'),
         description:
             'Stay in control of your farm spending with easy logging of crop-wise, daily, and seasonal expenses.',
         details: [
@@ -885,7 +907,7 @@ class _MainPageState extends State<MainPage> {
       ),
       _ServiceFeature(
         icon: Icons.trending_up_rounded,
-        title: 'Forecast & Predict',
+        title: tr('Forecast & Predict'),
         description:
             'Get AI-powered predictions on crop yield and productivity based on historical patterns, weather, and inputs.',
         details: [
@@ -897,7 +919,7 @@ class _MainPageState extends State<MainPage> {
       ),
       _ServiceFeature(
         icon: Icons.shopping_basket_rounded,
-        title: 'Buy & Sell',
+        title: tr('Buy & Sell'),
         description:
             'Trade seeds, fertilizers, pesticides, and harvested crops with trusted vendors and buyers right from your phone.',
         details: [
@@ -909,7 +931,7 @@ class _MainPageState extends State<MainPage> {
       ),
       _ServiceFeature(
         icon: Icons.attach_money_rounded,
-        title: 'Price Optimization',
+        title: tr('Price Optimization'),
         description:
             'Use smart tools to identify the best market prices and optimize your selling strategies.',
         details: [
@@ -921,7 +943,7 @@ class _MainPageState extends State<MainPage> {
       ),
       _ServiceFeature(
         icon: Icons.account_balance_rounded,
-        title: 'Banking & Finance',
+        title: tr('Banking & Finance'),
         description:
             'Get access to agricultural loans, credit tools, insurance services, and government schemes.',
         details: [
@@ -933,7 +955,7 @@ class _MainPageState extends State<MainPage> {
       ),
       _ServiceFeature(
         icon: Icons.dashboard_customize_rounded,
-        title: 'Farm Analytics',
+        title: tr('Farm Analytics'),
         description: 'See all your key data in one simple, visual dashboard.',
         details: [
           'Visual data representations',
@@ -952,15 +974,15 @@ class _MainPageState extends State<MainPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(child: _buildServiceCard(services[i])),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 if (i + 1 < services.length)
                   Expanded(child: _buildServiceCard(services[i + 1]))
                 else
-                  const Expanded(child: SizedBox()),
+                  Expanded(child: SizedBox()),
               ],
             ),
           ),
-          if (i + 2 < services.length) const SizedBox(height: 12),
+          if (i + 2 < services.length) SizedBox(height: 12),
         ],
       ],
     );
@@ -992,14 +1014,14 @@ class _MainPageState extends State<MainPage> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Text(
             service.title,
             style: AppText.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 5),
+          SizedBox(height: 5),
           Text(
             service.description.length > 72
                 ? '${service.description.substring(0, 72)}…'
@@ -1011,7 +1033,7 @@ class _MainPageState extends State<MainPage> {
           const Spacer(),
           Row(
             children: [
-              const Text(
+              Text(
                 'Learn more',
                 style: TextStyle(
                   fontSize: 11.5,
@@ -1019,7 +1041,7 @@ class _MainPageState extends State<MainPage> {
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(width: 3),
+              SizedBox(width: 3),
               const Icon(
                 Icons.arrow_forward_rounded,
                 color: AppColors.primary,
@@ -1050,7 +1072,7 @@ class _MainPageState extends State<MainPage> {
       child: Row(
         children: [
           TintedIcon(icon: icon, color: color, boxSize: 44, size: 22, radius: 12),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Text(text, style: AppText.bodyStrong),
           ),
@@ -1081,7 +1103,7 @@ class _MainPageState extends State<MainPage> {
             ),
             child: Icon(icon, color: Colors.white, size: 13),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
@@ -1097,7 +1119,7 @@ class _MainPageState extends State<MainPage> {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: AppColors.ctaGradient,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -1107,7 +1129,7 @@ class _MainPageState extends State<MainPage> {
           BoxShadow(
             color: AppColors.primaryDeep.withValues(alpha: 0.3),
             blurRadius: 18,
-            offset: const Offset(0, 8),
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -1128,8 +1150,8 @@ class _MainPageState extends State<MainPage> {
                   size: 24,
                 ),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
+              SizedBox(width: 12),
+              Expanded(
                 child: Text(
                   'Let AgRaz Work For You',
                   style: TextStyle(
@@ -1142,12 +1164,12 @@ class _MainPageState extends State<MainPage> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          const Text(
+          SizedBox(height: 14),
+          Text(
             'AgRaz empowers farmers with the right tools to:',
             style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildBenefitRow(Icons.insights_rounded, 'Make informed decisions'),
           _buildBenefitRow(Icons.trending_up_rounded, 'Maximize profits'),
           _buildBenefitRow(Icons.shield_outlined, 'Reduce risks'),
@@ -1155,14 +1177,14 @@ class _MainPageState extends State<MainPage> {
             Icons.support_agent_rounded,
             'Access real-time support & services',
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Row(
+            child: Row(
               children: [
                 Icon(Icons.format_quote_rounded, color: AppColors.accent, size: 18),
                 SizedBox(width: 8),
@@ -1180,13 +1202,13 @@ class _MainPageState extends State<MainPage> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: _isLoggedIn ? null : _goToLogin,
               icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-              label: Text(_isLoggedIn ? 'You\'re all set' : 'Get Started'),
+              label: Text(_isLoggedIn ? tr('You\'re all set') : tr('Get Started')),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: AppColors.primaryDeep,
@@ -1217,14 +1239,14 @@ class _MainPageState extends State<MainPage> {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('Logout'),
-          content: const Text('Are you sure you want to logout?'),
+          title: Text(tr('Logout')),
+          content: Text(tr('Are you sure you want to logout?')),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop();
               },
-              child: const Text('Cancel'),
+              child: Text(tr('Cancel')),
             ),
             FilledButton.icon(
               onPressed: () {
@@ -1232,7 +1254,7 @@ class _MainPageState extends State<MainPage> {
                 _performLogout();
               },
               icon: const Icon(Icons.logout_rounded, size: 18),
-              label: const Text('Logout'),
+              label: Text(tr('Logout')),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.expense,
                 foregroundColor: Colors.white,
@@ -1250,7 +1272,7 @@ class _MainPageState extends State<MainPage> {
     setState(() => _isLoggedIn = false);
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Logged out successfully')));
+    ).showSnackBar(SnackBar(content: Text(tr('Logged out successfully'))));
   }
 
   void _showHelpCenter(BuildContext context) {
@@ -1273,39 +1295,39 @@ class _MainPageState extends State<MainPage> {
                     size: 32,
                     radius: 20,
                   ),
-                  const SizedBox(height: 14),
-                  const Text('Help Center', style: AppText.h3),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 14),
+                  Text('Help Center', style: AppText.h3),
+                  SizedBox(height: 4),
                   Text('How can we help you?', style: AppText.small),
-                  const SizedBox(height: 18),
+                  SizedBox(height: 18),
                   _buildHelpItem(
                     Icons.article_rounded,
                     'Getting Started',
                     'Learn how to use AgRaz',
                     AppColors.info,
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   _buildHelpItem(
                     Icons.contact_support_rounded,
                     'Contact Support',
                     'Reach out to our team',
                     AppColors.warning,
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   _buildHelpItem(
                     Icons.quiz_rounded,
                     'FAQ',
                     'Frequently asked questions',
                     AppColors.accent,
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   _buildHelpItem(
                     Icons.feedback_rounded,
                     'Send Feedback',
                     'Help us improve',
                     AppColors.primary,
                   ),
-                  const SizedBox(height: 18),
+                  SizedBox(height: 18),
                   PrimaryButton(
                     label: 'Close',
                     icon: Icons.close_rounded,
@@ -1335,7 +1357,7 @@ class _MainPageState extends State<MainPage> {
       child: Row(
         children: [
           TintedIcon(icon: icon, color: color, boxSize: 40, size: 20, radius: 12),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1348,7 +1370,7 @@ class _MainPageState extends State<MainPage> {
                     color: color,
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(subtitle, style: AppText.small),
               ],
             ),
@@ -1383,29 +1405,29 @@ class _MainPageState extends State<MainPage> {
                     size: 32,
                     radius: 20,
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   Text(
                     service.title,
                     textAlign: TextAlign.center,
                     style: AppText.h3,
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     service.description,
                     textAlign: TextAlign.center,
                     style: AppText.body,
                   ),
-                  const SizedBox(height: 18),
+                  SizedBox(height: 18),
                   const Divider(),
-                  const SizedBox(height: 14),
-                  const Align(
+                  SizedBox(height: 14),
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: SectionTitle(
                       icon: Icons.checklist_rounded,
-                      title: 'Key Features',
+                      title: tr('Key Features'),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   ...service.details.map(
                     (d) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -1425,13 +1447,13 @@ class _MainPageState extends State<MainPage> {
                               size: 14,
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          SizedBox(width: 10),
                           Expanded(child: Text(d, style: AppText.body)),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   PrimaryButton(
                     label: 'Close',
                     icon: Icons.close_rounded,

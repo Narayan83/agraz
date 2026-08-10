@@ -72,6 +72,14 @@ class IncomeExpenseData {
 
   // Convert to map for API submission
   Map<String, dynamic> toJson() {
+    String? dateStr;
+    if (transactionDate != null) {
+      final d = transactionDate!;
+      dateStr =
+          '${d.year.toString().padLeft(4, '0')}-'
+          '${d.month.toString().padLeft(2, '0')}-'
+          '${d.day.toString().padLeft(2, '0')}';
+    }
     return {
       'type': receiptPaymentType,
       'category': category,
@@ -79,7 +87,7 @@ class IncomeExpenseData {
       'amount': amount,
       'narration': narration ?? '',
       'mobile': mobile ?? '',
-      'date': transactionDate?.toIso8601String(),
+      'date': dateStr,
       'name': name ?? '',
       'village': village ?? '',
       'post': post ?? '',

@@ -16,7 +16,10 @@ func Protected() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Missing or malformed JWT"})
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error":   "Missing or malformed JWT",
+				"message": "Missing or malformed JWT",
+			})
 		}
 
 		tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
@@ -28,7 +31,10 @@ func Protected() fiber.Handler {
 		})
 
 		if err != nil || !token.Valid {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Invalid or expired JWT"})
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error":   "Invalid or expired JWT",
+				"message": "Invalid or expired JWT",
+			})
 		}
 
 		claims := token.Claims.(jwt.MapClaims)

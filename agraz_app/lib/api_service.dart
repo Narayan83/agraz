@@ -284,10 +284,12 @@ class ApiService {
               : 'Laborer added successfully',
         };
       }
-      final err = decoded is Map
-          ? (decoded['error']?.toString() ?? 'Failed to add laborer')
-          : 'Failed to add laborer';
-      return {'success': false, 'message': err};
+      return {
+        'success': false,
+        'message': _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to add laborer'),
+        'statusCode': response.statusCode,
+      };
     } catch (e) {
       return {'success': false, 'message': 'Failed to add laborer: $e'};
     }
@@ -314,21 +316,57 @@ class ApiService {
               : 'Labourers added successfully',
         };
       }
-      final err = decoded is Map
-          ? (decoded['error']?.toString() ?? 'Failed to add labourers')
-          : 'Failed to add labourers';
-      return {'success': false, 'message': err};
+      return {
+        'success': false,
+        'message': _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to add labourers'),
+        'statusCode': response.statusCode,
+      };
     } catch (e) {
       return {'success': false, 'message': 'Failed to add labourers: $e'};
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchLabors({String? mobile}) async {
+  /// Prefer API `error`, then `message`, then a status-aware fallback.
+  String _apiErrorMessage(
+    dynamic decoded,
+    int statusCode, {
+    required String fallback,
+  }) {
+    if (decoded is Map) {
+      final err = decoded['error']?.toString().trim();
+      if (err != null && err.isNotEmpty) return err;
+      final msg = decoded['message']?.toString().trim();
+      if (msg != null && msg.isNotEmpty) return msg;
+      final details = decoded['details']?.toString().trim();
+      if (details != null && details.isNotEmpty) return details;
+    }
+    if (statusCode == 401) {
+      return 'Invalid or expired JWT';
+    }
+    if (statusCode == 403) {
+      return 'Forbidden';
+    }
+    return '$fallback ($statusCode)';
+  }
+
+  Future<List<Map<String, dynamic>>> fetchLabors({
+    String? mobile,
+    String? name,
+    String? q,
+    String? from,
+    String? to,
+    int limit = 100,
+  }) async {
     try {
       final uri = Uri.parse('$BASE_URL/api/labors').replace(
         queryParameters: {
-          'limit': '100',
+          'limit': limit.toString(),
           if (mobile != null && mobile.isNotEmpty) 'mobile': mobile,
+          if (name != null && name.isNotEmpty) 'name': name,
+          if (q != null && q.isNotEmpty) 'q': q,
+          if (from != null && from.isNotEmpty) 'from': from,
+          if (to != null && to.isNotEmpty) 'to': to,
         },
       );
       final headers = await authGetHeaders();
@@ -346,6 +384,61 @@ class ApiService {
       print('Error fetching labors: $e');
       return [];
     }
+  }
+
+  /// Distinct labourers with totals. Optional search [q] on name/mobile.
+  Future<List<Map<String, dynamic>>> fetchLaborPeople({String? q}) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/labors/people').replace(
+      queryParameters: {
+        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+        'limit': '200',
+      },
+    );
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load labourers (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map && decoded['data'] is List) {
+      return (decoded['data'] as List)
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+    return [];
+  }
+
+  /// Labour-wise monthly/weekly/category schedule report.
+  Future<Map<String, dynamic>> fetchLaborReports({
+    int? year,
+    int? month,
+    int months = 6,
+    String? mobile,
+    String? name,
+    String? category,
+    String? workType,
+  }) async {
+    final now = DateTime.now();
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/labors/reports').replace(
+      queryParameters: {
+        'year': (year ?? now.year).toString(),
+        'month': (month ?? now.month).toString(),
+        'months': months.toString(),
+        if (mobile != null && mobile.isNotEmpty) 'mobile': mobile,
+        if (name != null && name.isNotEmpty) 'name': name,
+        if (category != null && category.isNotEmpty) 'category': category,
+        if (workType != null && workType.isNotEmpty) 'work_type': workType,
+      },
+    );
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load labour report (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    throw Exception('Invalid labour report response');
   }
 
   Future<bool> deleteLabor(int id) async {
@@ -392,6 +485,36 @@ class ApiService {
     }
   }
 
+  /// Income/expense reports: monthly, weekly, category, trends.
+  Future<Map<String, dynamic>> fetchIncomeExpenseReports({
+    int? year,
+    int? month,
+    int months = 6,
+    String? type,
+    String? mobile,
+    String? category,
+  }) async {
+    final now = DateTime.now();
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/income_expense/reports').replace(
+      queryParameters: {
+        'year': (year ?? now.year).toString(),
+        'month': (month ?? now.month).toString(),
+        'months': months.toString(),
+        if (type != null && type.isNotEmpty) 'type': type,
+        if (mobile != null && mobile.isNotEmpty) 'mobile': mobile,
+        if (category != null && category.isNotEmpty) 'category': category,
+      },
+    );
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load reports (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    throw Exception('Invalid report response');
+  }
+
   /// Party ledger balance for a mobile. Positive side=credit, negative=debit.
   Future<Map<String, dynamic>?> fetchPartyBalance(String mobile) async {
     try {
@@ -410,29 +533,48 @@ class ApiService {
     }
   }
 
-  /// Lookup latest income/expense row by name (for autofill).
-  Future<Map<String, dynamic>?> fetchUserByName(String name) async {
+  /// Lookup income/expense rows by name (for search suggestions).
+  Future<List<Map<String, dynamic>>> searchUsersByName(
+    String name, {
+    int limit = 8,
+  }) async {
     try {
       final headers = await authGetHeaders();
       final uri = Uri.parse('$BASE_URL/api/income_expense').replace(
         queryParameters: {
           'name': name.trim(),
-          'limit': '1',
+          'limit': limit.toString(),
           'page': '1',
         },
       );
       final response = await http.get(uri, headers: headers);
-      if (response.statusCode != 200) return null;
+      if (response.statusCode != 200) return [];
       final decoded = jsonDecode(response.body);
-      if (decoded is Map && decoded['data'] is List && (decoded['data'] as List).isNotEmpty) {
-        final first = (decoded['data'] as List).first;
-        if (first is Map) return Map<String, dynamic>.from(first);
+      if (decoded is Map && decoded['data'] is List) {
+        final seen = <String>{};
+        final out = <Map<String, dynamic>>[];
+        for (final item in decoded['data'] as List) {
+          if (item is! Map) continue;
+          final row = Map<String, dynamic>.from(item);
+          final key =
+              '${row['name'] ?? ''}|${row['mobile'] ?? ''}'.toLowerCase();
+          if (key.trim() == '|' || seen.contains(key)) continue;
+          seen.add(key);
+          out.add(row);
+        }
+        return out;
       }
-      return null;
+      return [];
     } catch (e) {
-      print('Error fetching user by name: $e');
-      return null;
+      print('Error searching users by name: $e');
+      return [];
     }
+  }
+
+  /// Lookup latest income/expense row by name (for autofill).
+  Future<Map<String, dynamic>?> fetchUserByName(String name) async {
+    final rows = await searchUsersByName(name, limit: 1);
+    return rows.isEmpty ? null : rows.first;
   }
 
   Future<List<Map<String, dynamic>>> fetchLaborRates({
@@ -463,15 +605,17 @@ class ApiService {
     }
   }
 
+  /// Saves category rates for a labourer identified by [mobile] and/or
+  /// [name] — at least one of the two must be provided.
   Future<bool> saveLaborRates({
-    required String mobile,
+    String? mobile,
     String? name,
     required Map<String, double> rates,
   }) async {
     try {
       final headers = await authJsonHeaders();
       final body = {
-        'mobile': mobile,
+        'mobile': mobile ?? '',
         'name': name ?? '',
         'rates': rates.entries
             .map((e) => {'category': e.key, 'rate': e.value})

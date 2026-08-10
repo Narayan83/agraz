@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'l10n/app_l10n.dart';
 
 class CategoryManagementPage extends StatefulWidget {
   const CategoryManagementPage({super.key});
@@ -136,7 +137,7 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
         _fetchCategories();
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Deleted successfully')));
+        ).showSnackBar(SnackBar(content: Text(tr('Deleted successfully'))));
       }
     } catch (e) {
       ScaffoldMessenger.of(
@@ -168,7 +169,7 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Category Management'),
+        title: Text(tr('Category Management')),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -183,7 +184,7 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                labelText: 'Search Categories',
+                labelText: tr('Search Categories'),
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
@@ -194,9 +195,9 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
           Expanded(
             child:
                 isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? Center(child: CircularProgressIndicator())
                     : categories.isEmpty
-                    ? const Center(child: Text('No categories found'))
+                    ? Center(child: Text(tr('No categories found')))
                     : ListView.builder(
                       itemCount: categories.length,
                       itemBuilder: (context, index) {
@@ -269,11 +270,11 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
               isEditing ? 'Edit Category' : 'Add New Category',
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Category Name',
+              decoration: InputDecoration(
+                labelText: tr('Category Name'),
                 border: OutlineInputBorder(),
               ),
               validator: (value) {
@@ -283,16 +284,16 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextFormField(
               controller: _remarksController,
-              decoration: const InputDecoration(
-                labelText: 'Remarks (Optional)',
+              decoration: InputDecoration(
+                labelText: tr('Remarks (Optional)'),
                 border: OutlineInputBorder(),
               ),
               maxLines: 3,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -301,16 +302,16 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
                     Navigator.pop(context);
                     _resetForm();
                   },
-                  child: const Text('Cancel'),
+                  child: Text(tr('Cancel')),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: _submitCategory,
                   child: Text(isEditing ? 'Update' : 'Save'),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ],
         ),
       ),

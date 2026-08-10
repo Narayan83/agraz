@@ -37,6 +37,10 @@ type incomeExpensePayload struct {
 }
 
 func CreateIncomeExpense(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
 	var body incomeExpensePayload
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body", "details": err.Error()})
@@ -55,6 +59,7 @@ func CreateIncomeExpense(c *fiber.Ctx) error {
 	}
 
 	row := models.IncomeExpense{
+		UserID:      uid,
 		Type:        body.Type,
 		Category:    body.Category,
 		SubCategory: body.SubCategory,
@@ -77,6 +82,10 @@ func CreateIncomeExpense(c *fiber.Ctx) error {
 }
 
 func GetIncomeExpenses(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
 	page := c.QueryInt("page", 1)
 	limit := c.QueryInt("limit", 10)
 	if page < 1 {
@@ -86,12 +95,15 @@ func GetIncomeExpenses(c *fiber.Ctx) error {
 
 	var rows []models.IncomeExpense
 	var total int64
-	q := incomeExpenseDB.Model(&models.IncomeExpense{})
+	q := scopeByUserID(incomeExpenseDB.Model(&models.IncomeExpense{}), uid)
 	if t := c.Query("type"); t != "" {
 		q = q.Where("type = ?", t)
 	}
 	if cat := c.Query("category"); cat != "" {
 		q = q.Where("category ILIKE ?", "%"+cat+"%")
+	}
+	if sub := c.Query("sub_category"); sub != "" {
+		q = q.Where("sub_category ILIKE ?", "%"+sub+"%")
 	}
 	if from := c.Query("from"); from != "" {
 		q = q.Where("date >= ?", from)
@@ -122,20 +134,30 @@ func GetIncomeExpenses(c *fiber.Ctx) error {
 }
 
 func GetIncomeExpense(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
 	var row models.IncomeExpense
-	if err := incomeExpenseDB.First(&row, c.Params("id")).Error; err != nil {
+	if err := scopeByUserID(incomeExpenseDB.Model(&models.IncomeExpense{}), uid).
+		First(&row, c.Params("id")).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Record not found"})
 	}
 	return c.JSON(row)
 }
 
 func UpdateIncomeExpense(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
 	var body incomeExpensePayload
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
 	}
 	var row models.IncomeExpense
-	if err := incomeExpenseDB.First(&row, c.Params("id")).Error; err != nil {
+	if err := scopeByUserID(incomeExpenseDB.Model(&models.IncomeExpense{}), uid).
+		First(&row, c.Params("id")).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Record not found"})
 	}
 
@@ -201,7 +223,12 @@ func UpdateIncomeExpense(c *fiber.Ctx) error {
 }
 
 func DeleteIncomeExpense(c *fiber.Ctx) error {
-	res := incomeExpenseDB.Delete(&models.IncomeExpense{}, c.Params("id"))
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+	res := scopeByUserID(incomeExpenseDB.Model(&models.IncomeExpense{}), uid).
+		Delete(&models.IncomeExpense{}, c.Params("id"))
 	if res.Error != nil {
 		return c.Status(500).JSON(fiber.Map{"error": res.Error.Error()})
 	}

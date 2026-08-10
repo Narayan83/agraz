@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'buy_sell_service.dart';
 import 'config.dart';
+import 'l10n/app_l10n.dart';
 
 void main() {
   runApp(const BuySellApp());
@@ -13,7 +14,7 @@ class BuySellApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Buy & Sell',
+      title: tr('Buy & Sell'),
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -34,7 +35,7 @@ class BuySellApp extends StatelessWidget {
               Navigator.of(context).pop();
             },
           ),
-          title: Text('Buy & Sell'),
+          title: Text(tr('Buy & Sell')),
         ),
         body: const BuySellPage(),
       ),
@@ -89,7 +90,7 @@ class _BuySellPageState extends State<BuySellPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Buy & Sell'),
+        title: Text(tr('Buy & Sell')),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -128,7 +129,7 @@ class _BuySellPageState extends State<BuySellPage> {
             _currentIndex = index;
           });
         },
-        items: const [
+        items: [
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_bag),
             label: 'Browse',
@@ -143,11 +144,11 @@ class _BuySellPageState extends State<BuySellPage> {
     if (_isLoading && _items.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        children: const [
+        children: [
           SizedBox(height: 120),
           Center(child: CircularProgressIndicator()),
           SizedBox(height: 16),
-          Center(child: Text('Loading listings…')),
+          Center(child: Text(tr('Loading listings…'))),
         ],
       );
     }
@@ -158,24 +159,24 @@ class _BuySellPageState extends State<BuySellPage> {
         children: [
           SizedBox(height: MediaQuery.sizeOf(context).height * 0.2),
           Icon(Icons.cloud_off, size: 48, color: Colors.grey.shade600),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             'Could not load listings',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             _loadError!,
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Center(
             child: FilledButton.icon(
               onPressed: _loadItems,
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              label: Text(tr('Retry')),
             ),
           ),
         ],
@@ -188,12 +189,12 @@ class _BuySellPageState extends State<BuySellPage> {
 class ItemsList extends StatelessWidget {
   final List<Item> items;
 
-  const ItemsList({super.key, required this.items});
+  ItemsList({super.key, required this.items});
 
   @override
   Widget build(BuildContext context) {
     return items.isEmpty
-        ? const Center(child: Text('No items available'))
+        ? Center(child: Text(tr('No items available')))
         : ListView.builder(
           itemCount: items.length,
           itemBuilder: (context, index) {
@@ -238,7 +239,7 @@ class ItemCard extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     '₹${item.price.toStringAsFixed(2)}',
                     style: const TextStyle(
@@ -247,25 +248,25 @@ class ItemCard extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(Icons.category, size: 16, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         item.category,
                         style: TextStyle(color: Colors.grey[600]),
                       ),
                       const Spacer(),
                       Icon(Icons.person, size: 16, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         item.seller,
                         style: TextStyle(color: Colors.grey[600]),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(
@@ -273,7 +274,7 @@ class ItemCard extends StatelessWidget {
                         size: 16,
                         color: Colors.grey[600],
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         item.date,
                         style: TextStyle(color: Colors.grey[600]),
@@ -319,7 +320,7 @@ class ItemDetailPage extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     '₹${item.price.toStringAsFixed(2)}',
                     style: const TextStyle(
@@ -328,38 +329,38 @@ class ItemDetailPage extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     'Description',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 8),
-                  Text(item.description, style: const TextStyle(fontSize: 16)),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 8),
+                  Text(item.description, style: TextStyle(fontSize: 16)),
+                  SizedBox(height: 16),
                   Row(
                     children: [
                       const Icon(Icons.category),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text('Category: ${item.category}'),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Row(
                     children: [
                       const Icon(Icons.person),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text('Seller: ${item.seller}'),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Row(
                     children: [
                       const Icon(Icons.access_time),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Text('Posted: ${item.date}'),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -372,14 +373,14 @@ class ItemDetailPage extends StatelessWidget {
                           context: context,
                           builder:
                               (context) => AlertDialog(
-                                title: const Text('Confirm Purchase'),
+                                title: Text(tr('Confirm Purchase')),
                                 content: Text(
                                   'Are you sure you want to buy ${item.title} for ₹${item.price.toStringAsFixed(2)}?',
                                 ),
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.pop(context),
-                                    child: const Text('Cancel'),
+                                    child: Text(tr('Cancel')),
                                   ),
                                   TextButton(
                                     onPressed: () {
@@ -394,19 +395,19 @@ class ItemDetailPage extends StatelessWidget {
                                         ),
                                       );
                                     },
-                                    child: const Text('Confirm'),
+                                    child: Text(tr('Confirm')),
                                   ),
                                 ],
                               ),
                         );
                       },
-                      child: const Text(
+                      child: Text(
                         'Buy Now',
                         style: TextStyle(fontSize: 18),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
@@ -416,12 +417,12 @@ class ItemDetailPage extends StatelessWidget {
                       onPressed: () {
                         // Implement message seller functionality
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Message sent to seller'),
+                          SnackBar(
+                            content: Text(tr('Message sent to seller')),
                           ),
                         );
                       },
-                      child: const Text(
+                      child: Text(
                         'Message Seller',
                         style: TextStyle(fontSize: 18),
                       ),
@@ -447,12 +448,12 @@ class MyItemsPage extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.list_alt, size: 64, color: Colors.grey),
-          const SizedBox(height: 16),
-          const Text(
+          SizedBox(height: 16),
+          Text(
             'Your listed items will appear here',
             style: TextStyle(fontSize: 18, color: Colors.grey),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           ElevatedButton(
             onPressed: () {
               Navigator.push(
@@ -460,7 +461,7 @@ class MyItemsPage extends StatelessWidget {
                 MaterialPageRoute(builder: (context) => const AddItemPage()),
               );
             },
-            child: const Text('Add New Item'),
+            child: Text(tr('Add New Item')),
           ),
         ],
       ),
@@ -496,7 +497,7 @@ class _AddItemPageState extends State<AddItemPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add New Item'),
+        title: Text(tr('Add New Item')),
         actions: [
           IconButton(
             icon: const Icon(Icons.check),
@@ -550,23 +551,23 @@ class _AddItemPageState extends State<AddItemPage> {
                   ),
                   child:
                       _imagePath == 'assets/images/placeholder.jpg'
-                          ? const Center(
+                          ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.add_a_photo, size: 48),
-                                Text('Add Photo'),
+                                Text(tr('Add Photo')),
                               ],
                             ),
                           )
                           : null,
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               TextFormField(
                 controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
+                decoration: InputDecoration(
+                  labelText: tr('Title'),
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
@@ -576,11 +577,11 @@ class _AddItemPageState extends State<AddItemPage> {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               TextFormField(
                 controller: _priceController,
-                decoration: const InputDecoration(
-                  labelText: 'Price',
+                decoration: InputDecoration(
+                  labelText: tr('Price'),
                   border: OutlineInputBorder(),
                   prefixText: '₹',
                 ),
@@ -595,11 +596,11 @@ class _AddItemPageState extends State<AddItemPage> {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               TextFormField(
                 controller: _categoryController,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
+                decoration: InputDecoration(
+                  labelText: tr('Category'),
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
@@ -609,11 +610,11 @@ class _AddItemPageState extends State<AddItemPage> {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               TextFormField(
                 controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
+                decoration: InputDecoration(
+                  labelText: tr('Description'),
                   border: OutlineInputBorder(),
                   alignLabelWithHint: true,
                 ),
@@ -625,7 +626,7 @@ class _AddItemPageState extends State<AddItemPage> {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
             ],
           ),
         ),

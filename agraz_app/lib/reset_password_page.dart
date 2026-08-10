@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl_phone_field/intl_phone_field.dart';
 
 import 'config.dart';
+import 'l10n/app_l10n.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   const ResetPasswordPage({super.key});
@@ -34,7 +35,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     if (!_formKey.currentState!.validate()) return;
     if (_fullPhone == null || _fullPhone!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Phone number is required')),
+        SnackBar(content: Text(tr('Phone number is required'))),
       );
       return;
     }
@@ -85,7 +86,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     final green = Colors.green[700]!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reset password'),
+        title: Text(tr('Reset password')),
         backgroundColor: green,
         foregroundColor: Colors.white,
       ),
@@ -100,11 +101,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 'Enter the email and phone number used at registration to set a new password.',
                 style: TextStyle(color: Colors.grey[700], height: 1.4),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               TextFormField(
                 controller: _emailCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
+                decoration: InputDecoration(
+                  labelText: tr('Email'),
                   prefixIcon: Icon(Icons.email_outlined),
                   border: OutlineInputBorder(),
                 ),
@@ -114,11 +115,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               IntlPhoneField(
                 disableLengthCheck: true,
-                decoration: const InputDecoration(
-                  labelText: 'Phone number',
+                decoration: InputDecoration(
+                  labelText: tr('Phone number'),
                   border: OutlineInputBorder(),
                   counterText: '',
                 ),
@@ -131,12 +132,12 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               TextFormField(
                 controller: _passwordCtrl,
                 obscureText: _obscure,
                 decoration: InputDecoration(
-                  labelText: 'New password',
+                  labelText: tr('New password'),
                   prefixIcon: const Icon(Icons.lock_outline),
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
@@ -153,12 +154,12 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               TextFormField(
                 controller: _confirmCtrl,
                 obscureText: _obscure,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm password',
+                decoration: InputDecoration(
+                  labelText: tr('Confirm password'),
                   prefixIcon: Icon(Icons.lock_outline),
                   border: OutlineInputBorder(),
                 ),
@@ -167,7 +168,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   return null;
                 },
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               SizedBox(
                 height: 48,
                 child: ElevatedButton(
@@ -177,7 +178,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   ),
                   onPressed: _loading ? null : _submit,
                   child: _loading
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 22,
                           height: 22,
                           child: CircularProgressIndicator(
@@ -185,7 +186,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                             color: Colors.white,
                           ),
                         )
-                      : const Text('Reset password'),
+                      : Text(tr('Reset password')),
                 ),
               ),
             ],

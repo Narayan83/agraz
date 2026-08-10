@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'income_expense_data.dart';
 import 'api_service.dart';
+import 'l10n/app_l10n.dart';
 
 class AddressPage extends StatefulWidget {
   final IncomeExpenseData formData;
@@ -103,8 +104,8 @@ class _AddressPageState extends State<AddressPage> {
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Transaction recorded successfully!'),
+          SnackBar(
+            content: Text(tr('Transaction recorded successfully!')),
             backgroundColor: Colors.green,
           ),
         );
@@ -113,8 +114,8 @@ class _AddressPageState extends State<AddressPage> {
         Navigator.of(context).popUntil((route) => route.isFirst);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to record transaction. Please try again.'),
+          SnackBar(
+            content: Text(tr('Failed to record transaction. Please try again.')),
             backgroundColor: Colors.red,
           ),
         );
@@ -163,7 +164,7 @@ class _AddressPageState extends State<AddressPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Address Details',
           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
         ),
@@ -198,14 +199,14 @@ class _AddressPageState extends State<AddressPage> {
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 8,
-                        offset: const Offset(0, 2),
+                        offset: Offset(0, 2),
                       ),
                     ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Transaction Summary',
                         style: TextStyle(
                           fontSize: 16,
@@ -213,7 +214,7 @@ class _AddressPageState extends State<AddressPage> {
                           color: Color(0xFF2E7D32),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       _buildSummaryRow(
                         'Type',
                         widget.formData.receiptPaymentType ?? '',
@@ -251,7 +252,7 @@ class _AddressPageState extends State<AddressPage> {
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 8,
-                        offset: const Offset(0, 2),
+                        offset: Offset(0, 2),
                       ),
                     ],
                   ),
@@ -264,8 +265,8 @@ class _AddressPageState extends State<AddressPage> {
                             Icons.location_pin,
                             color: const Color(0xFF2E7D32),
                           ),
-                          const SizedBox(width: 8),
-                          const Text(
+                          SizedBox(width: 8),
+                          Text(
                             'Address Details (Optional)',
                             style: TextStyle(
                               fontSize: 16,
@@ -275,7 +276,7 @@ class _AddressPageState extends State<AddressPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildAddressField(
                         'Name',
                         Icons.person,
@@ -316,8 +317,8 @@ class _AddressPageState extends State<AddressPage> {
                         margin: const EdgeInsets.only(bottom: 16),
                         child: TextFormField(
                           controller: pincodeController,
-                          decoration: const InputDecoration(
-                            labelText: 'Pincode',
+                          decoration: InputDecoration(
+                            labelText: tr('Pincode'),
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.pin_drop),
                             contentPadding: EdgeInsets.symmetric(
@@ -339,7 +340,7 @@ class _AddressPageState extends State<AddressPage> {
                 ),
 
                 // Submit Button
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 Container(
                   height: 56,
                   decoration: BoxDecoration(
@@ -348,7 +349,7 @@ class _AddressPageState extends State<AddressPage> {
                       BoxShadow(
                         color: const Color(0xFF2E7D32).withValues(alpha: 0.3),
                         blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
@@ -364,7 +365,7 @@ class _AddressPageState extends State<AddressPage> {
                     ),
                     child:
                         isLoading
-                            ? const SizedBox(
+                            ? SizedBox(
                               width: 24,
                               height: 24,
                               child: CircularProgressIndicator(
@@ -372,7 +373,7 @@ class _AddressPageState extends State<AddressPage> {
                                 strokeWidth: 3,
                               ),
                             )
-                            : const Row(
+                            : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.save, size: 20),
@@ -388,7 +389,7 @@ class _AddressPageState extends State<AddressPage> {
                             ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
               ],
             ),
           ),

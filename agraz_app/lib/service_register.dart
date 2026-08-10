@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'api_service.dart';
 import 'app_theme.dart';
+import 'l10n/app_l10n.dart';
 
 /// Shows service registration as a modal bottom sheet. Returns true on success.
 /// Sheet is non-dismissible by swipe/outside tap so typed data is not lost.
@@ -47,18 +48,18 @@ Future<bool?> _confirmDiscardRegistration(BuildContext context) {
   return showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Discard registration?'),
-      content: const Text(
+      title: Text(tr('Discard registration?')),
+      content: Text(
         'Entered details will be lost if you close now.',
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Keep editing'),
+          child: Text(tr('Keep editing')),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Discard'),
+          child: Text(tr('Discard')),
         ),
       ],
     ),
@@ -70,7 +71,7 @@ class ServiceRegisterPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(child: ServiceRegisterForm(asSheet: false)),
     );
@@ -229,8 +230,8 @@ class _ServiceRegisterFormState extends State<ServiceRegisterForm> {
       if (result['success'] == true) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Service registered successfully!'),
+          SnackBar(
+            content: Text(tr('Service registered successfully!')),
             backgroundColor: AppColors.income,
           ),
         );
@@ -277,7 +278,7 @@ class _ServiceRegisterFormState extends State<ServiceRegisterForm> {
     return Column(
       children: [
         if (widget.asSheet) ...[
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Container(
             width: 40,
             height: 4,
@@ -286,12 +287,12 @@ class _ServiceRegisterFormState extends State<ServiceRegisterForm> {
               borderRadius: BorderRadius.circular(4),
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
         ],
         AppHeader(
           icon: Icons.miscellaneous_services_rounded,
-          title: 'Register your Business or Service',
-          subtitle: 'Fill in the details below',
+          title: tr('Register your Business or Service'),
+          subtitle: tr('Fill in the details below'),
           showBack: !widget.asSheet,
           onBack: () => Navigator.pop(context),
           bottomRadius: widget.asSheet ? 0 : 24,
@@ -321,13 +322,13 @@ class _ServiceRegisterFormState extends State<ServiceRegisterForm> {
               child: Column(
                 children: [
                   _buildContactCard(),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   _buildCategoryCard(),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   _buildDetailsCard(),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   _buildEmailRemarksCard(),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   _buildSubmitButton(),
                 ],
               ),
@@ -343,12 +344,12 @@ class _ServiceRegisterFormState extends State<ServiceRegisterForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionTitle(
+          SectionTitle(
             icon: Icons.contact_phone_rounded,
-            title: 'Contact Info',
-            subtitle: 'How can we reach you?',
+            title: tr('Contact Info'),
+            subtitle: tr('How can we reach you?'),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           AppField(
             controller: nameController,
             label: 'Full Name',
@@ -356,7 +357,7 @@ class _ServiceRegisterFormState extends State<ServiceRegisterForm> {
             required: true,
             validator: (v) => v!.isEmpty ? 'Required' : null,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           AppField(
             controller: mobileController,
             label: 'Mobile Number',
@@ -368,7 +369,7 @@ class _ServiceRegisterFormState extends State<ServiceRegisterForm> {
               if (v.length == 10) _fetchUserDetails(v);
             },
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           AppField(
             controller: emailController,
             label: 'Email Address',
@@ -391,12 +392,12 @@ class _ServiceRegisterFormState extends State<ServiceRegisterForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionTitle(
+          SectionTitle(
             icon: Icons.category_rounded,
-            title: 'Service Category',
-            subtitle: 'Choose the best match',
+            title: tr('Service Category'),
+            subtitle: tr('Choose the best match'),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           AppDropdown(
             label: 'Main Category',
             value: selectedMainCategory,
@@ -410,7 +411,7 @@ class _ServiceRegisterFormState extends State<ServiceRegisterForm> {
               });
             },
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           AppDropdown(
             label: 'Sub Category',
             value: selectedSubCategory,
@@ -429,12 +430,12 @@ class _ServiceRegisterFormState extends State<ServiceRegisterForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionTitle(
+          SectionTitle(
             icon: Icons.business_rounded,
-            title: 'Business Name',
-            subtitle: 'Name shown to farmers',
+            title: tr('Business Name'),
+            subtitle: tr('Name shown to farmers'),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           AppField(
             controller: businessNameController,
             label: 'Business Name',
@@ -452,12 +453,12 @@ class _ServiceRegisterFormState extends State<ServiceRegisterForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionTitle(
+          SectionTitle(
             icon: Icons.notes_rounded,
-            title: 'Remarks',
-            subtitle: 'Anything else we should know?',
+            title: tr('Remarks'),
+            subtitle: tr('Anything else we should know?'),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           AppField(
             controller: remarksController,
             label: 'Remarks',

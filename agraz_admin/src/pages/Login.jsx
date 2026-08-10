@@ -17,7 +17,7 @@ const Login = () => {
     setError('');
 
     try {
-      const data = await loginUser(email, password);
+      const data = await loginUser(email.trim(), password);
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       navigate('/home');

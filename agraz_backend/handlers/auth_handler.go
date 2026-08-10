@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"os"
 	"strings"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 func Login(c *fiber.Ctx) error {
@@ -22,24 +24,31 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
 	}
 
+	email := strings.TrimSpace(strings.ToLower(input.Email))
+	password := input.Password
+	if email == "" || password == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Email and password are required"})
+	}
+
 	tid := tenantIDFromCtx(c)
 	var user models.User
-	if err := userDB.Where("email = ? AND tenant_id = ?", input.Email, tid).First(&user).Error; err != nil {
+	// Case-insensitive email match (stored emails may vary in casing).
+	if err := userDB.Where("LOWER(email) = ? AND tenant_id = ?", email, tid).First(&user).Error; err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Invalid email or password"})
 	}
 
 	// Compare password
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		// Fallback for plain text passwords (if any, during migration)
-		if user.Password != input.Password {
+		if user.Password != password {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Invalid email or password"})
 		}
 	}
 
 	if !user.Approved {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"message": "You are in cooling period. Please wait for approval.",
-			"code":    "cooling_period",
+			"message":  "You are in cooling period. Please wait for approval.",
+			"code":     "cooling_period",
 			"approved": false,
 		})
 	}
@@ -143,9 +152,16 @@ func UpdateMe(c *fiber.Ctx) error {
 	}
 	if body.MobileNumber != nil {
 		phone := strings.TrimSpace(*body.MobileNumber)
+		phone = strings.TrimLeft(phone, "+")
 		if phone == "" {
 			updates["mobile_number"] = nil
 		} else {
+			var other models.User
+			if err := userDB.Where("mobile_number = ? AND tenant_id = ? AND id <> ?", phone, tid, uid).First(&other).Error; err == nil {
+				return c.Status(409).JSON(fiber.Map{"error": "This mobile number is already registered"})
+			} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+				return c.Status(500).JSON(fiber.Map{"error": "Failed to validate mobile number"})
+			}
 			updates["mobile_number"] = phone
 		}
 	}

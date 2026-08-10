@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -268,10 +269,56 @@ func UpdateUser(c *fiber.Ctx) error {
 }
 
 
+// deleteUserAndDeps removes FK dependents then the user (hard delete).
+// Mobile registration creates user_role_mappings; without clearing them, DELETE users fails.
+func deleteUserAndDeps(id uint, tid uint) error {
+	return userDB.Transaction(func(tx *gorm.DB) error {
+		var user models.User
+		if err := tx.Where("id = ? AND tenant_id = ?", id, tid).First(&user).Error; err != nil {
+			return err
+		}
+
+		// Hard-delete role mappings (model uses soft delete; rows would still block FK).
+		if err := tx.Unscoped().Where("user_id = ?", id).Delete(&models.UserRoleMapping{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("user_id = ?", id).Delete(&models.Employee{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("parent_id = ? OR child_id = ?", id, id).Delete(&models.UserHierarchy{}).Error; err != nil {
+			return err
+		}
+
+		var cartIDs []uint
+		if err := tx.Model(&models.EcomCart{}).Where("user_id = ? AND tenant_id = ?", id, tid).Pluck("id", &cartIDs).Error; err != nil {
+			return err
+		}
+		if len(cartIDs) > 0 {
+			if err := tx.Unscoped().Where("cart_id IN ?", cartIDs).Delete(&models.EcomCartItem{}).Error; err != nil {
+				return err
+			}
+			if err := tx.Unscoped().Where("id IN ?", cartIDs).Delete(&models.EcomCart{}).Error; err != nil {
+				return err
+			}
+		}
+
+		if err := tx.Unscoped().Where("id = ? AND tenant_id = ?", id, tid).Delete(&models.User{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
 func DeleteUser(c *fiber.Ctx) error {
-	id := c.Params("id")
+	id, err := strconv.ParseUint(c.Params("id"), 10, 64)
+	if err != nil || id == 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid user id"})
+	}
 	tid := tenantIDFromCtx(c)
-	if err := userDB.Where("id = ? AND tenant_id = ?", id, tid).Delete(&models.User{}).Error; err != nil {
+	if err := deleteUserAndDeps(uint(id), tid); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(404).JSON(fiber.Map{"error": "User not found"})
+		}
 		return c.Status(500).JSON(fiber.Map{"error": "failed to delete user", "details": err.Error()})
 	}
 	return c.JSON(fiber.Map{"message": "User deleted"})
@@ -293,13 +340,17 @@ func RestoreUser(c *fiber.Ctx) error {
 }
 
 func ForceDeleteUser(c *fiber.Ctx) error {
-	id := c.Params("id")
+	id, err := strconv.ParseUint(c.Params("id"), 10, 64)
+	if err != nil || id == 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid user id"})
+	}
 	tid := tenantIDFromCtx(c)
-
-	if err := userDB.Unscoped().Where("id = ? AND tenant_id = ?", id, tid).Delete(&models.User{}).Error; err != nil {
+	if err := deleteUserAndDeps(uint(id), tid); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(404).JSON(fiber.Map{"error": "User not found"})
+		}
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-
 	return c.JSON(fiber.Map{"message": "User permanently deleted"})
 }
 

@@ -8,6 +8,7 @@ import 'mainpage.dart';
 import 'reset_password_page.dart';
 import 'registration.dart';
 import 'app_theme.dart';
+import 'l10n/app_l10n.dart';
 
 void main() {
   runApp(MaterialApp(debugShowCheckedModeBanner: false, home: LoginScreen()));
@@ -41,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen>
     );
     _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeIn);
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.15),
+      begin: Offset(0, 0.15),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
     _animCtrl.forward();
@@ -59,6 +60,8 @@ class _LoginScreenState extends State<LoginScreen>
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
+        final email = _usernameController.text.trim();
+        final password = _passwordController.text;
         final url = Uri.parse('$BASE_URL/api/login');
         final headers = <String, String>{'Content-Type': 'application/json'};
         mergeTenantHeaders(headers);
@@ -66,8 +69,8 @@ class _LoginScreenState extends State<LoginScreen>
           url,
           headers: headers,
           body: jsonEncode({
-            "email": _usernameController.text,
-            "password": _passwordController.text,
+            "email": email,
+            "password": password,
           }),
         );
         if (!mounted) return;
@@ -83,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen>
           if (token == null) {
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
+              SnackBar(
                 content: Text(
                   'No JWT in login response — Buy & Sell and other APIs may return 401.',
                 ),
@@ -111,15 +114,14 @@ class _LoginScreenState extends State<LoginScreen>
                 await showDialog<void>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('Cooling period'),
-                    content: const Text(
-                      'You are in cooling period. Please wait for approval. '
-                      'An admin will verify your account before you can sign in.',
+                    title: Text(tr('Cooling period')),
+                    content: Text(
+                      tr('You are in cooling period. Please wait for approval. An admin will verify your account before you can sign in.'),
                     ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(ctx),
-                        child: const Text('OK'),
+                        child: Text(tr('OK')),
                       ),
                     ],
                   ),
@@ -136,11 +138,23 @@ class _LoginScreenState extends State<LoginScreen>
         }
       } catch (e) {
         if (!mounted) return;
+        final raw = e.toString();
+        String message = 'Login failed: $e';
+        if (raw.contains('Failed host lookup') ||
+            raw.contains('SocketException') ||
+            raw.contains('Network is unreachable') ||
+            raw.contains('Connection refused') ||
+            raw.contains('Connection timed out')) {
+          message =
+              'No internet / DNS on this device.\n'
+              'Open Chrome on the emulator and visit https://agrazllp.com\n'
+              'If that fails: Cold Boot the AVD or start it with DNS 8.8.8.8';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Login failed: $e'),
+            content: Text(message),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
+            duration: const Duration(seconds: 8),
           ),
         );
       } finally {
@@ -192,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen>
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.18),
                             blurRadius: 40,
-                            offset: const Offset(0, 12),
+                            offset: Offset(0, 12),
                           ),
                         ],
                       ),
@@ -217,20 +231,20 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 18),
-                            const Text('Welcome Back', style: AppText.h1),
-                            const SizedBox(height: 6),
+                            SizedBox(height: 18),
+                            Text('Welcome Back', style: AppText.h1),
+                            SizedBox(height: 6),
                             Text(
                               'Sign in to continue farming smarter',
                               style: AppText.subtitle,
                               textAlign: TextAlign.center,
                             ),
-                            const SizedBox(height: 28),
+                            SizedBox(height: 28),
                             TextFormField(
                               controller: _usernameController,
                               keyboardType: TextInputType.emailAddress,
-                              decoration: const InputDecoration(
-                                labelText: 'Email',
+                              decoration: InputDecoration(
+                                labelText: tr('Email'),
                                 prefixIcon: Icon(Icons.person_outline_rounded),
                               ),
                               validator: (value) =>
@@ -238,12 +252,12 @@ class _LoginScreenState extends State<LoginScreen>
                                       ? 'Enter your email'
                                       : null,
                             ),
-                            const SizedBox(height: 14),
+                            SizedBox(height: 14),
                             TextFormField(
                               controller: _passwordController,
                               obscureText: _obscurePassword,
                               decoration: InputDecoration(
-                                labelText: 'Password',
+                                labelText: tr('Password'),
                                 prefixIcon: const Icon(
                                   Icons.lock_outline_rounded,
                                 ),
@@ -263,7 +277,7 @@ class _LoginScreenState extends State<LoginScreen>
                                       ? 'Enter your password'
                                       : null,
                             ),
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -288,7 +302,7 @@ class _LoginScreenState extends State<LoginScreen>
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
+                                      SizedBox(width: 8),
                                       Text('Remember Me', style: AppText.small),
                                     ],
                                   ),
@@ -313,21 +327,21 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 24),
+                            SizedBox(height: 24),
                             PrimaryButton(
                               label: 'Sign In',
                               icon: Icons.login_rounded,
                               onPressed: _isLoading ? null : _handleLogin,
                               loading: _isLoading,
                             ),
-                            const SizedBox(height: 18),
+                            SizedBox(height: 18),
                             Text.rich(
                               TextSpan(
                                 text: "Don't have an account? ",
                                 style: AppText.small,
                                 children: [
                                   TextSpan(
-                                    text: 'Sign Up',
+                                    text: tr('Sign Up'),
                                     style: const TextStyle(
                                       color: AppColors.primary,
                                       fontWeight: FontWeight.w700,

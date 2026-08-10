@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'l10n/app_l10n.dart';
 
 class SubcategoryManagementPage extends StatefulWidget {
   const SubcategoryManagementPage({super.key});
@@ -118,7 +119,7 @@ class _SubcategoryManagementPageState extends State<SubcategoryManagementPage> {
     if (selectedCategoryId == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a category')));
+      ).showSnackBar(SnackBar(content: Text(tr('Please select a category'))));
       return;
     }
 
@@ -171,7 +172,7 @@ class _SubcategoryManagementPageState extends State<SubcategoryManagementPage> {
         _fetchSubcategories();
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Deleted successfully')));
+        ).showSnackBar(SnackBar(content: Text(tr('Deleted successfully'))));
       }
     } catch (e) {
       ScaffoldMessenger.of(
@@ -210,7 +211,7 @@ class _SubcategoryManagementPageState extends State<SubcategoryManagementPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Subcategory Management'),
+        title: Text(tr('Subcategory Management')),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -225,7 +226,7 @@ class _SubcategoryManagementPageState extends State<SubcategoryManagementPage> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                labelText: 'Search Subcategories',
+                labelText: tr('Search Subcategories'),
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
@@ -236,9 +237,9 @@ class _SubcategoryManagementPageState extends State<SubcategoryManagementPage> {
           Expanded(
             child:
                 isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? Center(child: CircularProgressIndicator())
                     : subcategories.isEmpty
-                    ? const Center(child: Text('No subcategories found'))
+                    ? Center(child: Text(tr('No subcategories found')))
                     : ListView.builder(
                       itemCount: subcategories.length,
                       itemBuilder: (context, index) {
@@ -322,11 +323,11 @@ class _SubcategoryManagementPageState extends State<SubcategoryManagementPage> {
               isEditing ? 'Edit Subcategory' : 'Add New Subcategory',
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Subcategory Name',
+              decoration: InputDecoration(
+                labelText: tr('Subcategory Name'),
                 border: OutlineInputBorder(),
               ),
               validator: (value) {
@@ -336,10 +337,10 @@ class _SubcategoryManagementPageState extends State<SubcategoryManagementPage> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Category',
+              decoration: InputDecoration(
+                labelText: tr('Category'),
                 border: OutlineInputBorder(),
               ),
               initialValue: selectedCategoryId,
@@ -368,16 +369,16 @@ class _SubcategoryManagementPageState extends State<SubcategoryManagementPage> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextFormField(
               controller: _remarksController,
-              decoration: const InputDecoration(
-                labelText: 'Remarks (Optional)',
+              decoration: InputDecoration(
+                labelText: tr('Remarks (Optional)'),
                 border: OutlineInputBorder(),
               ),
               maxLines: 3,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -386,16 +387,16 @@ class _SubcategoryManagementPageState extends State<SubcategoryManagementPage> {
                     Navigator.pop(context);
                     _resetForm();
                   },
-                  child: const Text('Cancel'),
+                  child: Text(tr('Cancel')),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: _submitSubcategory,
                   child: Text(isEditing ? 'Update' : 'Save'),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ],
         ),
       ),

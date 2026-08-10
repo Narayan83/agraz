@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'l10n/app_l10n.dart';
 
 class HelpPage extends StatelessWidget {
   const HelpPage({super.key});
@@ -6,18 +7,18 @@ class HelpPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Help')),
+      appBar: AppBar(title: Text(tr('Help'))),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('Help Page Content'),
-            const SizedBox(height: 20),
+            Text(tr('Help Page Content')),
+            SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
               },
-              child: const Text('Back to Main'),
+              child: Text(tr('Back to Main')),
             ),
           ],
         ),

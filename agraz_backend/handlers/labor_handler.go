@@ -27,17 +27,17 @@ var validGenders = map[string]bool{
 }
 
 type laborPayload struct {
-	Name            string          `json:"name"`
-	Wage            decimal.Decimal `json:"wage"`
-	Hours           decimal.Decimal `json:"hours"`
-	NumberOfLabours int             `json:"number_of_labours"`
-	Shift           string          `json:"shift"`
-	Category        string          `json:"category"`
-	Gender          string          `json:"gender"`
-	WorkType        string          `json:"work_type"`
-	LabourHead      string          `json:"labour_head"`
-	Location        string          `json:"location"`
-	Narration       string          `json:"narration"`
+	Name            string  `json:"name"`
+	Wage            float64 `json:"wage"`
+	Hours           float64 `json:"hours"`
+	NumberOfLabours int     `json:"number_of_labours"`
+	Shift           string  `json:"shift"`
+	Category        string  `json:"category"`
+	Gender          string  `json:"gender"`
+	WorkType        string  `json:"work_type"`
+	LabourHead      string  `json:"labour_head"`
+	Location        string  `json:"location"`
+	Narration       string  `json:"narration"`
 	// Date accepts RFC3339 and common Flutter layouts (with/without timezone).
 	Date   flexibleTime `json:"date"`
 	Mobile *string      `json:"mobile"`
@@ -76,10 +76,10 @@ func validateLaborPayload(body *laborPayload) string {
 	if strings.TrimSpace(body.Name) == "" {
 		return "name is required"
 	}
-	if body.Wage.LessThanOrEqual(decimal.Zero) {
+	if body.Wage <= 0 {
 		return "rate (wage) must be greater than zero"
 	}
-	if body.Hours.LessThanOrEqual(decimal.Zero) {
+	if body.Hours <= 0 {
 		return "days/hour must be greater than zero"
 	}
 	if body.NumberOfLabours < 1 {
@@ -113,9 +113,8 @@ func validateLaborPayload(body *laborPayload) string {
 	if strings.TrimSpace(body.Location) == "" {
 		return "location is required"
 	}
-	if strings.TrimSpace(body.Narration) == "" {
-		return "narration is required"
-	}
+	// Narration is optional — trimmed value (possibly empty) is stored as-is.
+	body.Narration = strings.TrimSpace(body.Narration)
 	if body.Date.Time.IsZero() {
 		return "date is required"
 	}
@@ -124,8 +123,8 @@ func validateLaborPayload(body *laborPayload) string {
 
 func applyLaborPayload(row *models.Labor, body *laborPayload) {
 	row.Name = strings.TrimSpace(body.Name)
-	row.Wage = body.Wage
-	row.Hours = body.Hours
+	row.Wage = decimal.NewFromFloat(body.Wage)
+	row.Hours = decimal.NewFromFloat(body.Hours)
 	row.NumberOfLabours = body.NumberOfLabours
 	row.Shift = body.Shift
 	row.Category = strings.TrimSpace(body.Category)
@@ -139,6 +138,10 @@ func applyLaborPayload(row *models.Labor, body *laborPayload) {
 }
 
 func CreateLabor(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
 	var body laborPayload
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body", "details": err.Error()})
@@ -147,7 +150,7 @@ func CreateLabor(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": msg})
 	}
 
-	row := models.Labor{}
+	row := models.Labor{UserID: uid}
 	applyLaborPayload(&row, &body)
 	if err := laborDB.Create(&row).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create labor record", "details": err.Error()})
@@ -156,31 +159,53 @@ func CreateLabor(c *fiber.Ctx) error {
 }
 
 func CreateLaborsBatch(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error":   "Login required",
+			"message": "Login required",
+		})
+	}
 	var bodies []laborPayload
 	if err := c.BodyParser(&bodies); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body", "details": err.Error()})
+		return c.Status(400).JSON(fiber.Map{
+			"error":   "Invalid request body",
+			"message": "Invalid request body",
+			"details": err.Error(),
+		})
 	}
 	if len(bodies) == 0 {
-		return c.Status(400).JSON(fiber.Map{"error": "at least one labour row is required"})
+		return c.Status(400).JSON(fiber.Map{
+			"error":   "at least one labour row is required",
+			"message": "at least one labour row is required",
+		})
 	}
 
 	rows := make([]models.Labor, 0, len(bodies))
 	for i := range bodies {
 		if msg := validateLaborPayload(&bodies[i]); msg != "" {
-			return c.Status(400).JSON(fiber.Map{"error": msg, "row": i + 1})
+			return c.Status(400).JSON(fiber.Map{"error": msg, "message": msg, "row": i + 1})
 		}
-		var row models.Labor
+		row := models.Labor{UserID: uid}
 		applyLaborPayload(&row, &bodies[i])
 		rows = append(rows, row)
 	}
 
 	if err := laborDB.Create(&rows).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Failed to create labor records", "details": err.Error()})
+		return c.Status(500).JSON(fiber.Map{
+			"error":   "Failed to create labor records",
+			"message": "Failed to create labor records",
+			"details": err.Error(),
+		})
 	}
 	return c.Status(201).JSON(fiber.Map{"message": "Labourers added successfully", "data": rows})
 }
 
 func GetLabors(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
 	page := c.QueryInt("page", 1)
 	limit := c.QueryInt("limit", 50)
 	if page < 1 {
@@ -193,9 +218,16 @@ func GetLabors(c *fiber.Ctx) error {
 
 	var rows []models.Labor
 	var total int64
-	q := laborDB.Model(&models.Labor{})
+	q := scopeByUserID(laborDB.Model(&models.Labor{}), uid)
 	if m := c.Query("mobile"); m != "" {
 		q = q.Where("mobile = ?", m)
+	}
+	if name := strings.TrimSpace(c.Query("name")); name != "" {
+		q = q.Where("name ILIKE ?", "%"+name+"%")
+	}
+	if search := strings.TrimSpace(c.Query("q")); search != "" {
+		like := "%" + search + "%"
+		q = q.Where("name ILIKE ? OR COALESCE(mobile,'') ILIKE ? OR location ILIKE ? OR narration ILIKE ?", like, like, like, like)
 	}
 	if shift := c.Query("shift"); shift != "" {
 		q = q.Where("shift = ?", shift)
@@ -225,14 +257,23 @@ func GetLabors(c *fiber.Ctx) error {
 }
 
 func GetLabor(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
 	var row models.Labor
-	if err := laborDB.First(&row, c.Params("id")).Error; err != nil {
+	if err := scopeByUserID(laborDB.Model(&models.Labor{}), uid).
+		First(&row, c.Params("id")).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Labor record not found"})
 	}
 	return c.JSON(row)
 }
 
 func UpdateLabor(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
 	var body laborPayload
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body", "details": err.Error()})
@@ -242,7 +283,8 @@ func UpdateLabor(c *fiber.Ctx) error {
 	}
 
 	var row models.Labor
-	if err := laborDB.First(&row, c.Params("id")).Error; err != nil {
+	if err := scopeByUserID(laborDB.Model(&models.Labor{}), uid).
+		First(&row, c.Params("id")).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Labor record not found"})
 	}
 
@@ -255,7 +297,12 @@ func UpdateLabor(c *fiber.Ctx) error {
 }
 
 func DeleteLabor(c *fiber.Ctx) error {
-	res := laborDB.Delete(&models.Labor{}, c.Params("id"))
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+	res := scopeByUserID(laborDB.Model(&models.Labor{}), uid).
+		Delete(&models.Labor{}, c.Params("id"))
 	if res.Error != nil {
 		return c.Status(500).JSON(fiber.Map{"error": res.Error.Error()})
 	}

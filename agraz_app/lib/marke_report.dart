@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import 'app_theme.dart';
 import 'market_report_service.dart';
+import 'l10n/app_l10n.dart';
 
 class RatesComparisonPage extends StatefulWidget {
   const RatesComparisonPage({super.key});
@@ -238,8 +239,8 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
           children: [
             AppHeader(
               icon: Icons.trending_up_rounded,
-              title: 'Market Reports',
-              subtitle: 'Commodity prices, arrivals & trends',
+              title: tr('Market Reports'),
+              subtitle: tr('Commodity prices, arrivals & trends'),
               trailing: _headerAction(_loadData),
             ),
             Expanded(
@@ -256,21 +257,21 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             _buildFilters(context),
-                            const SizedBox(height: 14),
+                            SizedBox(height: 14),
                             if (_loading)
                               _buildLoadingCard(context)
                             else if (_error != null)
                               _buildErrorCard(context)
                             else ...[
                               _buildStats(context),
-                              const SizedBox(height: 14),
+                              SizedBox(height: 14),
                               _buildRatesCard(context),
-                              const SizedBox(height: 14),
+                              SizedBox(height: 14),
                               _buildComparisonCard(context),
-                              const SizedBox(height: 14),
+                              SizedBox(height: 14),
                               _buildHistoryCard(context),
                               if (_qty.isNotEmpty) ...[
-                                const SizedBox(height: 14),
+                                SizedBox(height: 14),
                                 _buildQuantityCard(context),
                               ],
                             ],
@@ -295,7 +296,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
-        child: const SizedBox(
+        child: SizedBox(
           width: 40,
           height: 40,
           child: Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
@@ -328,7 +329,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
     return Row(
       children: [
         TintedIcon(icon: icon, color: color, boxSize: 34, size: 17, radius: 10),
-        const SizedBox(width: 11),
+        SizedBox(width: 11),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,7 +340,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
                 color: ts.onSurface,
               )),
               if (subtitle != null) ...[
-                const SizedBox(height: 1),
+                SizedBox(height: 1),
                 Text(subtitle,
                     style: TextStyle(fontSize: 12, color: ts.onSurfaceVariant)),
               ],
@@ -362,7 +363,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
           children: [
             TintedIcon(icon: icon, color: ts.onSurfaceVariant,
                 boxSize: 56, size: 26, radius: 18),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(title,
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -370,7 +371,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
                     fontWeight: FontWeight.w700,
                     color: ts.onSurface)),
             if (subtitle != null) ...[
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(subtitle,
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12, color: ts.onSurfaceVariant)),
@@ -384,7 +385,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
   Widget _buildLoadingCard(BuildContext context) {
     return _sectionCard(
       context,
-      const Padding(
+      Padding(
         padding: EdgeInsets.symmetric(vertical: 56),
         child: Center(
           child: Column(
@@ -409,21 +410,21 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
         child: Column(
           children: [
             const Icon(Icons.cloud_off_rounded, color: AppColors.expense, size: 34),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Text('Could not load data',
                 style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: ts.onSurface)),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(_error!,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12.5, color: ts.onSurfaceVariant)),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             OutlinedButton.icon(
               onPressed: _loadData,
               icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Try again'),
+              label: Text(tr('Try again')),
             ),
           ],
         ),
@@ -442,7 +443,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildDateField(context),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, c) {
               final w = (c.maxWidth - 10) / 2;
@@ -479,13 +480,13 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
           children: [
             const Icon(Icons.calendar_month_rounded,
                 color: AppColors.primary, size: 20),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('REPORT DATE', style: AppText.caption),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     DateFormat('EEEE, d MMM yyyy').format(_selectedDate),
                     style: TextStyle(
@@ -511,7 +512,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
       label: 'Agent',
       value: _agentId?.toString(),
       items: [
-        const DropdownMenuItem<String?>(value: null, child: Text('All Agents')),
+        DropdownMenuItem<String?>(value: null, child: Text(tr('All Agents'))),
         for (final a in _agents)
           DropdownMenuItem<String?>(
             value: a['id']?.toString(),
@@ -531,7 +532,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
       label: 'APMC',
       value: _apmcId?.toString(),
       items: [
-        const DropdownMenuItem<String?>(value: null, child: Text('All APMCs')),
+        DropdownMenuItem<String?>(value: null, child: Text(tr('All APMCs'))),
         for (final a in _apmcs)
           DropdownMenuItem<String?>(
             value: a['id']?.toString(),
@@ -551,7 +552,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
       label: 'Taluk',
       value: _taluk,
       items: [
-        const DropdownMenuItem<String?>(value: null, child: Text('All Taluks')),
+        DropdownMenuItem<String?>(value: null, child: Text(tr('All Taluks'))),
         for (final t in _taluks)
           DropdownMenuItem<String?>(value: t, child: Text(t)),
       ],
@@ -568,7 +569,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
       label: 'Variety',
       value: _varietyId?.toString(),
       items: [
-        const DropdownMenuItem<String?>(value: null, child: Text('All Varieties')),
+        DropdownMenuItem<String?>(value: null, child: Text(tr('All Varieties'))),
         for (final v in _varieties)
           DropdownMenuItem<String?>(
             value: v['id']?.toString(),
@@ -644,19 +645,19 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
             children: [
               _statTile(context, 'Varieties', '${_dayVarietyNames().length}',
                   Icons.category_rounded, AppColors.info),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               _statTile(context, 'Avg Rate', _fmtMoney(overallAvg),
                   Icons.currency_rupee_rounded, AppColors.primary),
             ],
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Expanded(
           child: Column(
             children: [
               _statTile(context, 'Arrival', _fmtQty(arrival),
                   Icons.local_shipping_rounded, AppColors.accent),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               _statTile(context, 'Traded', _fmtQty(trade),
                   Icons.shopping_cart_rounded, AppColors.expense),
             ],
@@ -683,7 +684,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
       child: Row(
         children: [
           TintedIcon(icon: icon, color: color, boxSize: 34, size: 17, radius: 10),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -696,7 +697,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
                           fontWeight: FontWeight.w800,
                           color: ts.onSurface)),
                 ),
-                const SizedBox(height: 1),
+                SizedBox(height: 1),
                 Text(label, style: AppText.caption),
               ],
             ),
@@ -724,13 +725,13 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
             "Today's Market Rates",
             '${_dayVarietyNames().length} varieties · ${_fmtDate(_selectedDate)}',
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           if (prices.isEmpty)
             _emptyMessage(context, Icons.inventory_2_rounded, 'No rates found',
                 'Try a different date or adjust the filters')
           else ...[
             _ratesHeader(context),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             for (var i = 0; i < prices.length; i++) _ratesRow(context, i, prices[i]),
           ],
         ],
@@ -785,7 +786,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
                   decoration:
                       BoxDecoration(color: color, shape: BoxShape.circle),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(_varietyName(p),
                       overflow: TextOverflow.ellipsis,
@@ -839,9 +840,9 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
             'Price Comparison',
             'Min · Max · Avg for ${_fmtDate(_selectedDate)}',
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _metricLegend(context),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           if (top.isEmpty)
             SizedBox(
               height: 220,
@@ -890,7 +891,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
           decoration: BoxDecoration(
               color: color, borderRadius: BorderRadius.circular(3)),
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: 6),
         Text(label,
             style: TextStyle(
                 fontSize: 12,
@@ -1049,7 +1050,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
             'Average price movement',
             trailing: _rangeSelector(context),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           if (barNames.isEmpty)
             SizedBox(
               height: 220,
@@ -1058,7 +1059,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
             )
           else ...[
             _varietyLegend(context, barNames),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             SizedBox(height: 240, child: _buildHistoryChart(context, dates, lines, barNames)),
           ],
         ],
@@ -1107,7 +1108,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
                     color: _chartPalette[i % _chartPalette.length],
                     shape: BoxShape.circle),
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Text(varieties[i],
                   style: TextStyle(
                       fontSize: 12,
@@ -1240,10 +1241,10 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
             'Arrivals & Stocks',
             '${_fmtQty(totalArrival)} arrived · ${_fmtQty(totalTrade)} traded · ${_fmtQty(totalStock)} in stock',
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           for (final q in _qty) ...[
             _qtyRow(context, q, maxQ),
-            if (q != _qty.last) const SizedBox(height: 14),
+            if (q != _qty.last) SizedBox(height: 14),
           ],
         ],
       ),
@@ -1259,13 +1260,13 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: Theme.of(context).colorScheme.onSurface)),
-        const SizedBox(height: 7),
+        SizedBox(height: 7),
         _miniBar(context, 'Arrival', _num(q['arrival_qty']), maxQ,
             AppColors.info, Icons.local_shipping_rounded),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         _miniBar(context, 'Trade', _num(q['trade_qty']), maxQ,
             AppColors.accent, Icons.swap_horiz_rounded),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         _miniBar(context, 'Stock', _num(q['stock_qty']), maxQ,
             AppColors.primary, Icons.inventory_2_rounded),
       ],
@@ -1279,7 +1280,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
     return Row(
       children: [
         Icon(icon, size: 14, color: color),
-        const SizedBox(width: 7),
+        SizedBox(width: 7),
         SizedBox(
           width: 60,
           child: Text(label,
@@ -1299,7 +1300,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         SizedBox(
           width: 78,
           child: Text(_fmtQty(value),

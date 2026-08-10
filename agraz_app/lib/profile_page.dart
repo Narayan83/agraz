@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import 'auth_token.dart';
 import 'config.dart';
+import 'l10n/app_l10n.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -102,8 +103,8 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted) return;
       if (res.statusCode >= 200 && res.statusCode < 300) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated'),
+          SnackBar(
+            content: Text(tr('Profile updated')),
             backgroundColor: Colors.green,
           ),
         );
@@ -148,7 +149,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: Text(tr('Profile')),
         backgroundColor: green,
         foregroundColor: Colors.white,
         actions: [
@@ -171,7 +172,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(
                   child: Padding(
@@ -180,10 +181,10 @@ class _ProfilePageState extends State<ProfilePage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: _load,
-                          child: const Text('Retry'),
+                          child: Text(tr('Retry')),
                         ),
                       ],
                     ),
@@ -208,7 +209,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       Center(
                         child: Text(
                           '$first $last'.trim().isEmpty ? 'User' : '$first $last',
@@ -218,40 +219,40 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Center(
                         child: Text(
                           _user?['email']?.toString() ?? '',
                           style: TextStyle(color: Colors.grey[600]),
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                       if (_editing) ...[
                         TextField(
                           controller: _firstnameCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'First name',
+                          decoration: InputDecoration(
+                            labelText: tr('First name'),
                             border: OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         TextField(
                           controller: _lastnameCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Last name',
+                          decoration: InputDecoration(
+                            labelText: tr('Last name'),
                             border: OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         TextField(
                           controller: _phoneCtrl,
                           keyboardType: TextInputType.phone,
-                          decoration: const InputDecoration(
-                            labelText: 'Phone',
+                          decoration: InputDecoration(
+                            labelText: tr('Phone'),
                             border: OutlineInputBorder(),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         OutlinedButton(
                           onPressed: () {
                             _firstnameCtrl.text =
@@ -262,7 +263,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 _user?['mobile_number']?.toString() ?? '';
                             setState(() => _editing = false);
                           },
-                          child: const Text('Cancel'),
+                          child: Text(tr('Cancel')),
                         ),
                       ] else ...[
                         _infoTile(Icons.phone, 'Phone',
@@ -293,7 +294,7 @@ class _ProfilePageState extends State<ProfilePage> {
       child: ListTile(
         leading: Icon(icon, color: Colors.green[700]),
         title: Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-        subtitle: Text(value, style: const TextStyle(fontSize: 16)),
+        subtitle: Text(value, style: TextStyle(fontSize: 16)),
       ),
     );
   }

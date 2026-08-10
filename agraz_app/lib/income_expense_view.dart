@@ -7,9 +7,24 @@ import 'auth_token.dart';
 import 'config.dart';
 import 'app_theme.dart';
 import 'income_expense_data.dart';
+import 'income_expense_report.dart';
+import 'l10n/app_l10n.dart';
 
 class IncomeExpenseListScreen extends StatefulWidget {
-  const IncomeExpenseListScreen({super.key});
+  final String? initialType;
+  final String? initialCategory;
+  final String? initialSubCategory;
+  final String? initialStartDate;
+  final String? initialEndDate;
+
+  const IncomeExpenseListScreen({
+    super.key,
+    this.initialType,
+    this.initialCategory,
+    this.initialSubCategory,
+    this.initialStartDate,
+    this.initialEndDate,
+  });
 
   @override
   _IncomeExpenseListScreenState createState() =>
@@ -28,6 +43,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
   // Filters
   String _selectedType = '';
   String _selectedCategory = '';
+  String _selectedSubCategory = '';
   String _selectedMobile = '';
   String _startDate = '';
   String _endDate = '';
@@ -40,6 +56,16 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedType = widget.initialType ?? '';
+    _selectedCategory = widget.initialCategory ?? '';
+    _selectedSubCategory = widget.initialSubCategory ?? '';
+    _startDate = widget.initialStartDate ?? '';
+    _endDate = widget.initialEndDate ?? '';
+    if (_selectedCategory.isNotEmpty) {
+      _categoryController.text = _selectedCategory;
+    }
+    if (_startDate.isNotEmpty) _startDateController.text = _startDate;
+    if (_endDate.isNotEmpty) _endDateController.text = _endDate;
     _fetchTransactions();
   }
 
@@ -74,6 +100,9 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
       }
       if (_selectedCategory.isNotEmpty) {
         queryParams['category'] = _selectedCategory;
+      }
+      if (_selectedSubCategory.isNotEmpty) {
+        queryParams['sub_category'] = _selectedSubCategory;
       }
       if (_selectedMobile.isNotEmpty) {
         queryParams['mobile'] = _selectedMobile;
@@ -158,7 +187,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Filter Transactions'),
+            title: Text(tr('Filter Transactions')),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -166,16 +195,16 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
                 children: [
                   DropdownButtonFormField<String>(
                     initialValue: _selectedType.isEmpty ? null : _selectedType,
-                    decoration: const InputDecoration(
-                      labelText: 'Type',
+                    decoration: InputDecoration(
+                      labelText: tr('Type'),
                       prefixIcon: Icon(Icons.swap_horiz_rounded),
                     ),
-                    items: const [
-                      DropdownMenuItem(value: '', child: Text('All Types')),
-                      DropdownMenuItem(value: 'Income', child: Text('Income')),
+                    items: [
+                      DropdownMenuItem(value: '', child: Text(tr('All Types'))),
+                      DropdownMenuItem(value: 'Income', child: Text(tr('Income'))),
                       DropdownMenuItem(
                         value: 'Expense',
-                        child: Text('Expense'),
+                        child: Text(tr('Expense')),
                       ),
                     ],
                     onChanged: (value) {
@@ -184,24 +213,24 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
                       });
                     },
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   TextField(
                     controller: _categoryController,
-                    decoration: const InputDecoration(
-                      labelText: 'Category',
+                    decoration: InputDecoration(
+                      labelText: tr('Category'),
                       prefixIcon: Icon(Icons.category_rounded),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   TextField(
                     controller: _mobileController,
-                    decoration: const InputDecoration(
-                      labelText: 'Mobile',
+                    decoration: InputDecoration(
+                      labelText: tr('Mobile'),
                       prefixIcon: Icon(Icons.phone_rounded),
                     ),
                     keyboardType: TextInputType.phone,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
@@ -209,20 +238,20 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
                           controller: _startDateController,
                           readOnly: true,
                           onTap: () => _pickFilterDate(_startDateController),
-                          decoration: const InputDecoration(
-                            labelText: 'Start Date',
+                          decoration: InputDecoration(
+                            labelText: tr('Start Date'),
                             prefixIcon: Icon(Icons.event_rounded),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Expanded(
                         child: TextField(
                           controller: _endDateController,
                           readOnly: true,
                           onTap: () => _pickFilterDate(_endDateController),
-                          decoration: const InputDecoration(
-                            labelText: 'End Date',
+                          decoration: InputDecoration(
+                            labelText: tr('End Date'),
                             prefixIcon: Icon(Icons.event_rounded),
                           ),
                         ),
@@ -238,14 +267,14 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
                   Navigator.pop(context);
                   _clearFilters();
                 },
-                child: const Text('Clear'),
+                child: Text(tr('Clear')),
               ),
               FilledButton(
                 onPressed: () {
                   Navigator.pop(context);
                   _applyFilters();
                 },
-                child: const Text('Apply'),
+                child: Text(tr('Apply')),
               ),
             ],
           ),
@@ -304,7 +333,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
                 size: 20,
                 radius: 12,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,7 +352,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     Wrap(
                       spacing: 6,
                       runSpacing: 4,
@@ -344,7 +373,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
                     ),
                     if (transaction['narration'] != null &&
                         transaction['narration'].toString().isNotEmpty) ...[
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Text(
                         transaction['narration'].toString(),
                         style: const TextStyle(
@@ -359,7 +388,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
@@ -372,12 +401,12 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
                       color: amountColor,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   InfoChip(
                     label: isIncome ? 'Income' : 'Expense',
                     color: amountColor,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Icon(
                     Icons.chevron_right_rounded,
                     size: 18,
@@ -422,12 +451,12 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
               _fetchTransactions();
             },
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Text(
             'Page $_currentPage of $_totalPages',
             style: AppText.label,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           _pageButton(
             Icons.arrow_forward_rounded,
             _currentPage < _totalPages,
@@ -468,7 +497,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
       margin: const EdgeInsets.fromLTRB(14, 10, 14, 6),
       padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: AppColors.headerGradient,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -478,16 +507,16 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
           BoxShadow(
             color: AppColors.primary.withValues(alpha: 0.25),
             blurRadius: 10,
-            offset: const Offset(0, 3),
+            offset: Offset(0, 3),
           ),
         ],
       ),
       child: Row(
         children: [
           _statItem('$_totalRecords', 'Records'),
-          const SizedBox(height: 34, child: VerticalDivider(color: Colors.white24, width: 1)),
+          SizedBox(height: 34, child: VerticalDivider(color: Colors.white24, width: 1)),
           _statItem('$_incomeCount', 'Income'),
-          const SizedBox(height: 34, child: VerticalDivider(color: Colors.white24, width: 1)),
+          SizedBox(height: 34, child: VerticalDivider(color: Colors.white24, width: 1)),
           _statItem('$_expenseCount', 'Expense'),
         ],
       ),
@@ -506,7 +535,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(
             label,
             style: const TextStyle(
@@ -525,7 +554,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Income & Expense',
           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
         ),
@@ -542,13 +571,25 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.insights_rounded),
+            tooltip: tr('Reports'),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const IncomeExpenseReportPage(),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.filter_list_rounded),
-            tooltip: 'Filter',
+            tooltip: tr('Filter'),
             onPressed: _showFilterDialog,
           ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh',
+            tooltip: tr('Refresh'),
             onPressed: _fetchTransactions,
           ),
         ],
@@ -558,7 +599,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
           _buildStatsCard(),
           Expanded(
             child: _isLoading
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -583,20 +624,20 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
                                 ),
                                 textAlign: TextAlign.center,
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               ElevatedButton(
                                 onPressed: _fetchTransactions,
-                                child: const Text('Retry'),
+                                child: Text(tr('Retry')),
                               ),
                             ],
                           ),
                         ),
                       )
                     : _transactions.isEmpty
-                        ? const EmptyState(
+                        ? EmptyState(
                             icon: Icons.receipt_long_rounded,
-                            title: 'No transactions found',
-                            subtitle: 'Try adjusting the filters',
+                            title: tr('No transactions found'),
+                            subtitle: tr('Try adjusting the filters'),
                           )
                         : Column(
                             children: [
@@ -630,7 +671,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
 class _TransactionDetailSheet extends StatefulWidget {
   final Map<String, dynamic> transaction;
 
-  const _TransactionDetailSheet({required this.transaction});
+  _TransactionDetailSheet({required this.transaction});
 
   @override
   State<_TransactionDetailSheet> createState() =>
@@ -734,13 +775,13 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
     final amount = double.tryParse(_amountCtrl.text.trim());
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid amount')),
+        SnackBar(content: Text(tr('Enter a valid amount'))),
       );
       return;
     }
     if (_category == null || _subCategory == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Category and sub-category required')),
+        SnackBar(content: Text(tr('Category and sub-category required'))),
       );
       return;
     }
@@ -782,17 +823,17 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete entry?'),
-        content: const Text('This income/expense record will be removed.'),
+        title: Text(tr('Delete entry?')),
+        content: Text(tr('This income/expense record will be removed.')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(tr('Cancel')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.expense),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
+            child: Text(tr('Delete')),
           ),
         ],
       ),
@@ -806,8 +847,8 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
       Navigator.pop(context, true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to delete'),
+        SnackBar(
+          content: Text(tr('Failed to delete')),
           backgroundColor: AppColors.expense,
         ),
       );
@@ -891,7 +932,7 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -902,12 +943,12 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
                 ),
                 if (!_editing)
                   IconButton(
-                    tooltip: 'Edit',
+                    tooltip: tr('Edit'),
                     onPressed: () => setState(() => _editing = true),
                     icon: const Icon(Icons.edit_rounded, color: AppColors.primary),
                   ),
                 IconButton(
-                  tooltip: 'Delete',
+                  tooltip: tr('Delete'),
                   onPressed: _deleting ? null : _delete,
                   icon: Icon(
                     Icons.delete_outline_rounded,
@@ -921,14 +962,14 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
               ],
             ),
             InfoChip(label: _type, color: accent),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Flexible(
               child: SingleChildScrollView(
                 child: _editing ? _buildEditForm() : _buildReadonly(),
               ),
             ),
             if (_editing) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
@@ -936,20 +977,20 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
                       onPressed: _saving
                           ? null
                           : () => setState(() => _editing = false),
-                      child: const Text('Cancel'),
+                      child: Text(tr('Cancel')),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: FilledButton(
                       onPressed: _saving ? null : _save,
                       child: _saving
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Save'),
+                          : Text(tr('Save')),
                     ),
                   ),
                 ],
@@ -987,7 +1028,7 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
           (t['extra_address'] ?? t['extraAddress'])?.toString() ?? '',
         ),
         _readonlyRow('Pincode', t['pincode']?.toString() ?? ''),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           'Tap the edit icon to change this entry.',
           style: AppText.caption,
@@ -1003,10 +1044,10 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
       children: [
         DropdownButtonFormField<String>(
           initialValue: _type,
-          decoration: const InputDecoration(labelText: 'Type', filled: true),
-          items: const [
-            DropdownMenuItem(value: 'Income', child: Text('Income')),
-            DropdownMenuItem(value: 'Expense', child: Text('Expense')),
+          decoration: InputDecoration(labelText: tr('Type'), filled: true),
+          items: [
+            DropdownMenuItem(value: 'Income', child: Text(tr('Income'))),
+            DropdownMenuItem(value: 'Expense', child: Text(tr('Expense'))),
           ],
           onChanged: (v) {
             if (v == null) return;
@@ -1017,11 +1058,11 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
             });
           },
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         DropdownButtonFormField<String>(
           initialValue: _categories.contains(_category) ? _category : null,
           decoration:
-              const InputDecoration(labelText: 'Category', filled: true),
+              InputDecoration(labelText: tr('Category'), filled: true),
           items: _categories
               .map((c) => DropdownMenuItem(value: c, child: Text(c)))
               .toList(),
@@ -1032,17 +1073,17 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
             });
           },
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         DropdownButtonFormField<String>(
           initialValue: _subCategories.contains(_subCategory) ? _subCategory : null,
           decoration:
-              const InputDecoration(labelText: 'Sub-category', filled: true),
+              InputDecoration(labelText: tr('Sub-category'), filled: true),
           items: _subCategories
               .map((c) => DropdownMenuItem(value: c, child: Text(c)))
               .toList(),
           onChanged: (v) => setState(() => _subCategory = v),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         _field(
           'Amount',
           _amountCtrl,
@@ -1052,8 +1093,8 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
         InkWell(
           onTap: _pickDate,
           child: InputDecorator(
-            decoration: const InputDecoration(
-              labelText: 'Date',
+            decoration: InputDecoration(
+              labelText: tr('Date'),
               filled: true,
               prefixIcon: Icon(Icons.event_rounded),
             ),
@@ -1062,10 +1103,10 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
             ),
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         _field('Name', _nameCtrl),
         _field('Mobile', _mobileCtrl, keyboard: TextInputType.phone),
-        _field('Narration', _narrationCtrl, maxLines: 2),
+        _field('Narration (optional)', _narrationCtrl, maxLines: 2),
         _field('Village', _villageCtrl),
         _field('Post', _postCtrl),
         _field('Taluk', _talukCtrl),

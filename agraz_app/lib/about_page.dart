@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'l10n/app_l10n.dart';
 
 class AboutTeamPage extends StatelessWidget {
   const AboutTeamPage({super.key});
@@ -11,7 +12,7 @@ class AboutTeamPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('About Our Team'),
+        title: Text(tr('About Our Team')),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -19,33 +20,33 @@ class AboutTeamPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text(
+              Text(
                 'Meet Our Team',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               _buildTeamMember(
                 context,
                 'assets/images/vinayak.jpeg',
                 'Vinayak Hegde',
                 'Data Science graduate with an MBA and 21 years of experience in data science, the retail industry, and farmer engagement.',
               ),
-              const SizedBox(height: 30),
+              SizedBox(height: 30),
               _buildTeamMember(
                 context,
                 'assets/images/sudir.jpeg',
                 'Seetaram Hegde',
                 'Masters in Economics and MBA. Has 17 years of experience as a Data Scientist, proficient in AI/ML modeling.',
               ),
-              const SizedBox(height: 30),
+              SizedBox(height: 30),
               _buildTeamMember(
                 context,
                 'assets/images/narayan.jpg',
                 'Narayan Bhat',
                 'Masters in Data Science. Has 19 years of experience as a Data Scientist and in software development.',
               ),
-              const SizedBox(height: 20),
-              const Text(
+              SizedBox(height: 20),
+              Text(
                 'We work together to bring you the best experience!',
                 style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
                 textAlign: TextAlign.center,
@@ -79,12 +80,12 @@ class AboutTeamPage extends StatelessWidget {
                 fit: BoxFit.cover,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               name,
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               description,
               textAlign: TextAlign.center,

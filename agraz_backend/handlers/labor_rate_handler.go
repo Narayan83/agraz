@@ -17,12 +17,22 @@ func SetLaborRateDB(db *gorm.DB) {
 
 // GetLaborRates handles GET /api/labor_rates?mobile=&name=
 func GetLaborRates(c *fiber.Ctx) error {
-	q := laborRateDB.Model(&models.LaborRate{})
-	if m := strings.TrimSpace(c.Query("mobile")); m != "" {
-		q = q.Where("mobile = ?", m)
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
 	}
-	if n := strings.TrimSpace(c.Query("name")); n != "" {
-		q = q.Where("name ILIKE ?", "%"+n+"%")
+	q := scopeByUserID(laborRateDB.Model(&models.LaborRate{}), uid)
+	mobile := strings.TrimSpace(c.Query("mobile"))
+	name := strings.TrimSpace(c.Query("name"))
+	if mobile != "" {
+		q = q.Where("mobile = ?", mobile)
+		if name != "" {
+			q = q.Where("name ILIKE ?", "%"+name+"%")
+		}
+	} else if name != "" {
+		// Name-only lookups (no mobile on file) are scoped to the
+		// mobile-less rows so they don't collide with a real mobile's rates.
+		q = q.Where("mobile = ? AND name ILIKE ?", "", "%"+name+"%")
 	}
 	var rows []models.LaborRate
 	if err := q.Order("category ASC").Find(&rows).Error; err != nil {
@@ -33,6 +43,10 @@ func GetLaborRates(c *fiber.Ctx) error {
 
 // UpsertLaborRates handles PUT /api/labor_rates — body: { mobile, name, rates: [{category, rate}, ...] }
 func UpsertLaborRates(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
 	var body struct {
 		Mobile string `json:"mobile"`
 		Name   string `json:"name"`
@@ -45,14 +59,14 @@ func UpsertLaborRates(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid JSON body"})
 	}
 	mobile := strings.TrimSpace(body.Mobile)
-	if mobile == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "mobile is required"})
+	name := strings.TrimSpace(body.Name)
+	if mobile == "" && name == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "mobile or name is required"})
 	}
 	if len(body.Rates) == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "rates are required"})
 	}
 
-	name := strings.TrimSpace(body.Name)
 	out := make([]models.LaborRate, 0, len(body.Rates))
 	for _, item := range body.Rates {
 		cat := strings.TrimSpace(item.Category)
@@ -62,20 +76,47 @@ func UpsertLaborRates(c *fiber.Ctx) error {
 		if item.Rate < 0 {
 			return c.Status(400).JSON(fiber.Map{"error": "rate must be >= 0 for " + cat})
 		}
+
 		var row models.LaborRate
-		err := laborRateDB.Where("mobile = ? AND category = ?", mobile, cat).First(&row).Error
+		lookup := laborRateDB.Where("user_id = ? AND category = ?", uid, cat)
+		if mobile != "" {
+			lookup = lookup.Where("mobile = ?", mobile)
+		} else {
+			// No mobile on file — settings for this labourer live under the
+			// mobile-less row for this category, matched by name.
+			lookup = lookup.Where("mobile = ? AND name = ?", "", name)
+		}
+		err := lookup.First(&row).Error
 		if err != nil && err != gorm.ErrRecordNotFound {
 			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 		}
 		if err == gorm.ErrRecordNotFound {
 			row = models.LaborRate{
+				UserID:   uid,
 				Mobile:   mobile,
 				Name:     name,
 				Category: cat,
 				Rate:     decimal.NewFromFloat(item.Rate),
 			}
-			if err := laborRateDB.Create(&row).Error; err != nil {
-				return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+			if createErr := laborRateDB.Create(&row).Error; createErr != nil {
+				if mobile == "" {
+					// Unique (user_id, mobile, category) collision: another
+					// mobile-less labourer already has a setting for this
+					// category — reuse/overwrite that row instead of failing.
+					var existing models.LaborRate
+					if findErr := laborRateDB.Where(
+						"user_id = ? AND mobile = ? AND category = ?", uid, "", cat,
+					).First(&existing).Error; findErr == nil {
+						existing.Name = name
+						existing.Rate = decimal.NewFromFloat(item.Rate)
+						if saveErr := laborRateDB.Save(&existing).Error; saveErr != nil {
+							return c.Status(500).JSON(fiber.Map{"error": saveErr.Error()})
+						}
+						out = append(out, existing)
+						continue
+					}
+				}
+				return c.Status(500).JSON(fiber.Map{"error": createErr.Error()})
 			}
 		} else {
 			row.Rate = decimal.NewFromFloat(item.Rate)

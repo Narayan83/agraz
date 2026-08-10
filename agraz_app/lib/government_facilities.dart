@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'config.dart';
 import 'gov_facilities_service.dart';
+import 'l10n/app_l10n.dart';
 
 int _asInt(dynamic v) {
   if (v is int) return v;
@@ -158,13 +159,13 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Government Facilities'),
+        title: Text(tr('Government Facilities')),
         centerTitle: true,
         backgroundColor: green,
         foregroundColor: Colors.white,
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(
                   child: Padding(
@@ -173,10 +174,10 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: _loadLookups,
-                          child: const Text('Retry'),
+                          child: Text(tr('Retry')),
                         ),
                       ],
                     ),
@@ -191,9 +192,9 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
                     padding: const EdgeInsets.all(16),
                     children: [
                       _buildHeader(),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildBreadcrumb(),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       if (_selectedDept == null) ...[
                         _sectionTitle('Select department'),
                         ..._departments.map(
@@ -204,7 +205,7 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
                           ),
                         ),
                         if (_departments.isEmpty)
-                          const _EmptyHint(
+                          _EmptyHint(
                             'Yet there is no information available. Please check back later.',
                           ),
                       ] else if (_selectedCrop == null) ...[
@@ -217,7 +218,7 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
                           ),
                         ),
                         if (_crops.isEmpty)
-                          const _EmptyHint(
+                          _EmptyHint(
                             'Yet there is no information available. Please check back later.',
                           ),
                       ] else if (_selectedCategory == null) ...[
@@ -235,7 +236,7 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
                         ),
                         TextField(
                           decoration: InputDecoration(
-                            hintText: 'Search facilities…',
+                            hintText: tr('Search facilities…'),
                             prefixIcon: const Icon(Icons.search),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -248,14 +249,14 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
                           },
                           onChanged: (v) => _search = v,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         if (_loadingFacilities)
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.all(24),
                             child: Center(child: CircularProgressIndicator()),
                           )
                         else if (_facilities.isEmpty)
-                          const _EmptyHint(
+                          _EmptyHint(
                             'Yet there is no information available for this selection.',
                           )
                         else
@@ -318,8 +319,8 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
       child: Row(
         children: [
           Icon(Icons.account_balance, color: Colors.green[800], size: 40),
-          const SizedBox(width: 14),
-          const Expanded(
+          SizedBox(width: 14),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -353,7 +354,7 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
       }
       parts.add(
         ActionChip(
-          label: Text(label, style: const TextStyle(fontSize: 12)),
+          label: Text(label, style: TextStyle(fontSize: 12)),
           onPressed: onTap,
           visualDensity: VisualDensity.compact,
           backgroundColor: onTap == null ? Colors.green[100] : null,
@@ -410,7 +411,7 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
       ),
       child: ListTile(
         leading: Icon(icon, color: Colors.green[700]),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.w500)),
         trailing: Icon(Icons.chevron_right, color: Colors.green[700]),
         onTap: onTap,
       ),
@@ -433,7 +434,7 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
 
 class _EmptyHint extends StatelessWidget {
   final String text;
-  const _EmptyHint(this.text);
+  _EmptyHint(this.text);
 
   @override
   Widget build(BuildContext context) {
@@ -464,20 +465,20 @@ class GovFacilityDetailPage extends StatelessWidget {
   }
 
   Future<void> _openLink(BuildContext context, String raw) async {
-    final t = raw.trim();
-    if (t.isEmpty) return;
-    final url = resolveStoreMediaUrl(t);
+    final link = raw.trim();
+    if (link.isEmpty) return;
+    final url = resolveStoreMediaUrl(link);
     final uri = Uri.tryParse(url);
     if (uri == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid link')),
+        SnackBar(content: Text(tr('Invalid link'))),
       );
       return;
     }
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open link')),
+        SnackBar(content: Text(tr('Could not open link'))),
       );
     }
   }
@@ -509,7 +510,7 @@ class GovFacilityDetailPage extends StatelessWidget {
               color: Colors.green[900],
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           if ((facility['department'] is Map) || (facility['crop'] is Map))
             Text(
               [
@@ -520,13 +521,13 @@ class GovFacilityDetailPage extends StatelessWidget {
               ].where((e) => e != null && e.toString().isNotEmpty).join(' · '),
               style: TextStyle(color: Colors.grey[700]),
             ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _blockTitle('Description'),
           Text(
             description.isEmpty ? 'No description provided.' : description,
             style: const TextStyle(fontSize: 15, height: 1.45),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _blockTitle('Contact & location'),
           _infoRow(Icons.place, 'Place', facility['place']?.toString() ?? ''),
           _infoRow(
@@ -546,7 +547,7 @@ class GovFacilityDetailPage extends StatelessWidget {
             website.isEmpty ? '' : website,
             onTap: website.isEmpty ? null : () => _openLink(context, website),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _blockTitle('Availability'),
           _infoRow(
             Icons.date_range,
@@ -554,7 +555,7 @@ class GovFacilityDetailPage extends StatelessWidget {
             _fmtDate(facility['valid_from']),
           ),
           _infoRow(Icons.event, 'To', _fmtDate(facility['valid_to'])),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _blockTitle('Notes'),
           Text(
             (facility['notes']?.toString() ?? '').trim().isEmpty
@@ -562,7 +563,7 @@ class GovFacilityDetailPage extends StatelessWidget {
                 : facility['notes'].toString(),
             style: const TextStyle(fontSize: 15, height: 1.4),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           if (appUrl.trim().isNotEmpty)
             SizedBox(
               width: double.infinity,
@@ -574,14 +575,14 @@ class GovFacilityDetailPage extends StatelessWidget {
                 ),
                 onPressed: () => _openLink(context, appUrl),
                 icon: const Icon(Icons.download),
-                label: const Text('Download application form'),
+                label: Text(tr('Download application form')),
               ),
             )
           else
             OutlinedButton.icon(
               onPressed: null,
               icon: const Icon(Icons.download),
-              label: const Text('Application form not available'),
+              label: Text(tr('Application form not available')),
             ),
         ],
       ),

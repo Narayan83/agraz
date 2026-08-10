@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 
 import 'auth_token.dart';
 import 'config.dart';
+import 'l10n/app_l10n.dart';
+import 'l10n/locale_controller.dart';
 import 'reset_password_page.dart';
 import 'theme_controller.dart';
 
@@ -29,7 +31,7 @@ class _SettingsPageState extends State<SettingsPage> {
         return StatefulBuilder(
           builder: (ctx, setLocal) {
             return AlertDialog(
-              title: const Text('Change password'),
+              title: Text(tr('Change password')),
               content: Form(
                 key: formKey,
                 child: Column(
@@ -38,34 +40,34 @@ class _SettingsPageState extends State<SettingsPage> {
                     TextFormField(
                       controller: currentCtrl,
                       obscureText: obscure,
-                      decoration: const InputDecoration(
-                        labelText: 'Current password',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: tr('Current password'),
+                        border: const OutlineInputBorder(),
                       ),
                       validator: (v) =>
-                          (v == null || v.isEmpty) ? 'Required' : null,
+                          (v == null || v.isEmpty) ? tr('Required') : null,
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     TextFormField(
                       controller: newCtrl,
                       obscureText: obscure,
-                      decoration: const InputDecoration(
-                        labelText: 'New password',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: tr('New password'),
+                        border: const OutlineInputBorder(),
                       ),
                       validator: (v) {
                         if (v == null || v.length < 6) {
-                          return 'At least 6 characters';
+                          return tr('At least 6 characters');
                         }
                         return null;
                       },
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     TextFormField(
                       controller: confirmCtrl,
                       obscureText: obscure,
                       decoration: InputDecoration(
-                        labelText: 'Confirm new password',
+                        labelText: tr('Confirm new password'),
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
                           icon: Icon(obscure
@@ -75,7 +77,9 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                       validator: (v) {
-                        if (v != newCtrl.text) return 'Passwords do not match';
+                        if (v != newCtrl.text) {
+                          return tr('Passwords do not match');
+                        }
                         return null;
                       },
                     ),
@@ -85,7 +89,7 @@ class _SettingsPageState extends State<SettingsPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Cancel'),
+                  child: Text(tr('Cancel')),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -93,7 +97,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       Navigator.pop(ctx, true);
                     }
                   },
-                  child: const Text('Update'),
+                  child: Text(tr('Update')),
                 ),
               ],
             );
@@ -122,16 +126,16 @@ class _SettingsPageState extends State<SettingsPage> {
       if (!mounted) return;
       if (res.statusCode >= 200 && res.statusCode < 300) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Password updated successfully'),
+          SnackBar(
+            content: Text(tr('Password updated successfully')),
             backgroundColor: Colors.green,
           ),
         );
       } else {
         final body = jsonDecode(res.body);
         final msg = body is Map
-            ? (body['error'] ?? body['message'] ?? 'Failed')
-            : 'Failed';
+            ? (body['error'] ?? body['message'] ?? tr('Failed'))
+            : tr('Failed');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('$msg'), backgroundColor: Colors.red),
         );
@@ -139,7 +143,10 @@ class _SettingsPageState extends State<SettingsPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('${tr('Failed')}: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       currentCtrl.dispose();
@@ -152,7 +159,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await clearAuthToken();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Signed out')),
+      SnackBar(content: Text(tr('Signed out'))),
     );
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
@@ -161,21 +168,42 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final green = Colors.green[700]!;
     final theme = ThemeController.instance;
+    final locale = LocaleController.instance;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(tr('Settings')),
         backgroundColor: green,
         foregroundColor: Colors.white,
       ),
       body: ListenableBuilder(
-        listenable: theme,
+        listenable: Listenable.merge([theme, locale]),
         builder: (context, _) {
           return ListView(
             children: [
-              const _SectionHeader('Appearance'),
+              _SectionHeader(tr('Language')),
+              RadioListTile<String>(
+                title: Text(tr('English')),
+                secondary: const Icon(Icons.language),
+                value: 'en',
+                groupValue: locale.locale.languageCode,
+                onChanged: (v) {
+                  if (v != null) locale.setLanguageCode(v);
+                },
+              ),
+              RadioListTile<String>(
+                title: Text(tr('Kannada')),
+                secondary: const Icon(Icons.translate),
+                value: 'kn',
+                groupValue: locale.locale.languageCode,
+                onChanged: (v) {
+                  if (v != null) locale.setLanguageCode(v);
+                },
+              ),
+              const Divider(),
+              _SectionHeader(tr('Appearance')),
               RadioListTile<ThemeMode>(
-                title: const Text('Light mode'),
+                title: Text(tr('Light mode')),
                 secondary: const Icon(Icons.light_mode_outlined),
                 value: ThemeMode.light,
                 groupValue: theme.themeMode,
@@ -184,7 +212,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 },
               ),
               RadioListTile<ThemeMode>(
-                title: const Text('Dark mode'),
+                title: Text(tr('Dark mode')),
                 secondary: const Icon(Icons.dark_mode_outlined),
                 value: ThemeMode.dark,
                 groupValue: theme.themeMode,
@@ -193,7 +221,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 },
               ),
               RadioListTile<ThemeMode>(
-                title: const Text('System default'),
+                title: Text(tr('System default')),
                 secondary: const Icon(Icons.brightness_auto_outlined),
                 value: ThemeMode.system,
                 groupValue: theme.themeMode,
@@ -202,17 +230,17 @@ class _SettingsPageState extends State<SettingsPage> {
                 },
               ),
               const Divider(),
-              const _SectionHeader('Account'),
+              _SectionHeader(tr('Account')),
               ListTile(
                 leading: const Icon(Icons.lock_outline),
-                title: const Text('Change password'),
-                subtitle: const Text('Update password while signed in'),
+                title: Text(tr('Change password')),
+                subtitle: Text(tr('Update password while signed in')),
                 onTap: _changePassword,
               ),
               ListTile(
                 leading: const Icon(Icons.password_outlined),
-                title: const Text('Reset password'),
-                subtitle: const Text('Reset using email and phone'),
+                title: Text(tr('Reset password')),
+                subtitle: Text(tr('Reset using email and phone')),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -223,31 +251,31 @@ class _SettingsPageState extends State<SettingsPage> {
                 },
               ),
               const Divider(),
-              const _SectionHeader('Preferences'),
+              _SectionHeader(tr('Preferences')),
               SwitchListTile(
                 secondary: const Icon(Icons.notifications_outlined),
-                title: const Text('App notifications'),
-                subtitle: const Text('Reminders and updates (local preference)'),
+                title: Text(tr('App notifications')),
+                subtitle: Text(tr('Reminders and updates (local preference)')),
                 value: theme.notificationsEnabled,
                 onChanged: theme.setNotificationsEnabled,
               ),
               const Divider(),
-              const _SectionHeader('About'),
-              const ListTile(
-                leading: Icon(Icons.info_outline),
-                title: Text('AgRaz'),
-                subtitle: Text('Farmer services & marketplace'),
+              _SectionHeader(tr('About')),
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: Text(tr('AgRaz')),
+                subtitle: Text(tr('Farmer services & marketplace')),
               ),
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text(
-                  'Sign out',
-                  style: TextStyle(color: Colors.red),
+                title: Text(
+                  tr('Sign out'),
+                  style: const TextStyle(color: Colors.red),
                 ),
                 onTap: _logout,
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
             ],
           );
         },
@@ -258,7 +286,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
 class _SectionHeader extends StatelessWidget {
   final String text;
-  const _SectionHeader(this.text);
+  _SectionHeader(this.text);
 
   @override
   Widget build(BuildContext context) {

@@ -22,6 +22,7 @@ func SeedAll() {
 	SeedStorefrontBannerMenu()
 	SeedGovFacilities()
 	SeedMarketReports()
+	SeedIncomeExpenses()
 }
 
 func SeedEcomDefaults() {
@@ -195,6 +196,7 @@ func SeedAdminUser() {
 	// Create Super Admin User
 	hash, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
 
+	adminMobile := "9999999999"
 	admin := models.User{
 		TenantID:      1,
 		Firstname:     "System",
@@ -203,7 +205,9 @@ func SeedAdminUser() {
 		Password:      string(hash),
 		PlainPassword: "admin123",
 		Active:        true,
+		Approved:      true,
 		Usercode:      stringPtr("ADM001"),
+		MobileNumber:  &adminMobile,
 	}
 
 	if err := initializers.DB.Create(&admin).Error; err != nil {

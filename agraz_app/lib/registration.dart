@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'terms.dart';
 import 'config.dart';
 import 'app_theme.dart';
+import 'l10n/app_l10n.dart';
 
 /// Shows the create-account form as a modal bottom sheet. Returns true on success.
 Future<bool?> showRegistrationSheet(BuildContext context) {
@@ -80,7 +81,7 @@ class _RegistrationPageState extends State<RegistrationPage>
     );
     _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeIn);
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.12),
+      begin: Offset(0, 0.12),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
     _animCtrl.forward();
@@ -114,13 +115,13 @@ class _RegistrationPageState extends State<RegistrationPage>
     if (!_formKey.currentState!.validate()) return;
     if (!_termsAccepted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please accept terms and conditions')),
+        SnackBar(content: Text(tr('Please accept terms and conditions'))),
       );
       return;
     }
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Passwords do not match')),
+        SnackBar(content: Text(tr('Passwords do not match'))),
       );
       return;
     }
@@ -157,12 +158,12 @@ class _RegistrationPageState extends State<RegistrationPage>
           context: context,
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
-            title: const Text('Registration successful'),
+            title: Text(tr('Registration successful')),
             content: Text(msg),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK'),
+                child: Text(tr('OK')),
               ),
             ],
           ),
@@ -213,7 +214,7 @@ class _RegistrationPageState extends State<RegistrationPage>
         child: Column(
           children: [
             if (widget.asSheet) ...[
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Container(
                 width: 40,
                 height: 4,
@@ -222,12 +223,12 @@ class _RegistrationPageState extends State<RegistrationPage>
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
             ],
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   colors: AppColors.headerGradient,
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -259,7 +260,7 @@ class _RegistrationPageState extends State<RegistrationPage>
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Container(
                     width: 44,
                     height: 44,
@@ -273,8 +274,8 @@ class _RegistrationPageState extends State<RegistrationPage>
                       size: 22,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const Expanded(
+                  SizedBox(width: 12),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -322,8 +323,8 @@ class _RegistrationPageState extends State<RegistrationPage>
                             TextFormField(
                               controller: _firstnameController,
                               textCapitalization: TextCapitalization.words,
-                              decoration: const InputDecoration(
-                                labelText: 'First Name',
+                              decoration: InputDecoration(
+                                labelText: tr('First Name'),
                                 prefixIcon: Icon(Icons.person_outline_rounded),
                               ),
                               validator: (value) =>
@@ -331,12 +332,12 @@ class _RegistrationPageState extends State<RegistrationPage>
                                       ? 'First name is required'
                                       : null,
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             TextFormField(
                               controller: _lastnameController,
                               textCapitalization: TextCapitalization.words,
-                              decoration: const InputDecoration(
-                                labelText: 'Last Name',
+                              decoration: InputDecoration(
+                                labelText: tr('Last Name'),
                                 prefixIcon: Icon(Icons.person_outline_rounded),
                               ),
                               validator: (value) =>
@@ -344,12 +345,12 @@ class _RegistrationPageState extends State<RegistrationPage>
                                       ? 'Last name is required'
                                       : null,
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             TextFormField(
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
-                              decoration: const InputDecoration(
-                                labelText: 'Email',
+                              decoration: InputDecoration(
+                                labelText: tr('Email'),
                                 prefixIcon: Icon(Icons.email_outlined),
                               ),
                               validator: (value) {
@@ -362,15 +363,15 @@ class _RegistrationPageState extends State<RegistrationPage>
                                 return null;
                               },
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             _buildDatePicker(),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             IntlPhoneField(
                               controller: _contactNoController,
                               disableLengthCheck: true,
                               initialCountryCode: 'IN',
-                              decoration: const InputDecoration(
-                                labelText: 'Phone Number',
+                              decoration: InputDecoration(
+                                labelText: tr('Phone Number'),
                                 counterText: '',
                                 prefixIcon: Icon(Icons.phone_outlined),
                               ),
@@ -387,7 +388,7 @@ class _RegistrationPageState extends State<RegistrationPage>
                                 return null;
                               },
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             _buildPasswordField(
                               _passwordController,
                               'Password',
@@ -397,7 +398,7 @@ class _RegistrationPageState extends State<RegistrationPage>
                                 () => _obscurePassword = !_obscurePassword,
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             _buildPasswordField(
                               _confirmPasswordController,
                               'Confirm Password',
@@ -410,16 +411,16 @@ class _RegistrationPageState extends State<RegistrationPage>
                               ),
                               confirmPassword: true,
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             _buildTermsCheckbox(),
-                            const SizedBox(height: 20),
+                            SizedBox(height: 20),
                             PrimaryButton(
                               label: 'Create Account',
                               icon: Icons.person_add_alt_1_rounded,
                               onPressed: _isLoading ? null : _registerUser,
                               loading: _isLoading,
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -435,7 +436,7 @@ class _RegistrationPageState extends State<RegistrationPage>
                                       Navigator.pushNamed(context, "/login");
                                     }
                                   },
-                                  child: const Text(
+                                  child: Text(
                                     'Sign In',
                                     style: TextStyle(
                                       color: AppColors.primary,
@@ -511,8 +512,8 @@ class _RegistrationPageState extends State<RegistrationPage>
           });
         }
       },
-      decoration: const InputDecoration(
-        labelText: 'Date of Birth',
+      decoration: InputDecoration(
+        labelText: tr('Date of Birth'),
         prefixIcon: Icon(Icons.calendar_month_rounded),
       ),
       validator: (value) =>
@@ -537,7 +538,7 @@ class _RegistrationPageState extends State<RegistrationPage>
                 setState(() => _termsAccepted = value ?? false),
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Expanded(
           child: GestureDetector(
             onTap: _navigateToTermsPage,
@@ -547,7 +548,7 @@ class _RegistrationPageState extends State<RegistrationPage>
                 style: AppText.small,
                 children: [
                   TextSpan(
-                    text: 'Terms of Use & Privacy Policy',
+                    text: tr('Terms of Use & Privacy Policy'),
                     style: const TextStyle(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import 'l10n/locale_controller.dart';
 
 /// AgRaz design system — a modern, professional and cohesive look.
 ///
@@ -76,80 +79,112 @@ class AppColors {
 class AppText {
   AppText._();
 
-  static const TextStyle h1 = TextStyle(
+  static TextStyle _kn(TextStyle style) {
+    if (!LocaleController.instance.isKannada) return style;
+    return GoogleFonts.notoSansKannada(
+      textStyle: style.copyWith(height: (style.height ?? 1.3) + 0.12),
+    );
+  }
+
+  static TextStyle get h1 => _kn(const TextStyle(
     fontSize: 28,
     fontWeight: FontWeight.w800,
     height: 1.15,
     letterSpacing: -0.4,
     color: AppColors.textPrimary,
-  );
+  ));
 
-  static const TextStyle h2 = TextStyle(
+  static TextStyle get h2 => _kn(const TextStyle(
     fontSize: 22,
     fontWeight: FontWeight.w700,
     height: 1.2,
     letterSpacing: -0.2,
     color: AppColors.textPrimary,
-  );
+  ));
 
-  static const TextStyle h3 = TextStyle(
+  static TextStyle get h3 => _kn(const TextStyle(
     fontSize: 18,
     fontWeight: FontWeight.w700,
     height: 1.25,
     color: AppColors.textPrimary,
-  );
+  ));
 
-  static const TextStyle title = TextStyle(
+  static TextStyle get title => _kn(const TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.w700,
     height: 1.3,
     color: AppColors.textPrimary,
-  );
+  ));
 
-  static const TextStyle subtitle = TextStyle(
+  static TextStyle get subtitle => _kn(const TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.w500,
     height: 1.3,
     color: AppColors.textSecondary,
-  );
+  ));
 
-  static const TextStyle body = TextStyle(
+  static TextStyle get body => _kn(const TextStyle(
     fontSize: 14.5,
     fontWeight: FontWeight.w400,
     height: 1.5,
     color: AppColors.textSecondary,
-  );
+  ));
 
-  static const TextStyle bodyStrong = TextStyle(
+  static TextStyle get bodyStrong => _kn(const TextStyle(
     fontSize: 14.5,
     fontWeight: FontWeight.w600,
     height: 1.45,
     color: AppColors.textPrimary,
-  );
+  ));
 
-  static const TextStyle small = TextStyle(
+  static TextStyle get small => _kn(const TextStyle(
     fontSize: 12.5,
     fontWeight: FontWeight.w400,
     height: 1.35,
     color: AppColors.textSecondary,
-  );
+  ));
 
-  static const TextStyle label = TextStyle(
+  static TextStyle get label => _kn(const TextStyle(
     fontSize: 13,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
-  );
+  ));
 
-  static const TextStyle caption = TextStyle(
+  static TextStyle get caption => _kn(const TextStyle(
     fontSize: 11,
     fontWeight: FontWeight.w700,
     letterSpacing: 0.6,
     color: AppColors.textMuted,
-  );
+  ));
 }
 
 class AppTheme {
   AppTheme._();
+
+  static TextTheme _textThemeFor(TextTheme base) {
+    final isKn = LocaleController.instance.isKannada;
+    // Noto Sans Kannada avoids clipped / missing glyphs for KN UI.
+    TextStyle kn(TextStyle style) {
+      if (!isKn) return style;
+      return GoogleFonts.notoSansKannada(
+        textStyle: style.copyWith(height: (style.height ?? 1.3) + 0.15),
+      );
+    }
+
+    return base.copyWith(
+      displaySmall: kn(AppText.h1),
+      headlineMedium: kn(AppText.h2),
+      titleLarge: kn(AppText.h3),
+      titleMedium: kn(AppText.title),
+      bodyLarge: kn(AppText.body),
+      bodyMedium: kn(AppText.body),
+      labelLarge: kn(const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textPrimary,
+      )),
+    );
+  }
 
   static ThemeData get light {
     final ColorScheme scheme = ColorScheme.fromSeed(
@@ -174,30 +209,25 @@ class AppTheme {
 
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.background,
-      textTheme: base.textTheme.copyWith(
-        displaySmall: AppText.h1,
-        headlineMedium: AppText.h2,
-        titleLarge: AppText.h3,
-        titleMedium: AppText.title,
-        bodyLarge: AppText.body,
-        bodyMedium: AppText.body,
-        labelLarge: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-      ),
-      appBarTheme: const AppBarTheme(
+      textTheme: _textThemeFor(base.textTheme),
+      appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textPrimary,
-        ),
+        titleTextStyle: LocaleController.instance.isKannada
+            ? GoogleFonts.notoSansKannada(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+                height: 1.35,
+              )
+            : const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,

@@ -25,6 +25,13 @@ const String BASE_URL = String.fromEnvironment(
   defaultValue: 'https://agrazllp.com',
 );
 
+/// Fixed IP for [BASE_URL] host when emulator DNS fails (TCP still works).
+/// Override: `--dart-define=AGRaz_API_HOST_IP=88.222.242.192`
+const String apiHostIpOverride = String.fromEnvironment(
+  'AGRaz_API_HOST_IP',
+  defaultValue: '88.222.242.192',
+);
+
 /// Mirrors web `VITE_TENANT_ID` — sent as HTTP header `X-Tenant-ID` (marketplace / multi-tenant).
 const String TENANT_ID = String.fromEnvironment(
   'AGRaz_TENANT_ID',

@@ -5,6 +5,7 @@ import 'api_service.dart';
 import 'config.dart';
 import 'service_register.dart';
 import 'app_theme.dart';
+import 'l10n/app_l10n.dart';
 
 class ServiceListingPage extends StatefulWidget {
   const ServiceListingPage({super.key});
@@ -85,7 +86,7 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('General Services'),
+        title: Text(tr('General Services')),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
         flexibleSpace: Container(
@@ -100,12 +101,12 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
-            tooltip: 'Register Service',
+            tooltip: tr('Register Service'),
             onPressed: _openRegister,
           ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh',
+            tooltip: tr('Refresh'),
             onPressed: () => _load(q: _currentQuery()),
           ),
         ],
@@ -117,11 +118,11 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search services, place, category…',
+                hintText: tr('Search services, place, category…'),
                 prefixIcon: const Icon(Icons.search_rounded, size: 20),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.clear_rounded, size: 20),
-                  tooltip: 'Clear',
+                  tooltip: tr('Clear'),
                   onPressed: () {
                     _searchController.clear();
                     _load();
@@ -133,7 +134,7 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
           ),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(child: CircularProgressIndicator())
                 : _error != null
                     ? Center(
                         child: Padding(
@@ -142,10 +143,10 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(_error!, textAlign: TextAlign.center),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               ElevatedButton(
                                 onPressed: () => _load(q: _currentQuery()),
-                                child: const Text('Retry'),
+                                child: Text(tr('Retry')),
                               ),
                             ],
                           ),
@@ -157,13 +158,13 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
                           padding: const EdgeInsets.fromLTRB(0, 0, 0, 12),
                           children: [
                             if (mains.isEmpty)
-                              const Padding(
+                              Padding(
                                 padding: EdgeInsets.only(top: 60),
                                 child: EmptyState(
                                   icon: Icons.search_off_rounded,
-                                  title: 'No approved services yet',
+                                  title: tr('No approved services yet'),
                                   subtitle:
-                                      'Pull down to refresh or register a new service',
+                                      tr('Pull down to refresh or register a new service'),
                                 ),
                               )
                             else
@@ -190,7 +191,7 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
                   child: TextButton.icon(
                     onPressed: _openRegister,
                     icon: const Icon(Icons.add_business_rounded, size: 18),
-                    label: const Text('Register your Business or Service'),
+                    label: Text(tr('Register your Business or Service')),
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.primary,
                       backgroundColor: AppColors.primarySoft,
@@ -345,7 +346,7 @@ class _CategoryBlock extends StatelessWidget {
                 size: 19,
                 radius: 11,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Text(
                   mainCategory,
@@ -432,11 +433,11 @@ class _BusinessCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(provider.name, style: AppText.small),
                 if (provider.businessAddress != null &&
                     provider.businessAddress!.isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -445,7 +446,7 @@ class _BusinessCard extends StatelessWidget {
                         size: 15,
                         color: AppColors.textMuted,
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           provider.businessAddress!,
@@ -455,7 +456,7 @@ class _BusinessCard extends StatelessWidget {
                     ],
                   ),
                 ],
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Row(
                   children: [
                     Container(
@@ -467,7 +468,7 @@ class _BusinessCard extends StatelessWidget {
                         color: AppColors.infoSoft,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
                           Icon(Icons.phone_rounded, size: 14, color: AppColors.info),
                           SizedBox(width: 6),
@@ -486,7 +487,7 @@ class _BusinessCard extends StatelessWidget {
                     FilledButton.icon(
                       onPressed: _call,
                       icon: const Icon(Icons.call_rounded, size: 16),
-                      label: const Text('Call'),
+                      label: Text(tr('Call')),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,

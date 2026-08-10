@@ -1,6 +1,7 @@
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'l10n/app_l10n.dart';
 
 class FarmerEducationPage extends StatelessWidget {
   const FarmerEducationPage({super.key});
@@ -9,7 +10,7 @@ class FarmerEducationPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Arecanut Farming Guide'),
+        title: Text(tr('Arecanut Farming Guide')),
         centerTitle: true,
         backgroundColor: Colors.green[700],
       ),
@@ -19,14 +20,14 @@ class FarmerEducationPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _buildCategorySection(context, 'Nursery & Planting', Icons.spa, [
               'Areca plant nursery guide',
               'How to plant arecanut',
               'How to start a new plantation',
               'Spacing and soil requirements',
             ]),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _buildCategorySection(
               context,
               'Processing Methods',
@@ -38,14 +39,14 @@ class FarmerEducationPage extends StatelessWidget {
                 'Traditional vs modern processing',
               ],
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _buildCategorySection(context, 'Pest & Disease', Icons.bug_report, [
               'Common areca pests',
               'Arecanut disease management',
               'Organic control methods',
               'Red palm weevil control',
             ]),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _buildCategorySection(context, 'Harvesting', Icons.forest, [
               'When to harvest arecanut',
               'Proper harvesting techniques',
@@ -83,7 +84,7 @@ class FarmerEducationPage extends StatelessWidget {
               filterQuality: FilterQuality.high,
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,8 +97,8 @@ class FarmerEducationPage extends StatelessWidget {
                     color: Colors.green[900],
                   ),
                 ),
-                const SizedBox(height: 4),
-                const Text(
+                SizedBox(height: 4),
+                Text(
                   'Complete guide for areca nut cultivation, processing and marketing',
                   style: TextStyle(fontSize: 14),
                 ),
@@ -121,7 +122,7 @@ class FarmerEducationPage extends StatelessWidget {
         Row(
           children: [
             Icon(icon, color: Colors.green[700], size: 28),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(
               title,
               style: TextStyle(
@@ -132,7 +133,7 @@ class FarmerEducationPage extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         ...topics.map((topic) => _buildArticleCard(context, topic)),
       ],
     );
@@ -148,7 +149,7 @@ class FarmerEducationPage extends StatelessWidget {
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        title: Text(title, style: const TextStyle(fontSize: 16)),
+        title: Text(title, style: TextStyle(fontSize: 16)),
         trailing: Icon(Icons.chevron_right, color: Colors.green[700]),
         onTap: () {
           _navigateToArticle(context, title);
@@ -210,7 +211,7 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
             showControlsOnInitialize: false,
             hideControlsTimer: const Duration(seconds: 3),
             aspectRatio: _videoController!.value.aspectRatio,
-            placeholder: const Center(
+            placeholder: Center(
               child: CircularProgressIndicator(),
             ),
           );
@@ -241,7 +242,7 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
           children: [
             if (_videoUrl != null) ...[
               _buildVideoSection(),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
             ],
             Text(
               _getArticleContent(widget.title),
@@ -256,7 +257,7 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
   Widget _buildVideoSection() {
     final chewie = _chewieController;
     if (chewie == null || _videoController == null) {
-      return const Center(
+      return Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 24),
           child: CircularProgressIndicator(),

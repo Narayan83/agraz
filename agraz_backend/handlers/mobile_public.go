@@ -125,31 +125,31 @@ func MobileRegisterUser(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "password hash failed"})
 	}
 	phone := strings.TrimSpace(body.Phone)
-	var mobilePtr *string
-	if phone != "" {
-		mobilePtr = &phone
+	phone = strings.TrimLeft(phone, "+")
+	if phone == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "phone is required"})
+	}
+	tid := tenantIDFromCtx(c)
+	var existing models.User
+	if err := userDB.Where("mobile_number = ? AND tenant_id = ?", phone, tid).First(&existing).Error; err == nil {
+		return c.Status(409).JSON(fiber.Map{"error": "This mobile number is already registered"})
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to validate mobile number", "details": err.Error()})
 	}
 	user := models.User{
-		TenantID:      tenantIDFromCtx(c),
+		TenantID:      tid,
 		Firstname:     strings.TrimSpace(body.Firstname),
 		Lastname:      strings.TrimSpace(body.Lastname),
 		Email:         strings.TrimSpace(body.Email),
 		Password:      string(hash),
 		PlainPassword: body.Password,
 		Active:        true,
-		Approved:      false, // admin must verify before login
-		MobileNumber:  mobilePtr,
+		Approved:      true, // auto-approved on registration; can log in immediately
+		MobileNumber:  &phone,
 	}
-	// Select required: GORM skips false bools as zero-values and would apply DB default true.
-	if err := userDB.Select(
-		"TenantID", "Firstname", "Lastname", "Email", "Password", "PlainPassword",
-		"Active", "Approved", "MobileNumber",
-	).Create(&user).Error; err != nil {
+	if err := userDB.Create(&user).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create user", "details": err.Error()})
 	}
-	// Belt-and-suspenders: force pending approval even if defaults change.
-	_ = userDB.Model(&user).Update("approved", false).Error
-	user.Approved = false
 	var role models.Role
 	if err := userDB.Where("role_name = ?", "User").First(&role).Error; err == nil {
 		_ = userDB.Create(&models.UserRoleMapping{UserID: user.ID, RoleID: role.ID}).Error
@@ -157,15 +157,22 @@ func MobileRegisterUser(c *fiber.Ctx) error {
 	user.Password = ""
 	user.PlainPassword = ""
 	return c.Status(201).JSON(fiber.Map{
-		"message":  "Registration successful. You are in cooling period. Please wait for approval.",
-		"code":     "cooling_period",
-		"approved": false,
+		"message":  "Registration successful. You can log in now.",
+		"code":     "approved",
+		"approved": true,
 		"user":     user,
 	})
 }
 
 // CreateIncomeExpenseMobile handles POST /api/income_expense (camelCase body from Flutter).
 func CreateIncomeExpenseMobile(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error":   "Login required",
+			"message": "Login required",
+		})
+	}
 	var raw map[string]interface{}
 	if err := json.Unmarshal(c.Body(), &raw); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid JSON", "details": err.Error()})
@@ -223,6 +230,7 @@ func CreateIncomeExpenseMobile(c *fiber.Ctx) error {
 	pin := strFromAny(raw["pincode"])
 	amt := decimal.NewFromFloat(amtF)
 	row := models.IncomeExpense{
+		UserID:      uid,
 		Type:        typeStr,
 		Category:    strings.TrimSpace(cat),
 		SubCategory: strings.TrimSpace(sub),
@@ -260,8 +268,13 @@ func CreateIncomeExpenseMobile(c *fiber.Ctx) error {
 
 // UpdateIncomeExpenseMobile handles PUT /api/income_expense/:id (camelCase body from Flutter).
 func UpdateIncomeExpenseMobile(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
 	var row models.IncomeExpense
-	if err := incomeExpenseDB.First(&row, c.Params("id")).Error; err != nil {
+	if err := scopeByUserID(incomeExpenseDB.Model(&models.IncomeExpense{}), uid).
+		First(&row, c.Params("id")).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Record not found"})
 	}
 	var raw map[string]interface{}
@@ -408,13 +421,17 @@ func strFromAny(v interface{}) string {
 
 // GetIncomeExpenseSummaryPublic handles GET /api/income_expense/summary
 func GetIncomeExpenseSummaryPublic(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
 	type sumRow struct {
 		Type        string  `json:"type"`
 		TotalAmount float64 `gorm:"column:total_amount"`
 		Count       int64   `gorm:"column:count"`
 	}
 	var rows []sumRow
-	if err := incomeExpenseDB.Model(&models.IncomeExpense{}).
+	if err := scopeByUserID(incomeExpenseDB.Model(&models.IncomeExpense{}), uid).
 		Select("type, SUM(amount)::float8 as total_amount, COUNT(*) as count").
 		Group("type").
 		Scan(&rows).Error; err != nil {
@@ -433,6 +450,10 @@ func GetIncomeExpenseSummaryPublic(c *fiber.Ctx) error {
 
 // GetIncomeExpensesByMobilePublic handles GET /api/income_expense/mobile/:mobile
 func GetIncomeExpensesByMobilePublic(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
 	mobile := c.Params("mobile")
 	page := c.QueryInt("page", 1)
 	limit := c.QueryInt("limit", 10)
@@ -442,7 +463,7 @@ func GetIncomeExpensesByMobilePublic(c *fiber.Ctx) error {
 	offset := (page - 1) * limit
 	var rows []models.IncomeExpense
 	var total int64
-	q := incomeExpenseDB.Model(&models.IncomeExpense{}).Where("mobile = ?", mobile)
+	q := scopeByUserID(incomeExpenseDB.Model(&models.IncomeExpense{}), uid).Where("mobile = ?", mobile)
 	if err := q.Count(&total).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -455,6 +476,10 @@ func GetIncomeExpensesByMobilePublic(c *fiber.Ctx) error {
 // GetPartyBalancePublic handles GET /api/income_expense/balance/:mobile
 // Balance = Income - Expense. Positive => credit (party paid us more), negative => debit.
 func GetPartyBalancePublic(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
 	mobile := strings.TrimSpace(c.Params("mobile"))
 	if mobile == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "mobile is required"})
@@ -464,7 +489,7 @@ func GetPartyBalancePublic(c *fiber.Ctx) error {
 		TotalAmount float64 `gorm:"column:total_amount"`
 	}
 	var rows []sumRow
-	if err := incomeExpenseDB.Model(&models.IncomeExpense{}).
+	if err := scopeByUserID(incomeExpenseDB.Model(&models.IncomeExpense{}), uid).
 		Select("type, COALESCE(SUM(amount),0)::float8 as total_amount").
 		Where("mobile = ?", mobile).
 		Group("type").

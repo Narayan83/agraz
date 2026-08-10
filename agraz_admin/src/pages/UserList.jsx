@@ -127,6 +127,7 @@ const UserList = () => {
         fetchUsers();
       } catch (err) {
         console.error("Error deleting user:", err);
+        alert(err.response?.data?.error || err.response?.data?.details || "Failed to delete user");
       }
     }
   };
