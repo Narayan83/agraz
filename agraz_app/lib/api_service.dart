@@ -356,6 +356,8 @@ class ApiService {
     String? q,
     String? from,
     String? to,
+    String? category,
+    String? entryKind,
     int limit = 100,
   }) async {
     try {
@@ -367,6 +369,8 @@ class ApiService {
           if (q != null && q.isNotEmpty) 'q': q,
           if (from != null && from.isNotEmpty) 'from': from,
           if (to != null && to.isNotEmpty) 'to': to,
+          if (category != null && category.isNotEmpty) 'category': category,
+          if (entryKind != null && entryKind.isNotEmpty) 'entry_kind': entryKind,
         },
       );
       final headers = await authGetHeaders();
@@ -383,6 +387,34 @@ class ApiService {
     } catch (e) {
       print('Error fetching labors: $e');
       return [];
+    }
+  }
+
+  /// Payable / paid / balance / receivable for one labourer.
+  /// GET /api/labors/balance?name=&mobile=
+  Future<Map<String, dynamic>?> fetchLaborBalance({
+    String? name,
+    String? mobile,
+  }) async {
+    try {
+      final n = name?.trim() ?? '';
+      final m = mobile?.trim() ?? '';
+      if (n.isEmpty && m.isEmpty) return null;
+      final uri = Uri.parse('$BASE_URL/api/labors/balance').replace(
+        queryParameters: {
+          if (m.isNotEmpty) 'mobile': m,
+          if (n.isNotEmpty) 'name': n,
+        },
+      );
+      final headers = await authGetHeaders();
+      final response = await http.get(uri, headers: headers);
+      if (response.statusCode != 200) return null;
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return null;
+    } catch (e) {
+      print('Error fetching labor balance: $e');
+      return null;
     }
   }
 
@@ -631,5 +663,305 @@ class ApiService {
       print('Error saving labor rates: $e');
       return false;
     }
+  }
+
+  /// POST /api/feedbacks
+  Future<Map<String, dynamic>> createFeedback({
+    required String subject,
+    required String message,
+    String menu = '',
+  }) async {
+    final headers = await authJsonHeaders();
+    final response = await http.post(
+      Uri.parse('$BASE_URL/api/feedbacks'),
+      headers: headers,
+      body: jsonEncode({
+        'subject': subject,
+        'message': message,
+        'menu': menu,
+      }),
+    );
+    final decoded =
+        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return {'success': true};
+    }
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to submit feedback'),
+    );
+  }
+
+  /// GET /api/feedbacks — current user's feedbacks.
+  Future<List<Map<String, dynamic>>> fetchMyFeedbacks({
+    int page = 1,
+    int limit = 50,
+  }) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/feedbacks').replace(
+      queryParameters: {
+        'page': page.toString(),
+        'limit': limit.toString(),
+      },
+    );
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load feedback (${response.statusCode})');
+    }
+    return _feedbackListFromBody(response.body);
+  }
+
+  /// GET /api/feedbacks/all
+  Future<List<Map<String, dynamic>>> fetchAllFeedbacks({
+    int page = 1,
+    int limit = 50,
+  }) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/feedbacks/all').replace(
+      queryParameters: {
+        'page': page.toString(),
+        'limit': limit.toString(),
+      },
+    );
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load feedback (${response.statusCode})');
+    }
+    return _feedbackListFromBody(response.body);
+  }
+
+  /// GET /api/app_contents
+  Future<List<Map<String, dynamic>>> fetchAppContents() async {
+    final headers = await authGetHeaders();
+    final response = await http.get(
+      Uri.parse('$BASE_URL/api/app_contents'),
+      headers: headers,
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load app contents (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    final list = decoded is Map
+        ? (decoded['data'] as List? ?? [])
+        : (decoded as List? ?? []);
+    return list
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
+  List<Map<String, dynamic>> _feedbackListFromBody(String body) {
+    final decoded = jsonDecode(body);
+    if (decoded is Map && decoded['data'] is List) {
+      return (decoded['data'] as List)
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+    if (decoded is List) {
+      return decoded
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> fetchOrganizations() async {
+    final headers = await authGetHeaders();
+    final response = await http.get(
+      Uri.parse('$BASE_URL/api/organizations'),
+      headers: headers,
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load organizations (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    final list = decoded is Map ? (decoded['data'] as List? ?? []) : [];
+    return list.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
+  Future<Map<String, dynamic>> createOrganization(String name) async {
+    final headers = await authJsonHeaders();
+    final response = await http.post(
+      Uri.parse('$BASE_URL/api/organizations'),
+      headers: headers,
+      body: jsonEncode({'name': name}),
+    );
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return Map<String, dynamic>.from(decoded is Map ? (decoded['data'] ?? decoded) : {});
+    }
+    throw Exception(_apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to create organization'));
+  }
+
+  Future<Map<String, dynamic>> updateOrganization(int id, String name) async {
+    final headers = await authJsonHeaders();
+    final response = await http.put(
+      Uri.parse('$BASE_URL/api/organizations/$id'),
+      headers: headers,
+      body: jsonEncode({'name': name}),
+    );
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(decoded is Map ? (decoded['data'] ?? decoded) : {});
+    }
+    throw Exception(_apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to update organization'));
+  }
+
+  Future<bool> deleteOrganization(int id) async {
+    final headers = await authGetHeaders();
+    final response = await http.delete(
+      Uri.parse('$BASE_URL/api/organizations/$id'),
+      headers: headers,
+    );
+    if (response.statusCode == 200 || response.statusCode == 204) return true;
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    throw Exception(_apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to delete organization'));
+  }
+
+  Future<List<Map<String, dynamic>>> fetchOrgLedgers() async {
+    final headers = await authGetHeaders();
+    final response = await http.get(
+      Uri.parse('$BASE_URL/api/org_ledgers'),
+      headers: headers,
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load ledgers (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    final list = decoded is Map ? (decoded['data'] as List? ?? []) : [];
+    return list.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
+  Future<Map<String, dynamic>> createOrgLedger(String name) async {
+    final headers = await authJsonHeaders();
+    final response = await http.post(
+      Uri.parse('$BASE_URL/api/org_ledgers'),
+      headers: headers,
+      body: jsonEncode({'name': name}),
+    );
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return Map<String, dynamic>.from(decoded is Map ? (decoded['data'] ?? decoded) : {});
+    }
+    throw Exception(_apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to create ledger'));
+  }
+
+  Future<Map<String, dynamic>> updateOrgLedger(int id, String name) async {
+    final headers = await authJsonHeaders();
+    final response = await http.put(
+      Uri.parse('$BASE_URL/api/org_ledgers/$id'),
+      headers: headers,
+      body: jsonEncode({'name': name}),
+    );
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(decoded is Map ? (decoded['data'] ?? decoded) : {});
+    }
+    throw Exception(_apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to update ledger'));
+  }
+
+  Future<bool> deleteOrgLedger(int id) async {
+    final headers = await authGetHeaders();
+    final response = await http.delete(
+      Uri.parse('$BASE_URL/api/org_ledgers/$id'),
+      headers: headers,
+    );
+    if (response.statusCode == 200 || response.statusCode == 204) return true;
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    throw Exception(_apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to delete ledger'));
+  }
+
+  Future<Map<String, dynamic>> fetchOrgSummary({int? organizationId}) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/org_transactions/summary').replace(
+      queryParameters: {
+        if (organizationId != null) 'organization_id': organizationId.toString(),
+      },
+    );
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load summary (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    return decoded is Map ? Map<String, dynamic>.from(decoded) : {};
+  }
+
+  Future<Map<String, dynamic>> fetchOrgReports({
+    int? organizationId,
+    int? ledgerId,
+    String? from,
+    String? to,
+  }) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/org_transactions/reports').replace(
+      queryParameters: {
+        if (organizationId != null) 'organization_id': organizationId.toString(),
+        if (ledgerId != null) 'ledger_id': ledgerId.toString(),
+        if (from != null && from.isNotEmpty) 'from': from,
+        if (to != null && to.isNotEmpty) 'to': to,
+      },
+    );
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load reports (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    return decoded is Map ? Map<String, dynamic>.from(decoded) : {};
+  }
+
+  Future<Map<String, dynamic>> fetchOrgTransactions({
+    int page = 1,
+    int limit = 20,
+    int? organizationId,
+    int? ledgerId,
+    String? type,
+    String? from,
+    String? to,
+  }) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/org_transactions').replace(
+      queryParameters: {
+        'page': page.toString(),
+        'limit': limit.toString(),
+        if (organizationId != null) 'organization_id': organizationId.toString(),
+        if (ledgerId != null) 'ledger_id': ledgerId.toString(),
+        if (type != null && type.isNotEmpty) 'type': type,
+        if (from != null && from.isNotEmpty) 'from': from,
+        if (to != null && to.isNotEmpty) 'to': to,
+      },
+    );
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load transactions (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    return decoded is Map ? Map<String, dynamic>.from(decoded) : {'data': [], 'total': 0};
+  }
+
+  Future<Map<String, dynamic>> createOrgTransaction(Map<String, dynamic> body) async {
+    final headers = await authJsonHeaders();
+    final response = await http.post(
+      Uri.parse('$BASE_URL/api/org_transactions'),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : {};
+    }
+    throw Exception(_apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to create transaction'));
+  }
+
+  Future<bool> deleteOrgTransaction(int id) async {
+    final headers = await authGetHeaders();
+    final response = await http.delete(
+      Uri.parse('$BASE_URL/api/org_transactions/$id'),
+      headers: headers,
+    );
+    if (response.statusCode == 200 || response.statusCode == 204) return true;
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    throw Exception(_apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to delete transaction'));
   }
 }

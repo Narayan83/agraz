@@ -4,6 +4,7 @@ import 'profile_page.dart';
 import 'settings_page.dart';
 import 'about_page.dart';
 import 'income_expense.dart';
+import 'manage_organization.dart';
 import 'services.dart';
 import 'labour.dart';
 import 'marke_report.dart';
@@ -14,6 +15,8 @@ import 'auth_token.dart';
 import 'login.dart';
 import 'welcome_screen.dart';
 import 'app_theme.dart';
+import 'feedback_fab.dart';
+import 'feedback_page.dart';
 import 'l10n/app_l10n.dart';
 import 'l10n/locale_controller.dart';
 
@@ -172,23 +175,27 @@ class _MainPageState extends State<MainPage> {
           ),
         ),
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline_rounded),
-            tooltip: tr('About Team'),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AboutTeamPage()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_rounded),
-            tooltip: tr('Settings'),
-            onPressed: () => _openProtected(const SettingsPage()),
-          ),
-        ],
+        actions: withFeedbackAction(
+          context,
+          menu: 'home',
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.info_outline_rounded),
+              tooltip: tr('About Team'),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AboutTeamPage()),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.settings_rounded),
+              tooltip: tr('Settings'),
+              onPressed: () => _openProtected(const SettingsPage()),
+            ),
+          ],
+        ),
       ),
       drawer: _buildDrawer(),
       floatingActionButton: FloatingActionButton(
@@ -203,12 +210,13 @@ class _MainPageState extends State<MainPage> {
           children: [
             // --- Hero Section (Image Slider) ---
             _buildHero(),
+            _buildQuickShortcuts(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height: 24),
+                  SizedBox(height: 16),
                   // --- What is AgRaz? ---
                   _buildAboutCard(),
                   SizedBox(height: 28),
@@ -299,6 +307,15 @@ class _MainPageState extends State<MainPage> {
                     ),
                   ),
                   _drawerTile(
+                    Icons.business_rounded,
+                    tr('Manage Organization'),
+                    AppColors.primaryLight,
+                    () => _openModule(
+                      const ManageOrganizationPage(),
+                      closeDrawer: true,
+                    ),
+                  ),
+                  _drawerTile(
                     Icons.engineering_rounded,
                     tr('Labour Management'),
                     AppColors.warning,
@@ -346,6 +363,15 @@ class _MainPageState extends State<MainPage> {
                     AppColors.info,
                     () => _openModule(
                       const GovernmentFacilitiesPage(),
+                      closeDrawer: true,
+                    ),
+                  ),
+                  _drawerTile(
+                    Icons.feedback_outlined,
+                    tr('Feedback'),
+                    AppColors.accent,
+                    () => _openModule(
+                      const FeedbackPage(initialMenu: 'home'),
                       closeDrawer: true,
                     ),
                   ),
@@ -665,6 +691,113 @@ class _MainPageState extends State<MainPage> {
   /* ------------------------------------------------------------------ */
   /*  Home sections                                                     */
   /* ------------------------------------------------------------------ */
+
+  Widget _buildQuickShortcuts() {
+    final items = <({IconData icon, String label, Color color, VoidCallback open})>[
+      (
+        icon: Icons.account_balance_wallet_rounded,
+        label: tr('Income & Expense'),
+        color: AppColors.income,
+        open: () => _openModule(const IncomeExpensePage()),
+      ),
+      (
+        icon: Icons.business_rounded,
+        label: tr('Organizations'),
+        color: AppColors.primaryLight,
+        open: () => _openModule(const ManageOrganizationPage()),
+      ),
+      (
+        icon: Icons.engineering_rounded,
+        label: tr('Labour'),
+        color: AppColors.warning,
+        open: () => _openModule(const LaborManagementPage()),
+      ),
+      (
+        icon: Icons.trending_up_rounded,
+        label: tr('Market'),
+        color: AppColors.info,
+        open: () => _openModule(const RatesComparisonPage()),
+      ),
+      (
+        icon: Icons.miscellaneous_services_rounded,
+        label: tr('Services'),
+        color: AppColors.expense,
+        open: () => _openModule(const ServiceListingPage()),
+      ),
+      (
+        icon: Icons.store_rounded,
+        label: tr('Buy & Sell'),
+        color: AppColors.primaryLight,
+        open: () => _openModule(const BuySellApp()),
+      ),
+      (
+        icon: Icons.menu_book_rounded,
+        label: tr('Education'),
+        color: AppColors.accent,
+        open: () => _openModule(const FarmerEducationPage()),
+      ),
+      (
+        icon: Icons.account_balance_rounded,
+        label: tr('Govt'),
+        color: AppColors.info,
+        open: () => _openModule(const GovernmentFacilitiesPage()),
+      ),
+      (
+        icon: Icons.feedback_outlined,
+        label: tr('Feedback'),
+        color: AppColors.primary,
+        open: () => _openModule(const FeedbackPage(initialMenu: 'home')),
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
+      child: SizedBox(
+        height: 86,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 10),
+          itemBuilder: (context, i) {
+            final item = items[i];
+            return InkWell(
+              onTap: item.open,
+              borderRadius: BorderRadius.circular(14),
+              child: SizedBox(
+                width: 72,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: item.color.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(item.icon, color: item.color, size: 24),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      item.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 
   Widget _buildHero() {
     return SizedBox(

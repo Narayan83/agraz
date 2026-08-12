@@ -545,4 +545,55 @@ export const deleteAdminMarketQuantity = async (id) => (await api.delete(`/admin
 
 export const getAdminMarketAnalytics = async (params = {}) => (await api.get('/admin/market/analytics', { params })).data;
 
+// Admin feedback
+export const getAdminFeedbacks = async (params = {}) => {
+  const response = await api.get('/admin/feedbacks', { params });
+  return response.data;
+};
+export const setAdminFeedbackVerified = async (id, verified) => {
+  const response = await api.patch(`/admin/feedbacks/${id}/verify`, { verified: Boolean(verified) });
+  return response.data;
+};
+
+// Admin entry analytics
+export const getAdminEntryAnalytics = async (params = {}) => {
+  const response = await api.get('/admin/entry-analytics', { params });
+  return response.data;
+};
+export const getAdminEntryAnalyticsEntries = async (params = {}) => {
+  const response = await api.get('/admin/entry-analytics/entries', { params });
+  return response.data;
+};
+
+export const getAdminOrganizations = async (params = {}) => {
+  const response = await api.get('/admin/organizations', { params });
+  return response.data;
+};
+export const getAdminOrgLedgers = async (params = {}) => {
+  const response = await api.get('/admin/org_ledgers', { params });
+  return response.data;
+};
+export const getAdminOrgTransactions = async (params = {}) => {
+  const response = await api.get('/admin/org_transactions', { params });
+  return response.data;
+};
+
+// Admin app contents (CMS)
+export const getAdminAppContents = async (params = {}) => {
+  const response = await api.get('/admin/app_contents', { params });
+  return response.data;
+};
+export const createAdminAppContent = async (data) => {
+  const response = await api.post('/admin/app_contents', data);
+  return response.data;
+};
+export const updateAdminAppContent = async (id, data) => {
+  const response = await api.put(`/admin/app_contents/${id}`, data);
+  return response.data;
+};
+export const deleteAdminAppContent = async (id) => {
+  const response = await api.delete(`/admin/app_contents/${id}`);
+  return response.data;
+};
+
 export default api;

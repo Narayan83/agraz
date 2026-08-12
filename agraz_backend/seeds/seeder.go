@@ -19,6 +19,8 @@ func SeedAll() {
 	SeedRoles()
 	SeedAdminUser()
 	SeedMenus()
+	SeedToolsMenus()
+	SeedAppContents()
 	SeedStorefrontBannerMenu()
 	SeedGovFacilities()
 	SeedMarketReports()

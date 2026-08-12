@@ -5,7 +5,25 @@ import 'package:intl/intl.dart';
 
 import 'api_service.dart';
 import 'app_theme.dart';
+import 'feedback_fab.dart';
+import 'labor_categories.dart';
+import 'labour_export.dart';
 import 'l10n/app_l10n.dart';
+
+(double payable, double receivable) _outstandingFromTotals(
+  dynamic totalPayable,
+  dynamic totalPaid, {
+  dynamic balance,
+}) {
+  double n(dynamic v) {
+    if (v == null) return 0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0;
+  }
+
+  final bal = balance != null ? n(balance) : n(totalPayable) - n(totalPaid);
+  return (bal > 0 ? bal : 0, bal < 0 ? -bal : 0);
+}
 
 /// Searchable labourer directory + per-labour schedule summary.
 class LabourSummaryPage extends StatefulWidget {
@@ -106,10 +124,20 @@ class _LabourSummaryPageState extends State<LabourSummaryPage> {
               icon: Icons.badge_rounded,
               title: tr('Labour Summary'),
               subtitle: tr('Search & schedule by labourer'),
-              trailing: IconButton(
-                tooltip: tr('Refresh'),
-                onPressed: () => _load(q: _searchCtrl.text.trim()),
-                icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: withFeedbackAction(
+                  context,
+                  menu: 'labour_summary',
+                  actions: [
+                    IconButton(
+                      tooltip: tr('Refresh'),
+                      onPressed: () => _load(q: _searchCtrl.text.trim()),
+                      icon: const Icon(Icons.refresh_rounded,
+                          color: Colors.white),
+                    ),
+                  ],
+                ),
               ),
             ),
             Padding(
@@ -155,6 +183,45 @@ class _LabourSummaryPageState extends State<LabourSummaryPage> {
                 ),
               ),
             ),
+            if (!_loading && _people.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                child: Builder(builder: (_) {
+                  double sumPay = 0, sumRec = 0;
+                  for (final p in _people) {
+                    final o = _outstandingFromTotals(
+                      p['total_payable'],
+                      p['total_paid'],
+                      balance: p['balance'],
+                    );
+                    sumPay += o.$1;
+                    sumRec += o.$2;
+                  }
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${tr('Total Payable')}: ${_money(sumPay)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.income,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          '${tr('Total Receivable')}: ${_money(sumRec)}',
+                          textAlign: TextAlign.end,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.info,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+              ),
             SizedBox(height: 6),
             Expanded(
               child: _loading
@@ -260,13 +327,35 @@ class _LabourSummaryPageState extends State<LabourSummaryPage> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.end,
                                           children: [
-                                            Text(
-                                              _money(p['total_cost']),
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w800,
-                                                color: AppColors.primary,
-                                              ),
-                                            ),
+                                            Builder(builder: (_) {
+                                              final o = _outstandingFromTotals(
+                                                p['total_payable'],
+                                                p['total_paid'],
+                                                balance: p['balance'],
+                                              );
+                                              return Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.end,
+                                                children: [
+                                                  Text(
+                                                    '${tr('Payable')} ${_money(o.$1)}',
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.w700,
+                                                      fontSize: 12,
+                                                      color: AppColors.income,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    '${tr('Receivable')} ${_money(o.$2)}',
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.w700,
+                                                      fontSize: 12,
+                                                      color: AppColors.info,
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            }),
                                             const Icon(
                                               Icons.chevron_right_rounded,
                                               color: AppColors.textMuted,
@@ -308,16 +397,28 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
   late TabController _tabs;
 
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  DateTime? _fromDate;
+  DateTime? _toDate;
+  String _period = 'Monthly'; // Monthly | Weekly | Custom
+  String? _filterCategory;
+  List<String> _categories = List<String>.from(kLaborWorkCategories);
+
   bool _loading = true;
   String? _error;
   Map<String, dynamic>? _report;
   List<Map<String, dynamic>> _entries = [];
   List<Map<String, dynamic>> _rates = [];
+  double _totalPayable = 0;
+  double _totalReceivable = 0;
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 4, vsync: this);
+    _applyPeriod('Monthly');
+    loadLaborCategories().then((cats) {
+      if (mounted) setState(() => _categories = cats);
+    });
     _load();
   }
 
@@ -331,6 +432,112 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
     final m = widget.mobile?.trim();
     if (m != null && m.isNotEmpty) return m;
     return null;
+  }
+
+  Future<void> _showOpeningBalance() async {
+    final amountCtrl = TextEditingController();
+    DateTime date = DateTime.now();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            return AlertDialog(
+              title: Text(tr('Opening Balance')),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      widget.name,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  if ((_mobile ?? '').isNotEmpty)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(_mobile!, style: AppText.caption),
+                    ),
+                  SizedBox(height: 12),
+                  TextField(
+                    controller: amountCtrl,
+                    autofocus: true,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: tr('Opening amount'),
+                      prefixIcon: const Icon(Icons.currency_rupee_rounded),
+                      helperText: tr('Positive = payable opening'),
+                    ),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.calendar_today_rounded),
+                    title: Text(DateFormat('dd/MM/yyyy').format(date)),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: ctx,
+                        initialDate: date,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2101),
+                      );
+                      if (picked != null) setLocal(() => date = picked);
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(tr('Cancel')),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(tr('Save')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    final amount = double.tryParse(amountCtrl.text.trim());
+    amountCtrl.dispose();
+    if (ok != true) return;
+    if (amount == null || amount == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr('Enter valid amount'))),
+      );
+      return;
+    }
+    final result = await _api.createLabor({
+      'name': widget.name,
+      if (_mobile != null) 'mobile': _mobile,
+      'wage': amount.abs(),
+      'hours': 1,
+      'number_of_labours': 1,
+      'entry_kind': 'opening',
+      'category': 'Opening Balance',
+      'shift': 'fullday',
+      'gender': 'Male',
+      'work_type': 'Daily Wages',
+      'location': 'Farm',
+      'date': DateFormat('yyyy-MM-dd').format(date),
+      'narration': tr('Opening Balance'),
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result['success'] == true
+              ? tr('Opening balance saved')
+              : (result['message']?.toString() ??
+                  tr('Failed to save opening balance')),
+        ),
+      ),
+    );
+    if (result['success'] == true) await _load();
   }
 
   double _num(dynamic v) {
@@ -364,6 +571,26 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
     return {};
   }
 
+  void _applyPeriod(String period) {
+    final now = DateTime.now();
+    _period = period;
+    if (period == 'Monthly') {
+      _fromDate = DateTime(now.year, now.month, 1);
+      _toDate = DateTime(now.year, now.month + 1, 0);
+      _selectedMonth = DateTime(now.year, now.month);
+    } else if (period == 'Weekly') {
+      final weekday = now.weekday; // Mon=1
+      _fromDate = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: weekday - 1));
+      _toDate = _fromDate!.add(const Duration(days: 6));
+    }
+  }
+
+  String? get _fromStr =>
+      _fromDate == null ? null : DateFormat('yyyy-MM-dd').format(_fromDate!);
+  String? get _toStr =>
+      _toDate == null ? null : DateFormat('yyyy-MM-dd').format(_toDate!);
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -377,20 +604,42 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
           months: 6,
           mobile: _mobile,
           name: _mobile == null ? widget.name : null,
+          category: _filterCategory,
         ),
         _api.fetchLabors(
           mobile: _mobile,
           name: _mobile == null ? widget.name : null,
-          limit: 50,
+          from: _fromStr,
+          to: _toStr,
+          category: _filterCategory,
+          limit: 200,
+        ),
+        _api.fetchLaborBalance(
+          mobile: _mobile,
+          name: _mobile == null ? widget.name : widget.name,
         ),
         if (_mobile != null) _api.fetchLaborRates(mobile: _mobile),
       ]);
       if (!mounted) return;
+      final bal = results[2] as Map<String, dynamic>?;
       setState(() {
         _report = results[0] as Map<String, dynamic>;
         _entries = results[1] as List<Map<String, dynamic>>;
-        if (results.length > 2) {
-          _rates = results[2] as List<Map<String, dynamic>>;
+        if (bal != null) {
+          _totalPayable = _num(bal['payable']);
+          _totalReceivable = _num(bal['receivable']);
+        } else {
+          final allSum = _map('summary');
+          final o = _outstandingFromTotals(
+            allSum['total_payable'],
+            allSum['total_paid'],
+            balance: allSum['balance'],
+          );
+          _totalPayable = o.$1;
+          _totalReceivable = o.$2;
+        }
+        if (results.length > 3) {
+          _rates = results[3] as List<Map<String, dynamic>>;
         }
         _loading = false;
       });
@@ -400,6 +649,92 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
         _error = e.toString().replaceFirst('Exception: ', '');
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _pickFrom() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _fromDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2101),
+    );
+    if (picked == null) return;
+    setState(() {
+      _period = 'Custom';
+      _fromDate = picked;
+    });
+    _load();
+  }
+
+  Future<void> _pickTo() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _toDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2101),
+    );
+    if (picked == null) return;
+    setState(() {
+      _period = 'Custom';
+      _toDate = picked;
+    });
+    _load();
+  }
+
+  Future<void> _exportExcel() async {
+    await shareLabourExcel(
+      _entries,
+      fileName: 'labour_${widget.name.replaceAll(' ', '_')}.xlsx',
+    );
+  }
+
+  Future<void> _exportPdf() async {
+    await shareLabourStatementPdf(
+      title: '${tr('Labour Statement')} — ${widget.name}',
+      subtitle: _mobile,
+      totalPayable: _totalPayable,
+      totalReceivable: _totalReceivable,
+      entries: _entries,
+      fileName: 'labour_${widget.name.replaceAll(' ', '_')}.pdf',
+    );
+  }
+
+  Future<void> _editEntry(Map<String, dynamic> entry) async {
+    final changed = await showLaborEntryEditDialog(context, entry, _api);
+    if (changed == true) _load();
+  }
+
+  Future<void> _deleteEntry(Map<String, dynamic> entry) async {
+    final id = entry['id'];
+    final intId = id is int ? id : int.tryParse('$id');
+    if (intId == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('Delete labour entry?')),
+        content: Text(tr('This cannot be undone.')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(tr('Cancel')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.expense),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(tr('Delete')),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final deleted = await _api.deleteLabor(intId);
+    if (!mounted) return;
+    if (deleted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr('Labour entry deleted'))),
+      );
+      _load();
     }
   }
 
@@ -440,47 +775,173 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
               subtitle: displayMobile.isNotEmpty
                   ? displayMobile
                   : 'Labour schedule',
-              trailing: IconButton(
-                tooltip: tr('Refresh'),
-                onPressed: _load,
-                icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: withFeedbackAction(
+                  context,
+                  menu: 'labour_summary',
+                  actions: [
+                    IconButton(
+                      tooltip: tr('Opening Balance'),
+                      onPressed: _showOpeningBalance,
+                      icon: const Icon(Icons.add_card_rounded,
+                          color: Colors.white),
+                    ),
+                    IconButton(
+                      tooltip: tr('Export Excel'),
+                      onPressed: _entries.isEmpty ? null : _exportExcel,
+                      icon: const Icon(Icons.table_chart_rounded,
+                          color: Colors.white),
+                    ),
+                    IconButton(
+                      tooltip: tr('Statement PDF'),
+                      onPressed: _entries.isEmpty ? null : _exportPdf,
+                      icon: const Icon(Icons.picture_as_pdf_rounded,
+                          color: Colors.white),
+                    ),
+                    IconButton(
+                      tooltip: tr('Refresh'),
+                      onPressed: _load,
+                      icon: const Icon(Icons.refresh_rounded,
+                          color: Colors.white),
+                    ),
+                  ],
+                ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-              child: InkWell(
-                onTap: _pickMonth,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
+              child: Column(
+                children: [
+                  Row(
                     children: [
-                      const Icon(
-                        Icons.calendar_month_rounded,
-                        size: 18,
-                        color: AppColors.primary,
+                      Expanded(
+                        child: Text(
+                          '${tr('Total Payable')}: ${_money(_totalPayable)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.income,
+                          ),
+                        ),
                       ),
-                      SizedBox(width: 8),
-                      Text(
-                        DateFormat('MMMM yyyy').format(_selectedMonth),
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const Spacer(),
-                      const Icon(
-                        Icons.expand_more_rounded,
-                        color: AppColors.textMuted,
+                      Expanded(
+                        child: Text(
+                          '${tr('Total Receivable')}: ${_money(_totalReceivable)}',
+                          textAlign: TextAlign.end,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.info,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                ),
+                  SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      ChoiceChip(
+                        label: Text(tr('Monthly')),
+                        selected: _period == 'Monthly',
+                        onSelected: (_) {
+                          setState(() => _applyPeriod('Monthly'));
+                          _load();
+                        },
+                      ),
+                      ChoiceChip(
+                        label: Text(tr('Weekly')),
+                        selected: _period == 'Weekly',
+                        onSelected: (_) {
+                          setState(() => _applyPeriod('Weekly'));
+                          _load();
+                        },
+                      ),
+                      ActionChip(
+                        avatar: const Icon(Icons.date_range_rounded, size: 16),
+                        label: Text(
+                          _fromDate == null
+                              ? tr('From')
+                              : DateFormat('d MMM').format(_fromDate!),
+                        ),
+                        onPressed: _pickFrom,
+                      ),
+                      ActionChip(
+                        avatar: const Icon(Icons.event_rounded, size: 16),
+                        label: Text(
+                          _toDate == null
+                              ? tr('To')
+                              : DateFormat('d MMM').format(_toDate!),
+                        ),
+                        onPressed: _pickTo,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  DropdownButtonFormField<String?>(
+                    value: _filterCategory,
+                    decoration: InputDecoration(
+                      labelText: tr('Category'),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
+                    items: [
+                      DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text(tr('All categories')),
+                      ),
+                      ..._categories.map(
+                        (c) => DropdownMenuItem(value: c, child: Text(c)),
+                      ),
+                    ],
+                    onChanged: (v) {
+                      setState(() => _filterCategory = v);
+                      _load();
+                    },
+                  ),
+                  SizedBox(height: 8),
+                  InkWell(
+                    onTap: _pickMonth,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_month_rounded,
+                            size: 18,
+                            color: AppColors.primary,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            DateFormat('MMMM yyyy').format(_selectedMonth),
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const Spacer(),
+                          const Icon(
+                            Icons.expand_more_rounded,
+                            color: AppColors.textMuted,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             TabBar(
@@ -846,6 +1307,7 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
                   date = DateTime.parse(e['date'].toString());
                 } catch (_) {}
                 return AppCard(
+                  onTap: () => _editEntry(e),
                   padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -865,6 +1327,12 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
                               color: AppColors.primary,
                             ),
                           ),
+                          IconButton(
+                            tooltip: tr('Delete'),
+                            icon: const Icon(Icons.delete_outline_rounded,
+                                color: AppColors.expense, size: 20),
+                            onPressed: () => _deleteEntry(e),
+                          ),
                         ],
                       ),
                       SizedBox(height: 4),
@@ -874,6 +1342,7 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
                             DateFormat('d MMM yyyy').format(date),
                           e['shift']?.toString() ?? '',
                           e['location']?.toString() ?? '',
+                          e['entry_kind']?.toString() ?? '',
                         ].where((s) => s.isNotEmpty).join(' · '),
                         style: AppText.caption,
                       ),
@@ -951,10 +1420,18 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
   bool _loading = true;
   bool _sortByName = false;
   List<Map<String, dynamic>> _entries = [];
+  DateTime? _fromDate;
+  DateTime? _toDate;
+  String _period = 'All';
+  String? _filterCategory;
+  List<String> _categories = List<String>.from(kLaborWorkCategories);
 
   @override
   void initState() {
     super.initState();
+    loadLaborCategories().then((cats) {
+      if (mounted) setState(() => _categories = cats);
+    });
     _load();
   }
 
@@ -969,6 +1446,23 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
     if (v == null) return 0;
     if (v is num) return v.toDouble();
     return double.tryParse(v.toString()) ?? 0;
+  }
+
+  void _applyPeriod(String period) {
+    final now = DateTime.now();
+    _period = period;
+    if (period == 'Monthly') {
+      _fromDate = DateTime(now.year, now.month, 1);
+      _toDate = DateTime(now.year, now.month + 1, 0);
+    } else if (period == 'Weekly') {
+      final weekday = now.weekday;
+      _fromDate = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: weekday - 1));
+      _toDate = _fromDate!.add(const Duration(days: 6));
+    } else {
+      _fromDate = null;
+      _toDate = null;
+    }
   }
 
   void _sortEntries() {
@@ -989,7 +1483,15 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
 
   Future<void> _load({String? q}) async {
     setState(() => _loading = true);
-    final rows = await _api.fetchLabors(q: q, limit: 300);
+    final rows = await _api.fetchLabors(
+      q: q,
+      from: _fromDate == null
+          ? null
+          : DateFormat('yyyy-MM-dd').format(_fromDate!),
+      to: _toDate == null ? null : DateFormat('yyyy-MM-dd').format(_toDate!),
+      category: _filterCategory,
+      limit: 300,
+    );
     if (!mounted) return;
     setState(() {
       _entries = rows;
@@ -1006,6 +1508,53 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
     );
   }
 
+  Future<void> _pickFrom() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _fromDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2101),
+    );
+    if (picked == null) return;
+    setState(() {
+      _period = 'Custom';
+      _fromDate = picked;
+    });
+    _load(q: _searchCtrl.text.trim());
+  }
+
+  Future<void> _pickTo() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _toDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2101),
+    );
+    if (picked == null) return;
+    setState(() {
+      _period = 'Custom';
+      _toDate = picked;
+    });
+    _load(q: _searchCtrl.text.trim());
+  }
+
+  Future<void> _editEntry(Map<String, dynamic> entry) async {
+    final changed = await showLaborEntryEditDialog(context, entry, _api);
+    if (changed == true) _load(q: _searchCtrl.text.trim());
+  }
+
+  Future<void> _exportExcel() async {
+    await shareLabourExcel(_entries, fileName: 'labour_history.xlsx');
+  }
+
+  Future<void> _exportPdf() async {
+    await shareLabourStatementPdf(
+      title: tr('Labour History Statement'),
+      entries: _entries,
+      fileName: 'labour_history.pdf',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1017,51 +1566,154 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
               icon: Icons.history_rounded,
               title: tr('History'),
               subtitle: tr('All labour entries'),
-              trailing: IconButton(
-                tooltip: _sortByName ? tr('Sort by date') : tr('Sort by name'),
-                onPressed: () {
-                  setState(() {
-                    _sortByName = !_sortByName;
-                    _sortEntries();
-                  });
-                },
-                icon: Icon(
-                  _sortByName
-                      ? Icons.sort_by_alpha_rounded
-                      : Icons.calendar_today_rounded,
-                  color: Colors.white,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: withFeedbackAction(
+                  context,
+                  menu: 'labour_summary',
+                  actions: [
+                    IconButton(
+                      tooltip: tr('Export Excel'),
+                      onPressed: _entries.isEmpty ? null : _exportExcel,
+                      icon: const Icon(Icons.table_chart_rounded,
+                          color: Colors.white),
+                    ),
+                    IconButton(
+                      tooltip: tr('Statement PDF'),
+                      onPressed: _entries.isEmpty ? null : _exportPdf,
+                      icon: const Icon(Icons.picture_as_pdf_rounded,
+                          color: Colors.white),
+                    ),
+                    IconButton(
+                      tooltip: _sortByName
+                          ? tr('Sort by date')
+                          : tr('Sort by name'),
+                      onPressed: () {
+                        setState(() {
+                          _sortByName = !_sortByName;
+                          _sortEntries();
+                        });
+                      },
+                      icon: Icon(
+                        _sortByName
+                            ? Icons.sort_by_alpha_rounded
+                            : Icons.calendar_today_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-              child: TextField(
-                controller: _searchCtrl,
-                onChanged: _onSearchChanged,
-                decoration: InputDecoration(
-                  hintText: tr('Search by name, category, location…'),
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: _searchCtrl.text.isEmpty
-                      ? null
-                      : IconButton(
-                          icon: const Icon(Icons.clear_rounded),
-                          onPressed: () {
-                            _searchCtrl.clear();
-                            _load();
-                            setState(() {});
-                          },
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _searchCtrl,
+                    onChanged: _onSearchChanged,
+                    decoration: InputDecoration(
+                      hintText: tr('Search by name, category, location…'),
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _searchCtrl.text.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.clear_rounded),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                _load();
+                                setState(() {});
+                              },
+                            ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      ChoiceChip(
+                        label: Text(tr('All')),
+                        selected: _period == 'All',
+                        onSelected: (_) {
+                          setState(() => _applyPeriod('All'));
+                          _load(q: _searchCtrl.text.trim());
+                        },
+                      ),
+                      ChoiceChip(
+                        label: Text(tr('Monthly')),
+                        selected: _period == 'Monthly',
+                        onSelected: (_) {
+                          setState(() => _applyPeriod('Monthly'));
+                          _load(q: _searchCtrl.text.trim());
+                        },
+                      ),
+                      ChoiceChip(
+                        label: Text(tr('Weekly')),
+                        selected: _period == 'Weekly',
+                        onSelected: (_) {
+                          setState(() => _applyPeriod('Weekly'));
+                          _load(q: _searchCtrl.text.trim());
+                        },
+                      ),
+                      ActionChip(
+                        label: Text(
+                          _fromDate == null
+                              ? tr('From')
+                              : DateFormat('d MMM').format(_fromDate!),
                         ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.border),
+                        onPressed: _pickFrom,
+                      ),
+                      ActionChip(
+                        label: Text(
+                          _toDate == null
+                              ? tr('To')
+                              : DateFormat('d MMM').format(_toDate!),
+                        ),
+                        onPressed: _pickTo,
+                      ),
+                    ],
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.border),
+                  SizedBox(height: 8),
+                  DropdownButtonFormField<String?>(
+                    value: _filterCategory,
+                    decoration: InputDecoration(
+                      labelText: tr('Category'),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
+                    items: [
+                      DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text(tr('All categories')),
+                      ),
+                      ..._categories.map(
+                        (c) => DropdownMenuItem(value: c, child: Text(c)),
+                      ),
+                    ],
+                    onChanged: (v) {
+                      setState(() => _filterCategory = v);
+                      _load(q: _searchCtrl.text.trim());
+                    },
                   ),
-                ),
+                ],
               ),
             ),
             Padding(
@@ -1103,6 +1755,7 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                                 date = DateTime.parse(e['date'].toString());
                               } catch (_) {}
                               return AppCard(
+                                onTap: () => _editEntry(e),
                                 padding: const EdgeInsets.all(14),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1134,6 +1787,12 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                                           InfoChip(
                                             label: e['category'].toString(),
                                             color: AppColors.expense,
+                                          ),
+                                        if ((e['entry_kind']?.toString() ?? '')
+                                            .isNotEmpty)
+                                          InfoChip(
+                                            label: e['entry_kind'].toString(),
+                                            color: AppColors.info,
                                           ),
                                         if ((e['shift']?.toString() ?? '')
                                             .isNotEmpty)
@@ -1178,4 +1837,163 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
       ),
     );
   }
+}
+
+/// Shared edit dialog for a labour entry map (history / detail).
+Future<bool?> showLaborEntryEditDialog(
+  BuildContext context,
+  Map<String, dynamic> entry,
+  ApiService api,
+) async {
+  final idRaw = entry['id'];
+  final id = idRaw is int ? idRaw : int.tryParse('$idRaw');
+  if (id == null) return false;
+
+  final nameCtrl = TextEditingController(text: entry['name']?.toString() ?? '');
+  final wageCtrl = TextEditingController(
+    text: (entry['wage'] is num
+            ? (entry['wage'] as num).toStringAsFixed(0)
+            : entry['wage']?.toString()) ??
+        '',
+  );
+  final hoursCtrl = TextEditingController(
+    text: entry['hours']?.toString() ?? '1',
+  );
+  final narrationCtrl =
+      TextEditingController(text: entry['narration']?.toString() ?? '');
+  final categoryCtrl =
+      TextEditingController(text: entry['category']?.toString() ?? '');
+  DateTime date =
+      DateTime.tryParse(entry['date']?.toString() ?? '') ?? DateTime.now();
+
+  final saved = await showDialog<bool>(
+    context: context,
+    builder: (ctx) {
+      return StatefulBuilder(
+        builder: (ctx, setLocal) {
+          return Dialog(
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(tr('Edit labour entry'), style: AppText.h3),
+                  SizedBox(height: 12),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: InputDecoration(labelText: tr('Name')),
+                  ),
+                  SizedBox(height: 8),
+                  TextField(
+                    controller: categoryCtrl,
+                    decoration: InputDecoration(labelText: tr('Category')),
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: wageCtrl,
+                          decoration: InputDecoration(labelText: tr('Wage')),
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: hoursCtrl,
+                          decoration:
+                              InputDecoration(labelText: tr('Days / Hour')),
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.calendar_today_rounded,
+                        color: AppColors.primary),
+                    title: Text(DateFormat('dd/MM/yyyy').format(date)),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: ctx,
+                        initialDate: date,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2101),
+                      );
+                      if (picked != null) setLocal(() => date = picked);
+                    },
+                  ),
+                  TextField(
+                    controller: narrationCtrl,
+                    decoration:
+                        InputDecoration(labelText: tr('Narration (optional)')),
+                    maxLines: 2,
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: Text(tr('Cancel')),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: Text(tr('Save')),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+
+  final name = nameCtrl.text.trim();
+  final wage = double.tryParse(wageCtrl.text.trim());
+  final hours = double.tryParse(hoursCtrl.text.trim());
+  final category = categoryCtrl.text.trim();
+  final narration = narrationCtrl.text.trim();
+  nameCtrl.dispose();
+  wageCtrl.dispose();
+  hoursCtrl.dispose();
+  narrationCtrl.dispose();
+  categoryCtrl.dispose();
+
+  if (saved != true) return false;
+  if (name.isEmpty || wage == null || hours == null || hours <= 0) {
+    return false;
+  }
+
+  final payload = <String, dynamic>{
+    'name': name,
+    'wage': wage,
+    'hours': hours,
+    'category': category.isEmpty ? (entry['category'] ?? '') : category,
+    'narration': narration,
+    'date': DateFormat('yyyy-MM-dd').format(date),
+    'shift': entry['shift'] ?? 'fullday',
+    'gender': entry['gender'] ?? '',
+    'work_type': entry['work_type'] ?? 'Daily Wages',
+    'labour_head': entry['labour_head'] ?? '',
+    'location': entry['location'] ?? '',
+    'number_of_labours': entry['number_of_labours'] ?? 1,
+    if ((entry['mobile']?.toString() ?? '').isNotEmpty)
+      'mobile': entry['mobile'],
+    if ((entry['entry_kind']?.toString() ?? '').isNotEmpty)
+      'entry_kind': entry['entry_kind'],
+  };
+
+  final result = await api.updateLabor(id, payload);
+  return result['success'] == true;
 }

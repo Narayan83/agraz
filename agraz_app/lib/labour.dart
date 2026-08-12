@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'api_service.dart';
 import 'app_theme.dart';
 import 'auth_token.dart';
+import 'feedback_fab.dart';
 import 'labor_categories.dart';
 import 'labour_summary.dart';
 import 'l10n/app_l10n.dart';
@@ -56,6 +57,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   final TextEditingController _rateController = TextEditingController();
   final TextEditingController _labourHeadController = TextEditingController();
   final TextEditingController _narrationController = TextEditingController();
+  final TextEditingController _paidAmountController = TextEditingController();
+  final TextEditingController _paymentAmountController = TextEditingController();
 
   DateTime _selectedDate = DateTime.now();
   String _selectedWorkType = 'Daily Wages';
@@ -63,6 +66,16 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   String _selectedShift = 'fullday';
   String _selectedGender = 'Male';
   String _selectedCategory = 'Plucking';
+  /// Top mode: Payable (work accrual) or Payment (settlement).
+  String _entryMode = 'Payable';
+  /// Before save in Payable mode: mark entire total as paid.
+  bool _settleAsPaid = false;
+  /// Outstanding balance for selected labourer (green chip).
+  double? _labourBalance;
+  double? _labourPayable;
+  double? _labourReceivable;
+  /// True when selected labourer has no opening balance yet.
+  bool _labourNeedsOpening = false;
 
   final List<String> _workTypes = ['Daily Wages', 'Contract'];
   final List<String> _shifts = ['fullday', 'morning', 'evening', 'hour'];
@@ -124,6 +137,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     _rateController.dispose();
     _labourHeadController.dispose();
     _narrationController.dispose();
+    _paidAmountController.dispose();
+    _paymentAmountController.dispose();
     super.dispose();
   }
 
@@ -164,6 +179,9 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       _ratesForLabourer = {};
       _latestRatesForLabourer = {};
       _nameSuggestions = [];
+      _labourBalance = null;
+      _labourPayable = null;
+      _labourReceivable = null;
       return;
     }
     _rateLookupDebounce = Timer(const Duration(milliseconds: 400), () {
@@ -181,6 +199,47 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     _latestRatesForLabourer = {};
     _nameSuggestions = [];
     _suppressSuggestions = false;
+    _labourBalance = null;
+    _labourPayable = null;
+    _labourReceivable = null;
+    _labourNeedsOpening = false;
+  }
+
+  Future<void> _refreshLabourBalance({String? mobile, String? name}) async {
+    final m = (mobile ?? _mobileController.text).trim();
+    final n = (name ?? _nameController.text).trim();
+    if (m.isEmpty && n.length < 2) {
+      if (mounted) {
+        setState(() {
+          _labourBalance = null;
+          _labourPayable = null;
+          _labourReceivable = null;
+        });
+      }
+      return;
+    }
+    final bal = await _api.fetchLaborBalance(
+      mobile: m.isNotEmpty ? m : null,
+      name: m.isEmpty ? n : null,
+    );
+    if (!mounted) return;
+    setState(() {
+      if (bal == null) {
+        _labourBalance = null;
+        _labourPayable = null;
+        _labourReceivable = null;
+      } else {
+        _labourBalance = (bal['balance'] is num)
+            ? (bal['balance'] as num).toDouble()
+            : double.tryParse('${bal['balance']}');
+        _labourPayable = (bal['payable'] is num)
+            ? (bal['payable'] as num).toDouble()
+            : double.tryParse('${bal['payable']}');
+        _labourReceivable = (bal['receivable'] is num)
+            ? (bal['receivable'] as num).toDouble()
+            : double.tryParse('${bal['receivable']}');
+      }
+    });
   }
 
   /// Loads both the "settings" rate (explicit per-labourer rate, set via the
@@ -243,6 +302,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       }
     });
     _applyRateForSelectedCategory();
+    await _refreshLabourBalance(mobile: mobile, name: name);
   }
 
   void _applyRateForSelectedCategory() {
@@ -279,6 +339,229 @@ class _LaborManagementPageState extends State<LaborManagementPage>
           : null,
       name: name,
     );
+    await _ensureLabourOpeningBalance(
+      mobile: (savedMobile != null && savedMobile.length == 10)
+          ? savedMobile
+          : null,
+      name: name,
+    );
+  }
+
+  /// Returns true if this labourer already has an opening entry, or one was just saved.
+  Future<bool> _ensureLabourOpeningBalance({
+    String? mobile,
+    String? name,
+    bool forcePrompt = false,
+  }) async {
+    final m = (mobile ?? _mobileController.text).trim();
+    final n = (name ?? _nameController.text).trim();
+    if (n.length < 2 && m.isEmpty) return true;
+
+    final openings = await _api.fetchLabors(
+      mobile: m.isNotEmpty ? m : null,
+      name: m.isEmpty ? n : null,
+      entryKind: 'opening',
+      limit: 1,
+    );
+    if (!mounted) return false;
+    if (openings.isNotEmpty && !forcePrompt) {
+      setState(() => _labourNeedsOpening = false);
+      return true;
+    }
+
+    final saved = await _showOpeningBalanceDialog(
+      requiredEntry: true,
+      prefName: n,
+      prefMobile: m,
+    );
+    if (!mounted) return false;
+    setState(() => _labourNeedsOpening = saved != true);
+    return saved == true;
+  }
+
+  Future<bool?> _showOpeningBalanceDialog({
+    bool requiredEntry = false,
+    String? prefName,
+    String? prefMobile,
+  }) async {
+    final nameCtrl = TextEditingController(
+      text: (prefName ?? _nameController.text).trim(),
+    );
+    final mobileCtrl = TextEditingController(
+      text: (prefMobile ?? _mobileController.text).trim(),
+    );
+    final amountCtrl = TextEditingController();
+    DateTime date = _selectedDate;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: !requiredEntry,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            return Dialog(
+              insetPadding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      requiredEntry
+                          ? tr('Opening Balance Required')
+                          : tr('Opening Balance'),
+                      style: AppText.h3,
+                    ),
+                    if (requiredEntry) ...[
+                      SizedBox(height: 6),
+                      Text(
+                        tr('Enter opening amount for this labourer before continuing.'),
+                        style: AppText.caption,
+                      ),
+                    ],
+                    SizedBox(height: 12),
+                    TextField(
+                      controller: nameCtrl,
+                      readOnly: requiredEntry && nameCtrl.text.trim().isNotEmpty,
+                      decoration: InputDecoration(
+                        labelText: tr('Name'),
+                        prefixIcon: const Icon(Icons.person_rounded),
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                    ),
+                    SizedBox(height: 10),
+                    TextField(
+                      controller: mobileCtrl,
+                      decoration: InputDecoration(
+                        labelText: tr('Mobile (optional)'),
+                        prefixIcon: const Icon(Icons.phone_rounded),
+                      ),
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(10),
+                      ],
+                    ),
+                    SizedBox(height: 10),
+                    TextField(
+                      controller: amountCtrl,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: tr('Opening amount'),
+                        prefixIcon: const Icon(Icons.currency_rupee_rounded),
+                        helperText: tr('Positive = payable opening'),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.calendar_today_rounded,
+                          color: AppColors.primary),
+                      title: Text(DateFormat('dd/MM/yyyy').format(date)),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: ctx,
+                          initialDate: date,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2101),
+                        );
+                        if (picked != null) setLocal(() => date = picked);
+                      },
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (!requiredEntry)
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: Text(tr('Cancel')),
+                          )
+                        else
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: Text(tr('Later')),
+                          ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: Text(tr('Save')),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    final name = nameCtrl.text.trim();
+    final mobile = mobileCtrl.text.trim();
+    final amount = double.tryParse(amountCtrl.text.trim());
+    nameCtrl.dispose();
+    mobileCtrl.dispose();
+    amountCtrl.dispose();
+
+    if (ok != true) return false;
+    if (name.isEmpty) {
+      _showSnack(tr('Enter labourer name'), error: true);
+      return false;
+    }
+    if (amount == null || amount == 0) {
+      _showSnack(tr('Enter valid amount'), error: true);
+      return false;
+    }
+    if (mobile.isNotEmpty && mobile.length != 10) {
+      _showSnack(tr('Mobile must be 10 digits'), error: true);
+      return false;
+    }
+
+    var token = await getAuthToken();
+    if (token == null || token.isEmpty) {
+      final loggedIn = await _promptLoginForSave();
+      if (loggedIn != true) return false;
+    }
+
+    setState(() => _submitting = true);
+    final result = await _api.createLabor({
+      'name': name,
+      if (mobile.isNotEmpty) 'mobile': mobile,
+      'wage': amount.abs(),
+      'hours': 1,
+      'number_of_labours': 1,
+      'entry_kind': 'opening',
+      'category': 'Opening Balance',
+      'shift': 'fullday',
+      'gender': _selectedGender,
+      'work_type': 'Daily Wages',
+      'location': _selectedLocation ?? 'Farm',
+      'date': DateFormat('yyyy-MM-dd').format(date),
+      'narration': tr('Opening Balance'),
+    });
+    if (!mounted) return false;
+    setState(() => _submitting = false);
+    if (result['success'] == true) {
+      _showSnack(tr('Opening balance saved'));
+      setState(() => _labourNeedsOpening = false);
+      await _refreshLabourBalance(
+        mobile: mobile.isNotEmpty ? mobile : null,
+        name: name,
+      );
+      await _loadLabors();
+      return true;
+    }
+    _showSnack(
+      result['message']?.toString() ?? tr('Failed to save opening balance'),
+      error: true,
+    );
+    return false;
   }
 
   Future<void> _loadLabors() async {
@@ -710,7 +993,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     addressCtrl.dispose();
   }
 
-  void _addPendingLabour() {
+  Future<void> _addPendingLabour() async {
     final name = _nameController.text.trim();
     final mobile = _mobileController.text.trim();
     final daysHourText = _daysHourController.text.trim();
@@ -718,6 +1001,15 @@ class _LaborManagementPageState extends State<LaborManagementPage>
 
     if (name.isEmpty) {
       _showSnack('Enter labourer name', error: true);
+      return;
+    }
+    final openingOk = await _ensureLabourOpeningBalance(
+      mobile: mobile.isNotEmpty ? mobile : null,
+      name: name,
+    );
+    if (openingOk != true) {
+      _showSnack(tr('Opening balance is required for this labourer'),
+          error: true);
       return;
     }
     if (mobile.isNotEmpty && mobile.length != 10) {
@@ -765,7 +1057,101 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     setState(() => _pending.removeAt(index));
   }
 
+  Future<void> _submitPayment() async {
+    final name = _nameController.text.trim();
+    final mobile = _mobileController.text.trim();
+    final amount = double.tryParse(_paymentAmountController.text.trim());
+    final narration = _narrationController.text.trim();
+
+    if (name.isEmpty) {
+      _showSnack(tr('Enter labourer name'), error: true);
+      return;
+    }
+    final openingOk = await _ensureLabourOpeningBalance(
+      mobile: mobile.isNotEmpty ? mobile : null,
+      name: name,
+    );
+    if (openingOk != true) {
+      _showSnack(tr('Opening balance is required for this labourer'),
+          error: true);
+      return;
+    }
+    if (mobile.isNotEmpty && mobile.length != 10) {
+      _showSnack(tr('Mobile must be 10 digits'), error: true);
+      return;
+    }
+    if (amount == null || amount <= 0) {
+      _showSnack(tr('Enter valid amount'), error: true);
+      return;
+    }
+
+    var token = await getAuthToken();
+    if (token == null || token.isEmpty) {
+      final ok = await _promptLoginForSave();
+      if (ok != true) return;
+      token = await getAuthToken();
+      if (token == null || token.isEmpty) {
+        _showSnack(tr('Login required to save labour'), error: true);
+        return;
+      }
+    }
+
+    final payload = <String, dynamic>{
+      'name': name,
+      if (mobile.isNotEmpty) 'mobile': mobile,
+      'wage': amount,
+      'hours': 1,
+      'number_of_labours': 1,
+      'entry_kind': 'payment',
+      'shift': 'fullday',
+      'category': 'Payment',
+      'gender': _selectedGender,
+      'work_type': 'Daily Wages',
+      'location': _selectedLocation ?? 'Farm',
+      'narration': narration.isNotEmpty ? narration : tr('Payment'),
+      'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
+    };
+
+    setState(() => _submitting = true);
+    var result = await _api.createLabor(payload);
+    if (!mounted) return;
+    if (result['success'] != true && _isAuthFailure(result)) {
+      setState(() => _submitting = false);
+      final ok = await _promptLoginForSave();
+      if (ok == true && mounted) {
+        setState(() => _submitting = true);
+        result = await _api.createLabor(payload);
+        if (!mounted) return;
+      }
+    }
+    setState(() => _submitting = false);
+
+    if (result['success'] != true) {
+      final msg = result['message']?.toString() ?? tr('Failed to save payment');
+      if (_isAuthFailure(result)) {
+        await _showJwtExpiredDialog(msg);
+      } else {
+        _showSnack(msg, error: true);
+      }
+      return;
+    }
+
+    setState(() {
+      _paymentAmountController.clear();
+      _narrationController.clear();
+      _selectedDate = DateTime.now();
+    });
+    _clearLabourerIdentityFields();
+    await _loadLabors();
+    _showSnack(tr('Payment saved'));
+  }
+
   Future<void> _submitLabours() async {
+    if (_entryMode == 'Payment') {
+      await _submitPayment();
+      return;
+    }
+
     final narration = _narrationController.text.trim();
     final labourHead = _labourHeadController.text.trim();
 
@@ -780,7 +1166,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     // Direct save: if fields are filled but user forgot "Add", queue them.
     if (_pending.isEmpty && _nameController.text.trim().isNotEmpty) {
       final before = _pending.length;
-      _addPendingLabour();
+      await _addPendingLabour();
       if (_pending.length == before) {
         // Validation inside _addPendingLabour already showed a snack.
         return;
@@ -804,24 +1190,34 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     }
 
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    final payloads = _pending
-        .map((row) => {
-              'name': row.name,
-              'wage': row.rate,
-              'hours': row.daysHour,
-              'number_of_labours': 1,
-              'shift': row.shift,
-              'category': row.category,
-              'gender': row.gender,
-              'work_type': _selectedWorkType,
-              'labour_head': _isContract ? labourHead : '',
-              'location': _selectedLocation,
-              'narration': narration,
-              'date': dateStr,
-              if (row.mobile != null && row.mobile!.isNotEmpty)
-                'mobile': row.mobile,
-            })
-        .toList();
+    final partialPaid = double.tryParse(_paidAmountController.text.trim());
+    final payloads = <Map<String, dynamic>>[];
+    for (var i = 0; i < _pending.length; i++) {
+      final row = _pending[i];
+      final map = <String, dynamic>{
+        'name': row.name,
+        'wage': row.rate,
+        'hours': row.daysHour,
+        'number_of_labours': 1,
+        'shift': row.shift,
+        'category': row.category,
+        'gender': row.gender,
+        'work_type': _selectedWorkType,
+        'labour_head': _isContract ? labourHead : '',
+        'location': _selectedLocation,
+        'narration': narration,
+        'date': dateStr,
+        'entry_kind': 'payable',
+        if (row.mobile != null && row.mobile!.isNotEmpty) 'mobile': row.mobile,
+      };
+      if (_settleAsPaid) {
+        map['paid_amount'] = row.totalCost;
+      } else if (partialPaid != null && partialPaid > 0) {
+        // Apply explicit partial payment to first row only (batch-safe).
+        if (i == 0) map['paid_amount'] = partialPaid;
+      }
+      payloads.add(map);
+    }
 
     setState(() => _submitting = true);
     var result = await _api.createLaborsBatch(payloads);
@@ -862,6 +1258,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       _labourHeadController.clear();
       _daysHourController.clear();
       _rateController.clear();
+      _paidAmountController.clear();
+      _settleAsPaid = false;
       _selectedDate = DateTime.now();
       _selectedWorkType = 'Daily Wages';
       _selectedLocation = 'Farm';
@@ -1050,6 +1448,28 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                 icon: Icons.engineering_rounded,
                 title: tr('Labour Management'),
                 subtitle: tr('Daily wages & contract labour'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: withFeedbackAction(
+                    context,
+                    menu: 'labour',
+                    actions: [
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert_rounded,
+                            color: Colors.white),
+                        onSelected: (v) {
+                          if (v == 'opening') _showOpeningBalanceDialog();
+                        },
+                        itemBuilder: (_) => [
+                          PopupMenuItem(
+                            value: 'opening',
+                            child: Text(tr('Opening Balance')),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
               Expanded(
                 child: _loading
@@ -1107,6 +1527,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   }
 
   Widget _buildAddFormCard() {
+    final isPayment = _entryMode == 'Payment';
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1114,213 +1535,404 @@ class _LaborManagementPageState extends State<LaborManagementPage>
           SectionTitle(
             icon: Icons.person_add_alt_1_rounded,
             title: tr('Add Labour Entry'),
-            subtitle: tr('Record daily wages or contract labour'),
+            subtitle: isPayment
+                ? tr('Record a labour payment')
+                : tr('Record daily wages or contract labour'),
           ),
           SizedBox(height: 14),
-          _compactDateField(),
-          SizedBox(height: 10),
           AppDropdown(
-            label: 'Work Type',
-            value: _selectedWorkType,
-            items: _workTypes,
-            icon: Icons.work_outline_rounded,
+            label: tr('Mode'),
+            value: _entryMode,
+            items: const ['Payable', 'Payment'],
+            icon: Icons.swap_horiz_rounded,
             onChanged: (v) => setState(() {
-              _selectedWorkType = v ?? 'Daily Wages';
-              if (!_isContract) _labourHeadController.clear();
+              _entryMode = v ?? 'Payable';
+              if (_entryMode == 'Payment') {
+                _pending.clear();
+              }
             }),
           ),
-          if (_isContract) ...[
+          SizedBox(height: 10),
+          _compactDateField(),
+          if (isPayment) ...[
+            SizedBox(height: 14),
+            SectionTitle(
+              icon: Icons.payments_rounded,
+              title: tr('Payment details'),
+              subtitle: tr('Pay against labour balance'),
+            ),
+            SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: AppField(
+                    controller: _nameController,
+                    label: tr('Name'),
+                    icon: Icons.person_rounded,
+                  ),
+                ),
+                VoiceMicButton(
+                  fieldId: 'labor_name_pay',
+                  controller: _nameController,
+                ),
+              ],
+            ),
+            if (_nameSuggestions.isNotEmpty) ...[
+              SizedBox(height: 6),
+              _buildNameSuggestions(),
+            ],
+            if (_labourBalance != null ||
+                _labourNeedsOpening ||
+                _nameController.text.trim().length >= 2) ...[
+              SizedBox(height: 8),
+              _buildBalanceChip(),
+            ],
             SizedBox(height: 10),
             AppField(
-              controller: _labourHeadController,
-              label: 'Labour Head',
-              icon: Icons.supervisor_account_rounded,
+              controller: _paymentAmountController,
+              label: tr('Amount'),
+              icon: Icons.currency_rupee_rounded,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
             ),
-          ],
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: AppDropdown(
-                  label: 'Location',
-                  value: _selectedLocation,
-                  items: _locations,
-                  icon: Icons.location_on_rounded,
-                  onChanged: (v) => setState(() => _selectedLocation = v),
-                ),
-              ),
-              SizedBox(width: 10),
-              _addLocationButton(),
-            ],
-          ),
-          SizedBox(height: 16),
-          SectionTitle(
-            icon: Icons.badge_outlined,
-            title: tr('Labourer details'),
-            subtitle: tr('Add one labourer at a time'),
-          ),
-          SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: AppField(
-                  controller: _nameController,
-                  label: 'Name',
-                  icon: Icons.person_rounded,
-                ),
-              ),
-              VoiceMicButton(
-                fieldId: 'labor_name',
-                controller: _nameController,
-              ),
-              SizedBox(width: 4),
-              _squareIconButton(
-                icon: Icons.info_outline_rounded,
-                tooltip: tr('Additional information'),
-                onTap: _showAdditionalInfoDialog,
-                color: AppColors.info,
-                background: AppColors.infoSoft,
-              ),
-            ],
-          ),
-          if (_nameSuggestions.isNotEmpty) ...[
-            SizedBox(height: 6),
-            _buildNameSuggestions(),
-          ],
-          SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 3,
-                child: AppDropdown(
-                  label: 'Category',
-                  value: _selectedCategory,
-                  items: _categories,
-                  icon: Icons.category_rounded,
-                  onChanged: (v) {
-                    setState(() => _selectedCategory = v!);
-                    _applyRateForSelectedCategory();
-                  },
-                ),
-              ),
-              SizedBox(width: 8),
-              _squareIconButton(
-                icon: Icons.grid_view_rounded,
-                tooltip: tr('Category rate settings'),
-                onTap: _showLaborRatesPopup,
-              ),
-              SizedBox(width: 8),
-              _squareIconButton(
-                icon: Icons.search_rounded,
-                tooltip: tr('Search category'),
-                onTap: _showCategorySearchDialog,
-                color: AppColors.info,
-                background: AppColors.infoSoft,
-              ),
-              SizedBox(width: 8),
-              _squareIconButton(
-                icon: Icons.add_rounded,
-                tooltip: tr('Add category'),
-                onTap: _addCategory,
-                color: Colors.white,
-                background: AppColors.primary,
-              ),
-            ],
-          ),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: AppDropdown(
-                  label: 'Shift',
-                  value: _selectedShift,
-                  items: _shifts,
-                  icon: Icons.wb_sunny_rounded,
-                  onChanged: (v) => setState(() => _selectedShift = v ?? 'fullday'),
-                ),
-              ),
-              SizedBox(width: 10),
-              Expanded(
-                child: AppField(
-                  controller: _daysHourController,
-                  label: 'Days / Hour',
-                  icon: Icons.access_time_rounded,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+            SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: AppField(
+                    controller: _narrationController,
+                    label: tr('Narration (optional)'),
+                    icon: Icons.description_rounded,
+                    maxLines: 2,
+                    required: false,
                   ),
                 ),
+                VoiceMicButton(
+                  fieldId: 'labor_narration_pay',
+                  controller: _narrationController,
+                ),
+              ],
+            ),
+            SizedBox(height: 14),
+            PrimaryButton(
+              label: _submitting ? tr('Saving…') : tr('Save Payment'),
+              icon: Icons.save_rounded,
+              onPressed: _submitting ? null : _submitLabours,
+              loading: _submitting,
+            ),
+          ] else ...[
+            SizedBox(height: 10),
+            AppDropdown(
+              label: 'Work Type',
+              value: _selectedWorkType,
+              items: _workTypes,
+              icon: Icons.work_outline_rounded,
+              onChanged: (v) => setState(() {
+                _selectedWorkType = v ?? 'Daily Wages';
+                if (!_isContract) _labourHeadController.clear();
+              }),
+            ),
+            if (_isContract) ...[
+              SizedBox(height: 10),
+              AppField(
+                controller: _labourHeadController,
+                label: 'Labour Head',
+                icon: Icons.supervisor_account_rounded,
               ),
             ],
-          ),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: AppDropdown(
-                  label: 'Gender',
-                  value: _selectedGender,
-                  items: _genders,
-                  icon: Icons.wc_rounded,
-                  onChanged: (v) => setState(() => _selectedGender = v ?? 'Male'),
-                ),
-              ),
-              SizedBox(width: 10),
-              Expanded(
-                child: AppField(
-                  controller: _rateController,
-                  label: 'Rate',
-                  icon: Icons.currency_rupee_rounded,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: AppDropdown(
+                    label: 'Location',
+                    value: _selectedLocation,
+                    items: _locations,
+                    icon: Icons.location_on_rounded,
+                    onChanged: (v) => setState(() => _selectedLocation = v),
                   ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12),
-          PrimaryButton(
-            label: tr('Add Labourer'),
-            icon: Icons.add_rounded,
-            onPressed: _addPendingLabour,
-            height: 50,
-          ),
-          if (_pending.isNotEmpty) ...[
+                SizedBox(width: 10),
+                _addLocationButton(),
+              ],
+            ),
             SizedBox(height: 16),
             SectionTitle(
-              icon: Icons.grid_on_rounded,
-              title: 'Added labourers (${_pending.length})',
+              icon: Icons.badge_outlined,
+              title: tr('Labourer details'),
+              subtitle: tr('Add one labourer at a time'),
+            ),
+            SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: AppField(
+                    controller: _nameController,
+                    label: 'Name',
+                    icon: Icons.person_rounded,
+                  ),
+                ),
+                VoiceMicButton(
+                  fieldId: 'labor_name',
+                  controller: _nameController,
+                ),
+                SizedBox(width: 4),
+                _squareIconButton(
+                  icon: Icons.info_outline_rounded,
+                  tooltip: tr('Additional information'),
+                  onTap: _showAdditionalInfoDialog,
+                  color: AppColors.info,
+                  background: AppColors.infoSoft,
+                ),
+              ],
+            ),
+            if (_nameSuggestions.isNotEmpty) ...[
+              SizedBox(height: 6),
+              _buildNameSuggestions(),
+            ],
+            if (_labourBalance != null ||
+                _labourNeedsOpening ||
+                _nameController.text.trim().length >= 2) ...[
+              SizedBox(height: 8),
+              _buildBalanceChip(),
+            ],
+            SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: AppDropdown(
+                    label: 'Category',
+                    value: _selectedCategory,
+                    items: _categories,
+                    icon: Icons.category_rounded,
+                    onChanged: (v) {
+                      setState(() => _selectedCategory = v!);
+                      _applyRateForSelectedCategory();
+                    },
+                  ),
+                ),
+                SizedBox(width: 8),
+                _squareIconButton(
+                  icon: Icons.grid_view_rounded,
+                  tooltip: tr('Category rate settings'),
+                  onTap: _showLaborRatesPopup,
+                ),
+                SizedBox(width: 8),
+                _squareIconButton(
+                  icon: Icons.search_rounded,
+                  tooltip: tr('Search category'),
+                  onTap: _showCategorySearchDialog,
+                  color: AppColors.info,
+                  background: AppColors.infoSoft,
+                ),
+                SizedBox(width: 8),
+                _squareIconButton(
+                  icon: Icons.add_rounded,
+                  tooltip: tr('Add category'),
+                  onTap: _addCategory,
+                  color: Colors.white,
+                  background: AppColors.primary,
+                ),
+              ],
             ),
             SizedBox(height: 10),
-            _buildPendingGrid(),
-          ],
-          SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: AppField(
-                  controller: _narrationController,
-                  label: tr('Narration (optional)'),
-                  icon: Icons.description_rounded,
-                  maxLines: 2,
-                  required: false,
+            Row(
+              children: [
+                Expanded(
+                  child: AppDropdown(
+                    label: 'Shift',
+                    value: _selectedShift,
+                    items: _shifts,
+                    icon: Icons.wb_sunny_rounded,
+                    onChanged: (v) =>
+                        setState(() => _selectedShift = v ?? 'fullday'),
+                  ),
                 ),
+                SizedBox(width: 10),
+                Expanded(
+                  child: AppField(
+                    controller: _daysHourController,
+                    label: 'Days / Hour',
+                    icon: Icons.access_time_rounded,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: AppDropdown(
+                    label: 'Gender',
+                    value: _selectedGender,
+                    items: _genders,
+                    icon: Icons.wc_rounded,
+                    onChanged: (v) =>
+                        setState(() => _selectedGender = v ?? 'Male'),
+                  ),
+                ),
+                SizedBox(width: 10),
+                Expanded(
+                  child: AppField(
+                    controller: _rateController,
+                    label: 'Rate',
+                    icon: Icons.currency_rupee_rounded,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 12),
+            PrimaryButton(
+              label: tr('Add Labourer'),
+              icon: Icons.add_rounded,
+              onPressed: _addPendingLabour,
+              height: 50,
+            ),
+            if (_pending.isNotEmpty) ...[
+              SizedBox(height: 16),
+              SectionTitle(
+                icon: Icons.grid_on_rounded,
+                title: 'Added labourers (${_pending.length})',
               ),
-              VoiceMicButton(
-                fieldId: 'labor_narration',
-                controller: _narrationController,
-              ),
+              SizedBox(height: 10),
+              _buildPendingGrid(),
             ],
-          ),
-          SizedBox(height: 14),
-          PrimaryButton(
-            label: _submitting ? 'Saving…' : 'Save Entry',
-            icon: Icons.save_rounded,
-            onPressed: _submitting ? null : _submitLabours,
-            loading: _submitting,
-          ),
+            SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: AppField(
+                    controller: _narrationController,
+                    label: tr('Narration (optional)'),
+                    icon: Icons.description_rounded,
+                    maxLines: 2,
+                    required: false,
+                  ),
+                ),
+                VoiceMicButton(
+                  fieldId: 'labor_narration',
+                  controller: _narrationController,
+                ),
+              ],
+            ),
+            SizedBox(height: 12),
+            AppField(
+              controller: _paidAmountController,
+              label: tr('Paid amount'),
+              icon: Icons.payments_outlined,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              required: false,
+            ),
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Text(tr('Settlement'), style: AppText.bodyStrong),
+                const Spacer(),
+                ChoiceChip(
+                  label: Text(tr('Payable')),
+                  selected: !_settleAsPaid,
+                  onSelected: (_) => setState(() => _settleAsPaid = false),
+                  selectedColor: AppColors.primarySoft,
+                  labelStyle: TextStyle(
+                    color: !_settleAsPaid
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(width: 8),
+                ChoiceChip(
+                  label: Text(tr('Paid')),
+                  selected: _settleAsPaid,
+                  onSelected: (_) => setState(() => _settleAsPaid = true),
+                  selectedColor: AppColors.incomeSoft,
+                  labelStyle: TextStyle(
+                    color: _settleAsPaid
+                        ? AppColors.income
+                        : AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 14),
+            PrimaryButton(
+              label: _submitting ? 'Saving…' : 'Save Entry',
+              icon: Icons.save_rounded,
+              onPressed: _submitting ? null : _submitLabours,
+              loading: _submitting,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBalanceChip() {
+    final payable = _labourPayable ?? 0;
+    final receivable = _labourReceivable ?? 0;
+    final bal = _labourBalance ?? 0;
+    final label = receivable > 0
+        ? '${tr('Receivable')}: ₹${receivable.toStringAsFixed(0)}'
+        : '${tr('Payable')}: ₹${payable > 0 ? payable.toStringAsFixed(0) : bal.toStringAsFixed(0)}';
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          if (_labourBalance != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.incomeSoft,
+                borderRadius: BorderRadius.circular(20),
+                border:
+                    Border.all(color: AppColors.income.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.account_balance_wallet_rounded,
+                      size: 16, color: AppColors.income),
+                  SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: AppColors.income,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (_labourNeedsOpening)
+            TextButton.icon(
+              onPressed: () => _ensureLabourOpeningBalance(forcePrompt: true),
+              icon: const Icon(Icons.add_card_rounded, size: 18),
+              label: Text(tr('Enter opening')),
+              style: TextButton.styleFrom(foregroundColor: AppColors.warning),
+            )
+          else
+            TextButton.icon(
+              onPressed: () => _showOpeningBalanceDialog(),
+              icon: const Icon(Icons.account_balance_rounded, size: 18),
+              label: Text(tr('Opening')),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+            ),
         ],
       ),
     );
@@ -1766,40 +2378,57 @@ class _AddLocationDialogState extends State<_AddLocationDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return AnimatedPadding(
-      padding: EdgeInsets.only(bottom: bottomInset),
-      duration: const Duration(milliseconds: 100),
-      curve: Curves.easeOut,
-      child: AlertDialog(
-        title: Text(tr('Add Location')),
-        content: TextField(
-          controller: _controller,
-          focusNode: _focusNode,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => _submit(),
-          decoration: InputDecoration(
-            labelText: tr('Location name'),
-            prefixIcon: Icon(Icons.location_on_rounded),
-          ),
-          textCapitalization: TextCapitalization.words,
-        ),
-        actionsAlignment: MainAxisAlignment.end,
-        actions: [
-          TextButton(
-            onPressed: _cancel,
-            child: Text(tr('Cancel')),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(72, 44),
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(tr('Add Location'), style: AppText.h3),
+              ),
             ),
-            onPressed: _submit,
-            child: Text(tr('Add')),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _submit(),
+                decoration: InputDecoration(
+                  labelText: tr('Location name'),
+                  prefixIcon: Icon(Icons.location_on_rounded),
+                ),
+                textCapitalization: TextCapitalization.words,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: _cancel,
+                    child: Text(tr('Cancel')),
+                  ),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(72, 44),
+                    ),
+                    onPressed: _submit,
+                    child: Text(tr('Add')),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1847,40 +2476,57 @@ class _AddCategoryDialogState extends State<_AddCategoryDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return AnimatedPadding(
-      padding: EdgeInsets.only(bottom: bottomInset),
-      duration: const Duration(milliseconds: 100),
-      curve: Curves.easeOut,
-      child: AlertDialog(
-        title: Text(tr('Add Category')),
-        content: TextField(
-          controller: _controller,
-          focusNode: _focusNode,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => _submit(),
-          decoration: InputDecoration(
-            labelText: tr('Category name'),
-            prefixIcon: const Icon(Icons.category_rounded),
-          ),
-          textCapitalization: TextCapitalization.words,
-        ),
-        actionsAlignment: MainAxisAlignment.end,
-        actions: [
-          TextButton(
-            onPressed: _cancel,
-            child: Text(tr('Cancel')),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(72, 44),
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(tr('Add Category'), style: AppText.h3),
+              ),
             ),
-            onPressed: _submit,
-            child: Text(tr('Add')),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _submit(),
+                decoration: InputDecoration(
+                  labelText: tr('Category name'),
+                  prefixIcon: const Icon(Icons.category_rounded),
+                ),
+                textCapitalization: TextCapitalization.words,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: _cancel,
+                    child: Text(tr('Cancel')),
+                  ),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(72, 44),
+                    ),
+                    onPressed: _submit,
+                    child: Text(tr('Add')),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

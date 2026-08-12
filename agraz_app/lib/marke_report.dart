@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
 import 'app_theme.dart';
+import 'feedback_fab.dart';
 import 'market_report_service.dart';
 import 'l10n/app_l10n.dart';
 
@@ -241,7 +242,14 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
               icon: Icons.trending_up_rounded,
               title: tr('Market Reports'),
               subtitle: tr('Commodity prices, arrivals & trends'),
-              trailing: _headerAction(_loadData),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: withFeedbackAction(
+                  context,
+                  menu: 'market_report',
+                  actions: [_headerAction(_loadData)],
+                ),
+              ),
             ),
             Expanded(
               child: RefreshIndicator(

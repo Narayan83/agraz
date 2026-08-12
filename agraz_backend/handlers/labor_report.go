@@ -33,16 +33,18 @@ func GetLaborPeoplePublic(c *fiber.Ctx) error {
 	}
 
 	type row struct {
-		PersonKey  string  `gorm:"column:person_key" json:"person_key"`
-		Name       string  `gorm:"column:name" json:"name"`
-		Mobile     *string `gorm:"column:mobile" json:"mobile,omitempty"`
-		Gender     string  `gorm:"column:gender" json:"gender"`
-		EntryCount int64   `gorm:"column:entry_count" json:"entry_count"`
-		TotalCost  float64 `gorm:"column:total_cost" json:"total_cost"`
-		TotalHours float64 `gorm:"column:total_hours" json:"total_hours"`
-		LastDate   time.Time `gorm:"column:last_date" json:"last_date"`
-		LastCategory string `gorm:"column:last_category" json:"last_category"`
-		LastLocation string `gorm:"column:last_location" json:"last_location"`
+		PersonKey    string    `gorm:"column:person_key" json:"person_key"`
+		Name         string    `gorm:"column:name" json:"name"`
+		Mobile       *string   `gorm:"column:mobile" json:"mobile,omitempty"`
+		Gender       string    `gorm:"column:gender" json:"gender"`
+		EntryCount   int64     `gorm:"column:entry_count" json:"entry_count"`
+		TotalCost    float64   `gorm:"column:total_cost" json:"total_cost"`
+		TotalHours   float64   `gorm:"column:total_hours" json:"total_hours"`
+		TotalPayable float64   `gorm:"column:total_payable" json:"total_payable"`
+		TotalPaid    float64   `gorm:"column:total_paid" json:"total_paid"`
+		LastDate     time.Time `gorm:"column:last_date" json:"last_date"`
+		LastCategory string    `gorm:"column:last_category" json:"last_category"`
+		LastLocation string    `gorm:"column:last_location" json:"last_location"`
 	}
 
 	dbq := scopeByUserID(laborDB.Model(&models.Labor{}), uid).
@@ -54,6 +56,8 @@ func GetLaborPeoplePublic(c *fiber.Ctx) error {
 			COUNT(*) as entry_count,
 			COALESCE(SUM(wage * hours),0)::float8 as total_cost,
 			COALESCE(SUM(hours),0)::float8 as total_hours,
+			COALESCE(SUM(CASE WHEN COALESCE(entry_kind,'payable') IN ('payable','opening') THEN wage * hours ELSE 0 END),0)::float8 as total_payable,
+			COALESCE(SUM(CASE WHEN entry_kind = 'payment' THEN wage * hours ELSE 0 END),0)::float8 as total_paid,
 			MAX(date) as last_date,
 			(ARRAY_AGG(category ORDER BY date DESC))[1] as last_category,
 			(ARRAY_AGG(location ORDER BY date DESC))[1] as last_location
@@ -82,6 +86,9 @@ func GetLaborPeoplePublic(c *fiber.Ctx) error {
 			"entry_count":   r.EntryCount,
 			"total_cost":    r.TotalCost,
 			"total_hours":   r.TotalHours,
+			"total_payable": r.TotalPayable,
+			"total_paid":    r.TotalPaid,
+			"balance":       r.TotalPayable - r.TotalPaid,
 			"last_date":     r.LastDate,
 			"last_category": r.LastCategory,
 			"last_location": r.LastLocation,
@@ -92,6 +99,51 @@ func GetLaborPeoplePublic(c *fiber.Ctx) error {
 		out = append(out, item)
 	}
 	return c.JSON(fiber.Map{"data": out, "total": len(out)})
+}
+
+// GetLaborBalancePublic handles GET /api/labors/balance?name=&mobile=
+// Returns payable/paid/balance/receivable for one labourer.
+func GetLaborBalancePublic(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+	name := strings.TrimSpace(c.Query("name"))
+	mobile := strings.TrimSpace(c.Query("mobile"))
+	if name == "" && mobile == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "name or mobile is required"})
+	}
+
+	base := scopeByUserID(laborDB.Model(&models.Labor{}), uid)
+	base = applyLaborPersonFilter(base, mobile, name)
+
+	type row struct {
+		Payable float64 `gorm:"column:payable"`
+		Paid    float64 `gorm:"column:paid"`
+	}
+	var r row
+	if err := base.Select(`
+		COALESCE(SUM(CASE WHEN COALESCE(entry_kind,'payable') IN ('payable','opening') THEN wage * hours ELSE 0 END),0)::float8 as payable,
+		COALESCE(SUM(CASE WHEN entry_kind = 'payment' THEN wage * hours ELSE 0 END),0)::float8 as paid
+	`).Scan(&r).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	balance := r.Payable - r.Paid
+	payableShown := balance
+	if payableShown < 0 {
+		payableShown = 0
+	}
+	receivable := 0.0
+	if balance < 0 {
+		receivable = -balance
+	}
+	return c.JSON(fiber.Map{
+		"payable":    payableShown,
+		"paid":       r.Paid,
+		"balance":    balance,
+		"receivable": receivable,
+	})
 }
 
 // GetLaborReportsPublic handles GET /api/labors/reports
@@ -198,31 +250,41 @@ func applyLaborPersonFilter(q *gorm.DB, mobile, name string) *gorm.DB {
 }
 
 type laborSumAgg struct {
-	TotalCost  float64 `json:"total_cost"`
-	TotalHours float64 `json:"total_hours"`
-	EntryCount int64   `json:"entry_count"`
-	AvgRate    float64 `json:"avg_rate"`
+	TotalCost    float64 `json:"total_cost"`
+	TotalHours   float64 `json:"total_hours"`
+	EntryCount   int64   `json:"entry_count"`
+	AvgRate      float64 `json:"avg_rate"`
+	TotalPayable float64 `json:"total_payable"`
+	TotalPaid    float64 `json:"total_paid"`
+	Balance      float64 `json:"balance"`
 }
 
 func laborAggSummary(q *gorm.DB) (laborSumAgg, error) {
 	type row struct {
-		TotalCost  float64 `gorm:"column:total_cost"`
-		TotalHours float64 `gorm:"column:total_hours"`
-		EntryCount int64   `gorm:"column:entry_count"`
-		AvgRate    float64 `gorm:"column:avg_rate"`
+		TotalCost    float64 `gorm:"column:total_cost"`
+		TotalHours   float64 `gorm:"column:total_hours"`
+		EntryCount   int64   `gorm:"column:entry_count"`
+		AvgRate      float64 `gorm:"column:avg_rate"`
+		TotalPayable float64 `gorm:"column:total_payable"`
+		TotalPaid    float64 `gorm:"column:total_paid"`
 	}
 	var r row
 	err := q.Select(`
 		COALESCE(SUM(wage * hours),0)::float8 as total_cost,
 		COALESCE(SUM(hours),0)::float8 as total_hours,
 		COUNT(*) as entry_count,
-		COALESCE(AVG(wage),0)::float8 as avg_rate
+		COALESCE(AVG(wage),0)::float8 as avg_rate,
+		COALESCE(SUM(CASE WHEN COALESCE(entry_kind,'payable') IN ('payable','opening') THEN wage * hours ELSE 0 END),0)::float8 as total_payable,
+		COALESCE(SUM(CASE WHEN entry_kind = 'payment' THEN wage * hours ELSE 0 END),0)::float8 as total_paid
 	`).Scan(&r).Error
 	return laborSumAgg{
-		TotalCost:  r.TotalCost,
-		TotalHours: r.TotalHours,
-		EntryCount: r.EntryCount,
-		AvgRate:    r.AvgRate,
+		TotalCost:    r.TotalCost,
+		TotalHours:   r.TotalHours,
+		EntryCount:   r.EntryCount,
+		AvgRate:      r.AvgRate,
+		TotalPayable: r.TotalPayable,
+		TotalPaid:    r.TotalPaid,
+		Balance:      r.TotalPayable - r.TotalPaid,
 	}, err
 }
 

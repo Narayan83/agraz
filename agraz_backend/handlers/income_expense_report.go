@@ -87,17 +87,43 @@ func GetIncomeExpenseReportsPublic(c *fiber.Ctx) error {
 
 	trends := ieBuildTrends(monthly, byCategoryAll)
 
+	byCategoryRollup, err := ieCategoryRollup(
+		base.Session(&gorm.Session{}).Where("date >= ? AND date < ?", monthStart, monthEnd),
+	)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	byCategoryRollupAll, err := ieCategoryRollup(base.Session(&gorm.Session{}))
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Subcategory grain (alias of by_category). When category= is set, base is already filtered
+	// so by_sub_category is the drill-down for that category.
+	bySubCategory := byCategory
+	bySubCategoryAll := byCategoryAll
+
 	return c.JSON(fiber.Map{
-		"year":             year,
-		"month":            month,
-		"month_label":      monthStart.Format("January 2006"),
-		"summary":          summary,
-		"month_summary":    monthSummary,
-		"monthly":          monthly,
-		"weekly":           weekly,
-		"by_category":      byCategory,
-		"by_category_all":  byCategoryAll,
-		"trends":           trends,
+		"year":                    year,
+		"month":                   month,
+		"month_label":             monthStart.Format("January 2006"),
+		"overview":                summary, // overall totals (no month filter); same as summary
+		"summary":                 summary,
+		"month_summary":           monthSummary,
+		"monthly":                 monthly,
+		"weekly":                  weekly,
+		"by_category":             byCategory,             // subcategory grain (month)
+		"by_category_all":         byCategoryAll,         // subcategory grain (all time)
+		"by_sub_category":         bySubCategory,         // explicit subcategory grain (month)
+		"by_sub_category_all":     bySubCategoryAll,      // explicit subcategory grain (all time)
+		"by_category_rollup":      byCategoryRollup,      // type+category (month)
+		"by_category_rollup_all":  byCategoryRollupAll,   // type+category (all time)
+		"trends":                  trends,
+		"filters": fiber.Map{
+			"type":     txType,
+			"mobile":   mobile,
+			"category": category,
+		},
 	})
 }
 
@@ -320,6 +346,65 @@ func ieCategoryBreakdown(q *gorm.DB) ([]ieCatRow, error) {
 			Total:       r.Total,
 			Count:       r.Count,
 			Pct:         pct,
+		})
+	}
+	return out, nil
+}
+
+type ieCatRollupRow struct {
+	Type     string  `json:"type"`
+	Category string  `json:"category"`
+	Total    float64 `json:"total"`
+	Count    int64   `json:"count"`
+	Pct      float64 `json:"pct"`
+}
+
+// ieCategoryRollup groups by type+category (sums subcategories) with pct of type total.
+func ieCategoryRollup(q *gorm.DB) ([]ieCatRollupRow, error) {
+	type row struct {
+		Type     string  `gorm:"column:type"`
+		Category string  `gorm:"column:category"`
+		Total    float64 `gorm:"column:total"`
+		Count    int64   `gorm:"column:count"`
+	}
+	var rows []row
+	err := q.Select(`
+		type, category,
+		COALESCE(SUM(amount),0)::float8 as total,
+		COUNT(*) as count
+	`).
+		Group("type, category").
+		Order("type ASC, total DESC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var incomeTotal, expenseTotal float64
+	for _, r := range rows {
+		if r.Type == "Income" {
+			incomeTotal += r.Total
+		} else if r.Type == "Expense" {
+			expenseTotal += r.Total
+		}
+	}
+
+	out := make([]ieCatRollupRow, 0, len(rows))
+	for _, r := range rows {
+		denom := incomeTotal
+		if r.Type == "Expense" {
+			denom = expenseTotal
+		}
+		pct := 0.0
+		if denom > 0 {
+			pct = (r.Total / denom) * 100
+		}
+		out = append(out, ieCatRollupRow{
+			Type:     r.Type,
+			Category: r.Category,
+			Total:    r.Total,
+			Count:    r.Count,
+			Pct:      pct,
 		})
 	}
 	return out, nil

@@ -22,6 +22,11 @@ dependencies:
   chewie: ^1.8.5
   google_fonts: ^8.2.1
   speech_to_text: ^7.4.0
+  excel: ^4.0.6
+  pdf: ^3.11.1
+  printing: ^5.13.4
+  path_provider: ^2.1.5
+  share_plus: ^10.1.4
 
 dev_dependencies:
   flutter_test:
@@ -33,6 +38,7 @@ dev_dependencies:
 # ADD THIS SECTION TO FIX THE DEPENDENCY CONFLICT
 dependency_overrides:
   vector_math: ^2.2.0
+  archive: ^3.6.1
 
 flutter_launcher_icons:
   android: true

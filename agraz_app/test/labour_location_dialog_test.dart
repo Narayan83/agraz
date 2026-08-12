@@ -28,34 +28,47 @@ class _TestAddLocationDialogState extends State<_TestAddLocationDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return AnimatedPadding(
-      padding: EdgeInsets.only(bottom: bottomInset),
-      duration: const Duration(milliseconds: 100),
-      child: AlertDialog(
-        title: const Text('Add Location'),
-        content: TextField(
-          controller: _controller,
-          decoration: const InputDecoration(
-            labelText: 'Location name',
-            prefixIcon: Icon(Icons.location_on_rounded),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Add Location',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             ),
-            onPressed: () =>
-                Navigator.of(context).pop(_controller.text.trim()),
-            child: const Text('Add'),
-          ),
-        ],
+            const SizedBox(height: 12),
+            TextField(
+              controller: _controller,
+              decoration: const InputDecoration(
+                labelText: 'Location name',
+                prefixIcon: Icon(Icons.location_on_rounded),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () =>
+                      Navigator.of(context).pop(_controller.text.trim()),
+                  child: const Text('Add'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

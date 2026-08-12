@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'buy_sell_service.dart';
 import 'config.dart';
+import 'feedback_fab.dart';
 import 'l10n/app_l10n.dart';
 
 void main() {
@@ -36,6 +37,11 @@ class BuySellApp extends StatelessWidget {
             },
           ),
           title: Text(tr('Buy & Sell')),
+          actions: withFeedbackAction(
+            context,
+            menu: 'buy_and_sell',
+            color: Colors.black87,
+          ),
         ),
         body: const BuySellPage(),
       ),
@@ -91,29 +97,34 @@ class _BuySellPageState extends State<BuySellPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(tr('Buy & Sell')),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              showSearch(context: context, delegate: ItemSearch(List.of(_items)));
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AddItemPage()),
-              ).then((value) {
-                if (value != null) {
-                  setState(() {
-                    _items.add(value);
-                  });
-                }
-              });
-            },
-          ),
-        ],
+        actions: withFeedbackAction(
+          context,
+          menu: 'buy_and_sell',
+          color: Colors.black87,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () {
+                showSearch(context: context, delegate: ItemSearch(List.of(_items)));
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AddItemPage()),
+                ).then((value) {
+                  if (value != null) {
+                    setState(() {
+                      _items.add(value);
+                    });
+                  }
+                });
+              },
+            ),
+          ],
+        ),
       ),
       body:
           _currentIndex == 0

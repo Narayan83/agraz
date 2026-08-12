@@ -27,6 +27,8 @@ func main() {
 		&models.IncomeExpense{},
 		&models.Labor{},
 		&models.LaborRate{},
+		&models.AppFeedback{},
+		&models.AppContent{},
 		&models.ServiceRegistration{},
 		&models.Vendor{},
 		// E-commerce catalog

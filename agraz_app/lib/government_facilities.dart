@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'config.dart';
+import 'feedback_fab.dart';
 import 'gov_facilities_service.dart';
 import 'l10n/app_l10n.dart';
 
@@ -163,6 +164,7 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
         centerTitle: true,
         backgroundColor: green,
         foregroundColor: Colors.white,
+        actions: withFeedbackAction(context, menu: 'government_facilities'),
       ),
       body: _loading
           ? Center(child: CircularProgressIndicator())

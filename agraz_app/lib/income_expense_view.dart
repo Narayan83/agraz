@@ -6,6 +6,7 @@ import 'api_service.dart';
 import 'auth_token.dart';
 import 'config.dart';
 import 'app_theme.dart';
+import 'feedback_fab.dart';
 import 'income_expense_data.dart';
 import 'income_expense_report.dart';
 import 'l10n/app_l10n.dart';
@@ -569,30 +570,34 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
             ),
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.insights_rounded),
-            tooltip: tr('Reports'),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const IncomeExpenseReportPage(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.filter_list_rounded),
-            tooltip: tr('Filter'),
-            onPressed: _showFilterDialog,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: tr('Refresh'),
-            onPressed: _fetchTransactions,
-          ),
-        ],
+        actions: withFeedbackAction(
+          context,
+          menu: 'income_expense_view',
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.insights_rounded),
+              tooltip: tr('Reports'),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const IncomeExpenseReportPage(),
+                  ),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.filter_list_rounded),
+              tooltip: tr('Filter'),
+              onPressed: _showFilterDialog,
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              tooltip: tr('Refresh'),
+              onPressed: _fetchTransactions,
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [

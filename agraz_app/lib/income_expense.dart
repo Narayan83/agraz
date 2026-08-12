@@ -9,6 +9,7 @@ import 'income_expense_report.dart';
 import 'api_service.dart';
 import 'app_theme.dart';
 import 'auth_token.dart';
+import 'feedback_fab.dart';
 import 'l10n/app_l10n.dart';
 import 'login.dart';
 import 'voice_dictation.dart';
@@ -42,6 +43,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   List<String> categories = [];
   List<String> subCategories = [];
   bool isLoading = false;
+  List<Map<String, dynamic>> _organizations = [];
 
   /// Signed party balance (Income − Expense). Null when unknown / not loaded.
   double? _partyBalance;
@@ -72,7 +74,9 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   void initState() {
     super.initState();
     _formData.transactionDate = DateTime.now();
+    _formData.transactionMode = 'Cash';
     _updateCategories();
+    _loadOrganizations();
 
     _animController = AnimationController(
       vsync: this,
@@ -80,6 +84,16 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _animController.forward();
+  }
+
+  Future<void> _loadOrganizations() async {
+    try {
+      final token = await getAuthToken();
+      if (token == null || token.isEmpty) return;
+      final rows = await _apiService.fetchOrganizations();
+      if (!mounted) return;
+      setState(() => _organizations = rows);
+    } catch (_) {}
   }
 
   @override
@@ -109,6 +123,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     }
     _formData.category = null;
     _formData.subCategory = null;
+    _formData.subCategories = [];
     subCategories = [];
   }
 
@@ -118,6 +133,20 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           _formData.categorySubCategoryMap[selectedCategory]?.keys.toList() ??
               [];
       _formData.subCategory = null;
+      _formData.subCategories = [];
+    });
+  }
+
+  void _toggleSubCategory(String option) {
+    setState(() {
+      if (_formData.subCategories.contains(option)) {
+        _formData.subCategories.remove(option);
+      } else {
+        _formData.subCategories.add(option);
+      }
+      _formData.subCategory = _formData.subCategories.isEmpty
+          ? null
+          : _formData.subCategories.first;
     });
   }
 
@@ -362,9 +391,12 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       _formData.pincode = null;
       _formData.transactionDate = DateTime.now();
       _formData.receiptPaymentType = keptType;
+      _formData.transactionMode = 'Cash';
+      _formData.organizationId = null;
       _nameSuggestions = [];
       _showNameSuggestions = false;
       _clearPartyBalance();
+      _formData.subCategories = [];
       _updateCategories();
     });
     _formKey.currentState?.reset();
@@ -384,7 +416,8 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       );
       return;
     }
-    if (_formData.category == null || _formData.subCategory == null) {
+    if (_formData.category == null ||
+        _formData.effectiveSubCategories.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(tr('Please select category and sub category')),
@@ -397,6 +430,16 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(tr('Please enter a valid amount')),
+          backgroundColor: AppColors.expense,
+        ),
+      );
+      return;
+    }
+    if (_formData.transactionMode == 'Transfer' &&
+        _formData.organizationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(tr('Please select an organization for transfer')),
           backgroundColor: AppColors.expense,
         ),
       );
@@ -595,6 +638,14 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                 icon: Icons.account_balance_wallet_rounded,
                 title: tr('Record Transaction'),
                 subtitle: tr('Income & Expense'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: withFeedbackAction(
+                    context,
+                    menu: 'income_expense',
+                    actions: const [],
+                  ),
+                ),
               ),
               Expanded(
                 child: SingleChildScrollView(
@@ -604,6 +655,8 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                     child: Column(
                       children: [
                         _buildTransactionTypeCard(),
+                        SizedBox(height: 8),
+                        _buildTransactionModeCard(),
                         SizedBox(height: 8),
                         _buildDateAmountCard(),
                         SizedBox(height: 8),
@@ -633,74 +686,6 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF1B5E20), Color(0xFF388E3C), Color(0xFF4CAF50)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(18),
-          bottomRight: Radius.circular(18),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 18),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-          SizedBox(width: 10),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.account_balance_wallet_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-          SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Record Transaction',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'Income & Expense',
-                  style: TextStyle(color: Colors.white70, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -757,6 +742,68 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransactionModeCard() {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionTitle(
+            icon: Icons.payments_rounded,
+            title: tr('Transaction Mode'),
+            subtitle: tr('Cash or bank transfer'),
+          ),
+          SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: _formData.transactionMode,
+            decoration: InputDecoration(
+              labelText: tr('Mode'),
+              prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+              DropdownMenuItem(value: 'Transfer', child: Text('Transfer')),
+            ],
+            onChanged: (v) {
+              setState(() {
+                _formData.transactionMode = v ?? 'Cash';
+                if (_formData.transactionMode != 'Transfer') {
+                  _formData.organizationId = null;
+                } else if (_organizations.isEmpty) {
+                  _loadOrganizations();
+                }
+              });
+            },
+          ),
+          if (_formData.transactionMode == 'Transfer') ...[
+            SizedBox(height: 10),
+            DropdownButtonFormField<int>(
+              value: _formData.organizationId,
+              decoration: InputDecoration(
+                labelText: tr('Organization'),
+                prefixIcon: const Icon(Icons.business_rounded),
+              ),
+              items: _organizations.map((o) {
+                final id = o['id'];
+                final idInt = id is int ? id : int.tryParse('$id');
+                return DropdownMenuItem<int>(
+                  value: idInt,
+                  child: Text('${o['name'] ?? ''}'),
+                );
+              }).where((e) => e.value != null).toList(),
+              onChanged: (v) => setState(() => _formData.organizationId = v),
+              validator: (v) {
+                if (_formData.transactionMode == 'Transfer' && v == null) {
+                  return tr('Select organization');
+                }
+                return null;
+              },
+            ),
+          ],
         ],
       ),
     );
@@ -975,6 +1022,11 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           color: Color(0xFF1B5E20),
         ),
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        onChanged: (v) {
+          setState(() {
+            _formData.amount = double.tryParse(v.trim());
+          });
+        },
         validator: (value) {
           if (value == null || value.isEmpty) return 'Required';
           if (double.tryParse(value) == null) return 'Invalid';
@@ -1063,14 +1115,45 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   }
 
   Widget _buildSubCategorySection() {
+    final preview = _formData.splitPreview();
     return Container(
       margin: const EdgeInsets.only(top: 8),
       child: _card(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _sectionTitle('Sub Category', Icons.list_alt_rounded),
+            _sectionTitle(tr('Sub Category'), Icons.list_alt_rounded),
+            Text(
+              tr('Select one or more — amount splits equally'),
+              style: AppText.caption,
+            ),
+            SizedBox(height: 8),
             _buildSubCategoryGrid(),
+            if (preview.length >= 2) ...[
+              SizedBox(height: 12),
+              Text(tr('Split preview'), style: AppText.label),
+              SizedBox(height: 6),
+              ...preview.map(
+                (p) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(p.name, style: AppText.small),
+                      ),
+                      Text(
+                        '₹${NumberFormat('#,##0').format(p.amount)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -1079,67 +1162,36 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
 
   Widget _buildSubCategoryGrid() {
     final color = _getCategoryColor(_formData.category!);
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        mainAxisSpacing: 6,
-        crossAxisSpacing: 6,
-        childAspectRatio: 1.0,
-      ),
-      itemCount: subCategories.length,
-      itemBuilder: (context, index) {
-        final option = subCategories[index];
-        final selected = _formData.subCategory == option;
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: subCategories.map((option) {
+        final selected = _formData.subCategories.contains(option);
         final emoji =
             _formData.categorySubCategoryMap[_formData.category]![option] ??
                 '📋';
-        return GestureDetector(
-          onTap: () => setState(() => _formData.subCategory = option),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            decoration: BoxDecoration(
-              color: selected ? color : Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: selected ? color : AppColors.border,
-                width: 1.4,
-              ),
-              boxShadow: selected
-                  ? [
-                      BoxShadow(
-                        color: color.withValues(alpha: 0.18),
-                        blurRadius: 8,
-                        offset: Offset(0, 3),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(emoji, style: TextStyle(fontSize: 16)),
-                SizedBox(height: 2),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: Text(
-                    option,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : AppColors.textPrimary,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+        return FilterChip(
+          selected: selected,
+          showCheckmark: true,
+          avatar: Text(emoji, style: const TextStyle(fontSize: 14)),
+          label: Text(
+            option,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: selected ? Colors.white : AppColors.textPrimary,
             ),
           ),
+          selectedColor: color,
+          backgroundColor: Colors.white,
+          checkmarkColor: Colors.white,
+          side: BorderSide(
+            color: selected ? color : AppColors.border,
+            width: 1.2,
+          ),
+          onSelected: (_) => _toggleSubCategory(option),
         );
-      },
+      }).toList(),
     );
   }
 
@@ -1423,11 +1475,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                 ),
               ),
             ),
-          ],
-        ),
-        SizedBox(height: 8),
-        Row(
-          children: [
+            SizedBox(width: 8),
             Expanded(
               child: _halfOutlinedButton(
                 label: _hasOtherInfo ? 'Other Info ✓' : 'Other Info',
@@ -1438,8 +1486,6 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                 onPressed: _showOtherInfoSheet,
               ),
             ),
-            SizedBox(width: 8),
-            Expanded(child: SizedBox.shrink()),
           ],
         ),
       ],

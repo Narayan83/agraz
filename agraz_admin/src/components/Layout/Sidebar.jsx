@@ -26,6 +26,10 @@ import {
   Images,
   Landmark,
   BarChart3,
+  MessageSquare,
+  Activity,
+  FileText,
+  Building2,
 } from "lucide-react";
 import "./Sidebar.css";
 
@@ -55,6 +59,10 @@ const iconMap = {
   Images: <Images size={18} strokeWidth={1.75} />,
   Landmark: <Landmark size={18} strokeWidth={1.75} />,
   BarChart3: <BarChart3 size={18} strokeWidth={1.75} />,
+  MessageSquare: <MessageSquare size={18} strokeWidth={1.75} />,
+  Activity: <Activity size={18} strokeWidth={1.75} />,
+  FileText: <FileText size={18} strokeWidth={1.75} />,
+  Building2: <Building2 size={18} strokeWidth={1.75} />,
 };
 
 /** Normalize menu rows from `/my-menus` (snake_case + occasional PascalCase). */
@@ -133,6 +141,19 @@ function menuSubtreeActive(location, item) {
 const HARD_CODED_SERVICE_NAV = [
   { menu_name: "Service Registrations", url: "/service-registrations", icon: "ClipboardList" },
   { menu_name: "Government Facilities", url: "/gov-facilities", icon: "Landmark" },
+];
+
+/**
+ * Fallback Tools links (also seed these in Menu Management /my-menus if using DB menus):
+ * - Feedback → /feedback (icon: MessageSquare)
+ * - Entry Analytics → /entry-analytics (icon: Activity)
+ * - App Contents → /app-contents (icon: FileText)
+ */
+const HARD_CODED_TOOLS_NAV = [
+  { menu_name: "Feedback", url: "/feedback", icon: "MessageSquare" },
+  { menu_name: "Entry Analytics", url: "/entry-analytics", icon: "Activity" },
+  { menu_name: "Organizations", url: "/organizations", icon: "Building2" },
+  { menu_name: "App Contents", url: "/app-contents", icon: "FileText" },
 ];
 
 const LOGOUT_NAV_ITEM = { menu_name: "Logout", url: "/logout", icon: "LogOut" };
@@ -334,6 +355,24 @@ const Sidebar = ({ isOpen, isMobile, setMobileOpen, mobileOpen, setOpen }) => {
               return (
                 <SidebarItem
                   key={`static-${item.url}`}
+                  item={item}
+                  isOpen={isOpen}
+                  isMobile={isMobile}
+                  toggleSidebar={toggleMobile}
+                  expandSidebar={setOpen}
+                />
+              );
+            })}
+          </div>
+
+          <div className="nav-group">
+            {(isOpen || isMobile) && <span className="nav-label">Tools</span>}
+            {HARD_CODED_TOOLS_NAV.map((raw) => {
+              const item = normalizeMenuItem(raw);
+              if (!item) return null;
+              return (
+                <SidebarItem
+                  key={`tools-${item.url}`}
                   item={item}
                   isOpen={isOpen}
                   isMobile={isMobile}

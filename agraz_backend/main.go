@@ -30,6 +30,11 @@ func init() {
 		&models.Labor{},
 		&models.LaborRate{},
 		&models.IncomeExpense{},
+		&models.Organization{},
+		&models.OrgLedger{},
+		&models.OrgTransaction{},
+		&models.AppFeedback{},
+		&models.AppContent{},
 		&models.EcomCategory{},
 		&models.EcomSubCategory{},
 		&models.EcomProduct{},
@@ -70,6 +75,9 @@ func main() {
 	handler.SetUserRoleMappingDB(initializers.DB)
 	handler.SetEmployeeDB(initializers.DB)
 	handler.SetIncomeExpenseDB(initializers.DB)
+	handler.SetOrganizationDB(initializers.DB)
+	handler.SetFeedbackDB(initializers.DB)
+	handler.SetAppContentDB(initializers.DB)
 	handler.SetLaborDB(initializers.DB)
 	handler.SetLaborRateDB(initializers.DB)
 	handler.SetServiceRegistrationDB(initializers.DB)
@@ -154,9 +162,34 @@ func main() {
 	api.Put("/income_expense/:id", handler.UpdateIncomeExpenseMobile)
 	api.Delete("/income_expense/:id", handler.DeleteIncomeExpense)
 
+	// Organizations & ledgers (per logged-in user)
+	api.Get("/organizations", handler.ListOrganizations)
+	api.Post("/organizations", handler.CreateOrganization)
+	api.Put("/organizations/:id", handler.UpdateOrganization)
+	api.Delete("/organizations/:id", handler.DeleteOrganization)
+	api.Get("/org_ledgers", handler.ListOrgLedgers)
+	api.Post("/org_ledgers", handler.CreateOrgLedger)
+	api.Put("/org_ledgers/:id", handler.UpdateOrgLedger)
+	api.Delete("/org_ledgers/:id", handler.DeleteOrgLedger)
+	api.Get("/org_transactions/summary", handler.GetOrgSummary)
+	api.Get("/org_transactions/reports", handler.GetOrgReports)
+	api.Get("/org_transactions", handler.ListOrgTransactions)
+	api.Post("/org_transactions", handler.CreateOrgTransaction)
+	api.Delete("/org_transactions/:id", handler.DeleteOrgTransaction)
+
+	// Feedback (auth)
+	api.Post("/feedbacks", handler.CreateFeedback)
+	api.Get("/feedbacks", handler.ListMyFeedback)
+	api.Get("/feedbacks/all", handler.ListAllFeedbackPublic)
+
+	// App content CMS (auth; active list)
+	api.Get("/app_contents", handler.ListAppContentsPublic)
+	api.Get("/app_contents/:menu_key", handler.GetAppContentByKey)
+
 	// Labor management (per logged-in user)
 	api.Get("/labors/people", handler.GetLaborPeoplePublic)
 	api.Get("/labors/reports", handler.GetLaborReportsPublic)
+	api.Get("/labors/balance", handler.GetLaborBalancePublic)
 	api.Get("/labors", handler.GetLabors)
 	api.Post("/labors/batch", handler.CreateLaborsBatch)
 	api.Post("/labors", handler.CreateLabor)
@@ -334,6 +367,25 @@ func main() {
 	api.Delete("/admin/market/quantities/:id", handler.AdminDeleteMarketQuantity)
 
 	api.Get("/admin/market/analytics", handler.GetMarketAnalyticsAdmin)
+
+	// Admin feedback
+	api.Get("/admin/feedbacks", handler.AdminListFeedback)
+	api.Patch("/admin/feedbacks/:id/verify", handler.AdminSetFeedbackVerified)
+
+	// Admin app content CMS
+	api.Get("/admin/app_contents", handler.AdminListAppContents)
+	api.Post("/admin/app_contents", handler.AdminCreateAppContent)
+	api.Put("/admin/app_contents/:id", handler.AdminUpdateAppContent)
+	api.Delete("/admin/app_contents/:id", handler.AdminDeleteAppContent)
+
+	// Admin entry analytics
+	api.Get("/admin/entry-analytics", handler.AdminEntryAnalytics)
+	api.Get("/admin/entry-analytics/entries", handler.AdminEntryAnalyticsEntries)
+
+	// Admin organizations
+	api.Get("/admin/organizations", handler.AdminListOrganizations)
+	api.Get("/admin/org_ledgers", handler.AdminListOrgLedgers)
+	api.Get("/admin/org_transactions", handler.AdminListOrgTransactions)
 
 	// start server
 	port := os.Getenv("PORT")

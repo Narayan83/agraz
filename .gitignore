@@ -1,0 +1,8 @@
+# Keep deploy guide private on this machine only
+DEPLOY_UPDATE.md
+DEPLOY_SECRETS.local.md
+.vps_credentials
+DEPLOY_SECRETS.local
+*.local.env
+.DS_Store
+Thumbs.db

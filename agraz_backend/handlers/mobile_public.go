@@ -192,8 +192,23 @@ func CreateIncomeExpenseMobile(c *fiber.Ctx) error {
 	} else if v, ok := raw["sub_category"].(string); ok {
 		sub = v
 	}
-	if strings.TrimSpace(cat) == "" || strings.TrimSpace(sub) == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "category and subCategory are required"})
+	var subList []string
+	if arr, ok := raw["subCategories"].([]interface{}); ok {
+		for _, item := range arr {
+			if s, ok := item.(string); ok {
+				subList = append(subList, s)
+			}
+		}
+	} else if arr, ok := raw["sub_categories"].([]interface{}); ok {
+		for _, item := range arr {
+			if s, ok := item.(string); ok {
+				subList = append(subList, s)
+			}
+		}
+	}
+	subs := normalizeIESubCategories(subList, sub)
+	if strings.TrimSpace(cat) == "" || len(subs) == 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "category and subCategory (or subCategories) are required"})
 	}
 	amtF, ok := toFloat64(raw["amount"])
 	if !ok || amtF <= 0 {
@@ -229,40 +244,102 @@ func CreateIncomeExpenseMobile(c *fiber.Ctx) error {
 	}
 	pin := strFromAny(raw["pincode"])
 	amt := decimal.NewFromFloat(amtF)
-	row := models.IncomeExpense{
-		UserID:      uid,
-		Type:        typeStr,
-		Category:    strings.TrimSpace(cat),
-		SubCategory: strings.TrimSpace(sub),
-		Amount:      amt,
-		Mobile:      strings.TrimSpace(mobile),
-		Date:        dt,
-		Name:        strings.TrimSpace(name),
+
+	txnMode, _ := raw["transaction_mode"].(string)
+	if txnMode == "" {
+		txnMode, _ = raw["transactionMode"].(string)
+	}
+	txnMode = strings.TrimSpace(txnMode)
+	if txnMode == "" {
+		txnMode = "Cash"
+	}
+	if txnMode != "Cash" && txnMode != "Transfer" {
+		return c.Status(400).JSON(fiber.Map{"error": "transaction_mode must be Cash or Transfer"})
+	}
+	var orgIDPtr *uint
+	if txnMode == "Transfer" {
+		oid, ok := uintFromAny(raw["organization_id"])
+		if !ok {
+			if v, ok2 := uintFromAny(raw["organizationId"]); ok2 {
+				oid, ok = v, true
+			}
+		}
+		if !ok {
+			return c.Status(400).JSON(fiber.Map{"error": "organization_id is required when transaction_mode is Transfer"})
+		}
+		orgIDPtr = &oid
+	} else if oid, ok := uintFromAny(raw["organization_id"]); ok {
+		orgIDPtr = &oid
+	} else if v, ok := uintFromAny(raw["organizationId"]); ok {
+		orgIDPtr = &v
+	}
+
+	baseRow := models.IncomeExpense{
+		UserID:          uid,
+		Type:            typeStr,
+		Category:        strings.TrimSpace(cat),
+		Mobile:          strings.TrimSpace(mobile),
+		Date:            dt,
+		Name:            strings.TrimSpace(name),
+		TransactionMode: txnMode,
+		OrganizationID:  orgIDPtr,
 	}
 	if narr != "" {
-		row.Narration = &narr
+		baseRow.Narration = &narr
 	}
 	if village != "" {
-		row.Village = &village
+		baseRow.Village = &village
 	}
 	if post != "" {
-		row.Post = &post
+		baseRow.Post = &post
 	}
 	if taluk != "" {
-		row.Taluk = &taluk
+		baseRow.Taluk = &taluk
 	}
 	if district != "" {
-		row.District = &district
+		baseRow.District = &district
 	}
 	if extra != "" {
-		row.ExtraAddr = &extra
+		baseRow.ExtraAddr = &extra
 	}
 	if pin != "" {
-		row.Pincode = &pin
+		baseRow.Pincode = &pin
 	}
+
+	if len(subs) >= 2 {
+		amounts := splitAmountWholeRupees(amt, len(subs))
+		rows := make([]models.IncomeExpense, 0, len(subs))
+		for i, s := range subs {
+			row := baseRow
+			row.SubCategory = s
+			row.Amount = amounts[i]
+			if row.Amount.LessThanOrEqual(decimal.Zero) {
+				continue
+			}
+			rows = append(rows, row)
+		}
+		if len(rows) == 0 {
+			return c.Status(400).JSON(fiber.Map{"error": "split amounts are zero; increase amount or reduce subCategories"})
+		}
+		if err := incomeExpenseDB.Create(&rows).Error; err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to create records", "details": err.Error()})
+		}
+		for i := range rows {
+			syncIETransferToOrg(uid, &rows[i])
+		}
+		return c.Status(201).JSON(fiber.Map{
+			"message": "Transactions created successfully",
+			"data":    rows,
+		})
+	}
+
+	row := baseRow
+	row.SubCategory = subs[0]
+	row.Amount = amt
 	if err := incomeExpenseDB.Create(&row).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create record", "details": err.Error()})
 	}
+	syncIETransferToOrg(uid, &row)
 	return c.Status(201).JSON(fiber.Map{"message": "Transaction created successfully", "data": row})
 }
 
@@ -388,6 +465,35 @@ func UpdateIncomeExpenseMobile(c *fiber.Ctx) error {
 		} else {
 			row.Pincode = &v
 		}
+	}
+	if v, ok := raw["transaction_mode"].(string); ok && strings.TrimSpace(v) != "" {
+		m := strings.TrimSpace(v)
+		if m != "Cash" && m != "Transfer" {
+			return c.Status(400).JSON(fiber.Map{"error": "transaction_mode must be Cash or Transfer"})
+		}
+		row.TransactionMode = m
+	} else if v, ok := raw["transactionMode"].(string); ok && strings.TrimSpace(v) != "" {
+		m := strings.TrimSpace(v)
+		if m != "Cash" && m != "Transfer" {
+			return c.Status(400).JSON(fiber.Map{"error": "transaction_mode must be Cash or Transfer"})
+		}
+		row.TransactionMode = m
+	}
+	if _, has := raw["organization_id"]; has {
+		if oid, ok := uintFromAny(raw["organization_id"]); ok {
+			row.OrganizationID = &oid
+		} else {
+			row.OrganizationID = nil
+		}
+	} else if _, has := raw["organizationId"]; has {
+		if oid, ok := uintFromAny(raw["organizationId"]); ok {
+			row.OrganizationID = &oid
+		} else {
+			row.OrganizationID = nil
+		}
+	}
+	if row.TransactionMode == "Transfer" && row.OrganizationID == nil {
+		return c.Status(400).JSON(fiber.Map{"error": "organization_id is required when transaction_mode is Transfer"})
 	}
 	if err := incomeExpenseDB.Save(&row).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to update", "details": err.Error()})

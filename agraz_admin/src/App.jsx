@@ -15,6 +15,10 @@ import EcomAdmin from "./pages/EcomAdmin";
 import StorefrontHero from "./pages/StorefrontHero";
 import GovFacilities from "./pages/GovFacilities";
 import MarketReports from "./pages/MarketReports";
+import FeedbackAdmin from "./pages/FeedbackAdmin";
+import EntryAnalytics from "./pages/EntryAnalytics";
+import AppContentAdmin from "./pages/AppContentAdmin";
+import OrganizationsAdmin from "./pages/OrganizationsAdmin";
 import Login from "./pages/Login";
 import { logoutAndRedirect } from "./lib/authStorage";
 import "./App.css";
@@ -114,6 +118,22 @@ function App() {
 
         <Route path="/market-reports" element={
           <ProtectedRoute><MarketReports /></ProtectedRoute>
+        } />
+
+        <Route path="/feedback" element={
+          <ProtectedRoute><FeedbackAdmin /></ProtectedRoute>
+        } />
+
+        <Route path="/entry-analytics" element={
+          <ProtectedRoute><EntryAnalytics /></ProtectedRoute>
+        } />
+
+        <Route path="/organizations" element={
+          <ProtectedRoute><OrganizationsAdmin /></ProtectedRoute>
+        } />
+
+        <Route path="/app-contents" element={
+          <ProtectedRoute><AppContentAdmin /></ProtectedRoute>
         } />
         
         <Route path="/auditlogs" element={

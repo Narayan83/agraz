@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'api_service.dart';
 import 'config.dart';
+import 'feedback_fab.dart';
 import 'service_register.dart';
 import 'app_theme.dart';
 import 'l10n/app_l10n.dart';
@@ -98,18 +99,22 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
             ),
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            tooltip: tr('Register Service'),
-            onPressed: _openRegister,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: tr('Refresh'),
-            onPressed: () => _load(q: _currentQuery()),
-          ),
-        ],
+        actions: withFeedbackAction(
+          context,
+          menu: 'services',
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              tooltip: tr('Register Service'),
+              onPressed: _openRegister,
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              tooltip: tr('Refresh'),
+              onPressed: () => _load(q: _currentQuery()),
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [

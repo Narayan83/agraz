@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"math"
+	"strings"
 	"time"
 
 	"erp.local/backend/models"
@@ -20,20 +22,72 @@ func validIncomeExpenseType(t string) bool {
 }
 
 type incomeExpensePayload struct {
-	Type        string          `json:"type"`
-	Category    string          `json:"category"`
-	SubCategory string          `json:"sub_category"`
-	Amount      decimal.Decimal `json:"amount"`
-	Narration   *string         `json:"narration"`
-	Mobile      string          `json:"mobile"`
-	Date        time.Time       `json:"date"`
-	Name        string          `json:"name"`
-	Village     *string         `json:"village"`
-	Post        *string         `json:"post"`
-	Taluk       *string         `json:"taluk"`
-	District    *string         `json:"district"`
-	ExtraAddr   *string         `json:"extra_address"`
-	Pincode     *string         `json:"pincode"`
+	Type          string          `json:"type"`
+	Category      string          `json:"category"`
+	SubCategory   string          `json:"sub_category"`
+	SubCategories []string        `json:"sub_categories"` // optional multi-select
+	Amount        decimal.Decimal `json:"amount"`
+	Narration     *string         `json:"narration"`
+	Mobile        string          `json:"mobile"`
+	Date          time.Time       `json:"date"`
+	Name          string          `json:"name"`
+	Village       *string         `json:"village"`
+	Post          *string         `json:"post"`
+	Taluk         *string         `json:"taluk"`
+	District      *string         `json:"district"`
+	ExtraAddr     *string         `json:"extra_address"`
+	Pincode       *string         `json:"pincode"`
+}
+
+// normalizeIESubCategories merges SubCategories + SubCategory into a unique trimmed list.
+func normalizeIESubCategories(subs []string, single string) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0)
+	for _, s := range subs {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		if _, ok := seen[s]; ok {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	if len(out) == 0 {
+		s := strings.TrimSpace(single)
+		if s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// splitAmountWholeRupees splits amount into n whole-rupee parts.
+// base = floor(amount/n); remainder goes to the FIRST part.
+// Example: 100 / 3 → 34, 33, 33
+func splitAmountWholeRupees(amount decimal.Decimal, n int) []decimal.Decimal {
+	if n <= 0 {
+		return nil
+	}
+	if n == 1 {
+		return []decimal.Decimal{amount}
+	}
+	total := int64(math.Floor(amount.InexactFloat64()))
+	if total < 0 {
+		total = 0
+	}
+	base := total / int64(n)
+	rem := total % int64(n)
+	out := make([]decimal.Decimal, n)
+	for i := 0; i < n; i++ {
+		v := base
+		if i == 0 {
+			v += rem
+		}
+		out[i] = decimal.NewFromInt(v)
+	}
+	return out
 }
 
 func CreateIncomeExpense(c *fiber.Ctx) error {
@@ -48,8 +102,9 @@ func CreateIncomeExpense(c *fiber.Ctx) error {
 	if !validIncomeExpenseType(body.Type) {
 		return c.Status(400).JSON(fiber.Map{"error": "type must be Income or Expense"})
 	}
-	if body.Category == "" || body.SubCategory == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "category and sub_category are required"})
+	subs := normalizeIESubCategories(body.SubCategories, body.SubCategory)
+	if body.Category == "" || len(subs) == 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "category and sub_category (or sub_categories) are required"})
 	}
 	if body.Date.IsZero() {
 		return c.Status(400).JSON(fiber.Map{"error": "date is required"})
@@ -58,23 +113,49 @@ func CreateIncomeExpense(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "amount must be greater than zero"})
 	}
 
-	row := models.IncomeExpense{
-		UserID:      uid,
-		Type:        body.Type,
-		Category:    body.Category,
-		SubCategory: body.SubCategory,
-		Amount:      body.Amount,
-		Narration:   body.Narration,
-		Mobile:      body.Mobile,
-		Date:        body.Date,
-		Name:        body.Name,
-		Village:     body.Village,
-		Post:        body.Post,
-		Taluk:       body.Taluk,
-		District:    body.District,
-		ExtraAddr:   body.ExtraAddr,
-		Pincode:     body.Pincode,
+	baseRow := models.IncomeExpense{
+		UserID:    uid,
+		Type:      body.Type,
+		Category:  body.Category,
+		Narration: body.Narration,
+		Mobile:    body.Mobile,
+		Date:      body.Date,
+		Name:      body.Name,
+		Village:   body.Village,
+		Post:      body.Post,
+		Taluk:     body.Taluk,
+		District:  body.District,
+		ExtraAddr: body.ExtraAddr,
+		Pincode:   body.Pincode,
 	}
+
+	if len(subs) >= 2 {
+		amounts := splitAmountWholeRupees(body.Amount, len(subs))
+		rows := make([]models.IncomeExpense, 0, len(subs))
+		for i, sub := range subs {
+			row := baseRow
+			row.SubCategory = sub
+			row.Amount = amounts[i]
+			if row.Amount.LessThanOrEqual(decimal.Zero) {
+				continue
+			}
+			rows = append(rows, row)
+		}
+		if len(rows) == 0 {
+			return c.Status(400).JSON(fiber.Map{"error": "split amounts are zero; increase amount or reduce sub_categories"})
+		}
+		if err := incomeExpenseDB.Create(&rows).Error; err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to create records", "details": err.Error()})
+		}
+		return c.Status(201).JSON(fiber.Map{
+			"data":    rows,
+			"message": "Created split income/expense entries",
+		})
+	}
+
+	row := baseRow
+	row.SubCategory = subs[0]
+	row.Amount = body.Amount
 	if err := incomeExpenseDB.Create(&row).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create record", "details": err.Error()})
 	}
