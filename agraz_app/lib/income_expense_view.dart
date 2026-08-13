@@ -676,7 +676,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
 class _TransactionDetailSheet extends StatefulWidget {
   final Map<String, dynamic> transaction;
 
-  _TransactionDetailSheet({required this.transaction});
+  const _TransactionDetailSheet({required this.transaction});
 
   @override
   State<_TransactionDetailSheet> createState() =>

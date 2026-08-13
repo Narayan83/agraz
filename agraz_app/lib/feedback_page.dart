@@ -300,7 +300,7 @@ class _FeedbackPageState extends State<FeedbackPage>
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
         itemCount: rows.length,
-        separatorBuilder: (_, __) => SizedBox(height: 8),
+        separatorBuilder: (_, _) => SizedBox(height: 8),
         itemBuilder: (context, i) => _FeedbackTile(
           row: rows[i],
           showUser: showUser,

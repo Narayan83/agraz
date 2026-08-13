@@ -759,7 +759,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           ),
           SizedBox(height: 10),
           DropdownButtonFormField<String>(
-            value: _formData.transactionMode,
+            initialValue: _formData.transactionMode,
             decoration: InputDecoration(
               labelText: tr('Mode'),
               prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
@@ -782,7 +782,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           if (_formData.transactionMode == 'Transfer') ...[
             SizedBox(height: 10),
             DropdownButtonFormField<int>(
-              value: _formData.organizationId,
+              initialValue: _formData.organizationId,
               decoration: InputDecoration(
                 labelText: tr('Organization'),
                 prefixIcon: const Icon(Icons.business_rounded),
@@ -1259,7 +1259,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                 shrinkWrap: true,
                 padding: EdgeInsets.zero,
                 itemCount: _nameSuggestions.length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (_, _) =>
                     Divider(height: 1, color: AppColors.border),
                 itemBuilder: (context, index) {
                   final row = _nameSuggestions[index];

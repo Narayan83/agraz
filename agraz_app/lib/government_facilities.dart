@@ -436,7 +436,7 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
 
 class _EmptyHint extends StatelessWidget {
   final String text;
-  _EmptyHint(this.text);
+  const _EmptyHint(this.text);
 
   @override
   Widget build(BuildContext context) {

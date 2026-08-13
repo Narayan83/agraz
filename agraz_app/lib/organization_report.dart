@@ -166,7 +166,7 @@ class _OrganizationReportPageState extends State<OrganizationReportPage>
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<int?>(
-                            value: _orgId,
+                            initialValue: _orgId,
                             isExpanded: true,
                             decoration: InputDecoration(
                               labelText: tr('Organization'),
@@ -191,7 +191,7 @@ class _OrganizationReportPageState extends State<OrganizationReportPage>
                         const SizedBox(width: 8),
                         Expanded(
                           child: DropdownButtonFormField<int?>(
-                            value: _ledgerId,
+                            initialValue: _ledgerId,
                             isExpanded: true,
                             decoration: InputDecoration(
                               labelText: tr('Ledger'),

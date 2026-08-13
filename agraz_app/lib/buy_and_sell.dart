@@ -200,7 +200,7 @@ class _BuySellPageState extends State<BuySellPage> {
 class ItemsList extends StatelessWidget {
   final List<Item> items;
 
-  ItemsList({super.key, required this.items});
+  const ItemsList({super.key, required this.items});
 
   @override
   Widget build(BuildContext context) {

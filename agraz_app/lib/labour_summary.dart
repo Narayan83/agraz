@@ -265,7 +265,7 @@ class _LabourSummaryPageState extends State<LabourSummaryPage> {
                                   24,
                                 ),
                                 itemCount: _people.length,
-                                separatorBuilder: (_, __) =>
+                                separatorBuilder: (_, _) =>
                                     SizedBox(height: 8),
                                 itemBuilder: (context, i) {
                                   final p = _people[i];
@@ -879,7 +879,7 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
                   ),
                   SizedBox(height: 8),
                   DropdownButtonFormField<String?>(
-                    value: _filterCategory,
+                    initialValue: _filterCategory,
                     decoration: InputDecoration(
                       labelText: tr('Category'),
                       filled: true,
@@ -1297,7 +1297,7 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
           : ListView.separated(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
               itemCount: _entries.length,
-              separatorBuilder: (_, __) => SizedBox(height: 8),
+              separatorBuilder: (_, _) => SizedBox(height: 8),
               itemBuilder: (context, i) {
                 final e = _entries[i];
                 final wage = _num(e['wage']);
@@ -1686,7 +1686,7 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                   ),
                   SizedBox(height: 8),
                   DropdownButtonFormField<String?>(
-                    value: _filterCategory,
+                    initialValue: _filterCategory,
                     decoration: InputDecoration(
                       labelText: tr('Category'),
                       filled: true,
@@ -1745,7 +1745,7 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                           child: ListView.separated(
                             padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
                             itemCount: _entries.length,
-                            separatorBuilder: (_, __) => SizedBox(height: 8),
+                            separatorBuilder: (_, _) => SizedBox(height: 8),
                             itemBuilder: (context, i) {
                               final e = _entries[i];
                               final wage = _num(e['wage']);

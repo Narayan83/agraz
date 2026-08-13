@@ -1994,7 +1994,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
         shrinkWrap: true,
         padding: const EdgeInsets.symmetric(vertical: 4),
         itemCount: _nameSuggestions.length,
-        separatorBuilder: (_, __) => Divider(height: 1, color: AppColors.border),
+        separatorBuilder: (_, _) => Divider(height: 1, color: AppColors.border),
         itemBuilder: (_, i) {
           final n = _nameSuggestions[i];
           return InkWell(
@@ -2627,7 +2627,7 @@ class _CategorySearchDialogState extends State<_CategorySearchDialog> {
                   : ListView.separated(
                       shrinkWrap: true,
                       itemCount: _filtered.length,
-                      separatorBuilder: (_, __) =>
+                      separatorBuilder: (_, _) =>
                           Divider(height: 1, color: AppColors.border),
                       itemBuilder: (_, i) {
                         final cat = _filtered[i];
@@ -2663,7 +2663,7 @@ class _LaborDetailSheet extends StatefulWidget {
       onUpdate;
   final Future<bool> Function() onDelete;
 
-  _LaborDetailSheet({
+  const _LaborDetailSheet({
     required this.laborer,
     required this.workTypes,
     required this.shifts,

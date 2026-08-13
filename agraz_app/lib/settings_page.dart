@@ -286,7 +286,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
 class _SectionHeader extends StatelessWidget {
   final String text;
-  _SectionHeader(this.text);
+  const _SectionHeader(this.text);
 
   @override
   Widget build(BuildContext context) {

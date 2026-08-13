@@ -738,7 +738,7 @@ class _ManageOrganizationPageState extends State<ManageOrganizationPage> {
                               children: [
                                 Expanded(
                                   child: DropdownButtonFormField<int>(
-                                    value: _orgId,
+                                    initialValue: _orgId,
                                     decoration: InputDecoration(
                                       labelText: tr('Organization'),
                                     ),
@@ -807,7 +807,7 @@ class _ManageOrganizationPageState extends State<ManageOrganizationPage> {
                                 ),
                                 const SizedBox(height: 12),
                                 DropdownButtonFormField<int>(
-                                  value: _ledgerId,
+                                  initialValue: _ledgerId,
                                   decoration: InputDecoration(
                                     labelText: tr('Ledger'),
                                     prefixIcon: const Icon(
@@ -828,7 +828,7 @@ class _ManageOrganizationPageState extends State<ManageOrganizationPage> {
                                 ),
                                 const SizedBox(height: 10),
                                 DropdownButtonFormField<String>(
-                                  value: _mode,
+                                  initialValue: _mode,
                                   decoration: InputDecoration(
                                     labelText: tr('Transaction Mode'),
                                   ),
