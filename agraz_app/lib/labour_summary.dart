@@ -1563,6 +1563,82 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
     );
   }
 
+  double get _totalCredit {
+    var sum = 0.0;
+    for (final e in _entries) {
+      final kind = (e['entry_kind']?.toString() ?? 'payable').toLowerCase();
+      if (kind == 'payment') continue;
+      sum += _num(e['wage']) * _num(e['hours']);
+    }
+    return sum;
+  }
+
+  double get _totalDebit {
+    var sum = 0.0;
+    for (final e in _entries) {
+      final kind = (e['entry_kind']?.toString() ?? 'payable').toLowerCase();
+      if (kind != 'payment') continue;
+      sum += _num(e['wage']) * _num(e['hours']);
+    }
+    return sum;
+  }
+
+  String _money(double v) => '₹${v.toStringAsFixed(v == v.roundToDouble() ? 0 : 2)}';
+
+  String _entryKindLabel(String? kind) {
+    final k = (kind ?? 'payable').toLowerCase();
+    if (k == 'payment') return tr('Debit');
+    return tr('Credit'); // payable + opening
+  }
+
+  Color _entryKindColor(String? kind) {
+    final k = (kind ?? 'payable').toLowerCase();
+    if (k == 'payment') return AppColors.expense;
+    return AppColors.income;
+  }
+
+  Widget _summaryBox(String title, String value, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 16),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1725,6 +1801,39 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
               ),
             ),
             Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _summaryBox(
+                      tr('Credit'),
+                      _loading ? '…' : _money(_totalCredit),
+                      AppColors.income,
+                      Icons.trending_up_rounded,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _summaryBox(
+                      tr('Debit'),
+                      _loading ? '…' : _money(_totalDebit),
+                      AppColors.expense,
+                      Icons.trending_down_rounded,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _summaryBox(
+                      tr('Balance'),
+                      _loading ? '…' : _money(_totalCredit - _totalDebit),
+                      AppColors.primary,
+                      Icons.account_balance_wallet_rounded,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Align(
                 alignment: Alignment.centerLeft,
@@ -1758,6 +1867,9 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                               final e = _entries[i];
                               final wage = _num(e['wage']);
                               final hours = _num(e['hours']);
+                              final amount = wage * hours;
+                              final kind = e['entry_kind']?.toString();
+                              final kindColor = _entryKindColor(kind);
                               DateTime? date;
                               try {
                                 date = DateTime.parse(e['date'].toString());
@@ -1777,10 +1889,10 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                                           ),
                                         ),
                                         Text(
-                                          '₹${(wage * hours).toStringAsFixed(0)}',
-                                          style: const TextStyle(
+                                          _money(amount),
+                                          style: TextStyle(
                                             fontWeight: FontWeight.w800,
-                                            color: AppColors.primary,
+                                            color: kindColor,
                                           ),
                                         ),
                                       ],
@@ -1796,12 +1908,10 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                                             label: e['category'].toString(),
                                             color: AppColors.expense,
                                           ),
-                                        if ((e['entry_kind']?.toString() ?? '')
-                                            .isNotEmpty)
-                                          InfoChip(
-                                            label: e['entry_kind'].toString(),
-                                            color: AppColors.info,
-                                          ),
+                                        InfoChip(
+                                          label: _entryKindLabel(kind),
+                                          color: kindColor,
+                                        ),
                                         if ((e['shift']?.toString() ?? '')
                                             .isNotEmpty)
                                           InfoChip(

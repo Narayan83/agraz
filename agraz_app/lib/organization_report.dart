@@ -280,7 +280,7 @@ class _OrganizationReportPageState extends State<OrganizationReportPage>
                 children: [
                   Expanded(
                     child: _stat(
-                      tr('Income'),
+                      tr('Credit'),
                       _money(overview['income']),
                       AppColors.income,
                     ),
@@ -288,7 +288,7 @@ class _OrganizationReportPageState extends State<OrganizationReportPage>
                   const SizedBox(width: 8),
                   Expanded(
                     child: _stat(
-                      tr('Expense'),
+                      tr('Debit'),
                       _money(overview['expense']),
                       AppColors.expense,
                     ),
@@ -385,7 +385,7 @@ class _OrganizationReportPageState extends State<OrganizationReportPage>
             child: ListTile(
               title: Text('${r['organization_name'] ?? ''}'),
               subtitle: Text(
-                '${tr('Income')} ${_money(r['income'])} · ${tr('Expense')} ${_money(r['expense'])}',
+                '${tr('Credit')} ${_money(r['income'])} · ${tr('Debit')} ${_money(r['expense'])}',
               ),
               trailing: Text(
                 _money(bal),
@@ -424,7 +424,7 @@ class _OrganizationReportPageState extends State<OrganizationReportPage>
             child: ListTile(
               title: Text('${r['ledger_name'] ?? ''}'),
               subtitle: Text(
-                '${tr('Income')} ${_money(r['income'])} · ${tr('Expense')} ${_money(r['expense'])}',
+                '${tr('Credit')} ${_money(r['income'])} · ${tr('Debit')} ${_money(r['expense'])}',
               ),
               trailing: Text(
                 _money(bal),
@@ -458,7 +458,7 @@ class _OrganizationReportPageState extends State<OrganizationReportPage>
             child: ListTile(
               title: Text('${r['month'] ?? ''}'),
               subtitle: Text(
-                '${tr('Income')} ${_money(r['income'])} · ${tr('Expense')} ${_money(r['expense'])}',
+                '${tr('Credit')} ${_money(r['income'])} · ${tr('Debit')} ${_money(r['expense'])}',
               ),
               trailing: Text(
                 _money(net),
@@ -492,7 +492,7 @@ class _OrganizationReportPageState extends State<OrganizationReportPage>
             child: ListTile(
               title: Text('${r['week'] ?? ''}'),
               subtitle: Text(
-                '${tr('Income')} ${_money(r['income'])} · ${tr('Expense')} ${_money(r['expense'])}',
+                '${tr('Credit')} ${_money(r['income'])} · ${tr('Debit')} ${_money(r['expense'])}',
               ),
               trailing: Text(
                 _money(net),

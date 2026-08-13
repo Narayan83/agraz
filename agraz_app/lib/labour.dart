@@ -66,16 +66,12 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   String _selectedShift = 'fullday';
   String _selectedGender = 'Male';
   String _selectedCategory = 'Plucking';
-  /// Top mode: Payable (work accrual) or Payment (settlement).
+  /// Top mode: Payable / Labour Entry (work accrual) or Payment (settlement).
   String _entryMode = 'Payable';
-  /// Before save in Payable mode: mark entire total as paid.
-  bool _settleAsPaid = false;
   /// Outstanding balance for selected labourer (green chip).
   double? _labourBalance;
   double? _labourPayable;
   double? _labourReceivable;
-  /// True when selected labourer has no opening balance yet.
-  bool _labourNeedsOpening = false;
 
   final List<String> _workTypes = ['Daily Wages', 'Contract'];
   final List<String> _shifts = ['fullday', 'morning', 'evening', 'hour'];
@@ -202,7 +198,6 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     _labourBalance = null;
     _labourPayable = null;
     _labourReceivable = null;
-    _labourNeedsOpening = false;
   }
 
   Future<void> _refreshLabourBalance({String? mobile, String? name}) async {
@@ -339,242 +334,6 @@ class _LaborManagementPageState extends State<LaborManagementPage>
           : null,
       name: name,
     );
-    await _ensureLabourOpeningBalance(
-      mobile: (savedMobile != null && savedMobile.length == 10)
-          ? savedMobile
-          : null,
-      name: name,
-    );
-  }
-
-  /// Returns true if this labourer already has an opening entry, or one was just saved.
-  Future<bool> _ensureLabourOpeningBalance({
-    String? mobile,
-    String? name,
-    bool forcePrompt = false,
-  }) async {
-    final m = (mobile ?? _mobileController.text).trim();
-    final n = (name ?? _nameController.text).trim();
-    if (n.length < 2 && m.isEmpty) return true;
-
-    final openings = await _api.fetchLabors(
-      mobile: m.isNotEmpty ? m : null,
-      name: m.isEmpty ? n : null,
-      entryKind: 'opening',
-      limit: 1,
-    );
-    if (!mounted) return false;
-    if (openings.isNotEmpty && !forcePrompt) {
-      setState(() => _labourNeedsOpening = false);
-      return true;
-    }
-
-    final saved = await _showOpeningBalanceDialog(
-      requiredEntry: true,
-      prefName: n,
-      prefMobile: m,
-    );
-    if (!mounted) return false;
-    setState(() => _labourNeedsOpening = saved != true);
-    return saved == true;
-  }
-
-  Future<bool?> _showOpeningBalanceDialog({
-    bool requiredEntry = false,
-    String? prefName,
-    String? prefMobile,
-  }) async {
-    final nameCtrl = TextEditingController(
-      text: (prefName ?? _nameController.text).trim(),
-    );
-    final mobileCtrl = TextEditingController(
-      text: (prefMobile ?? _mobileController.text).trim(),
-    );
-    final amountCtrl = TextEditingController();
-    DateTime date = _selectedDate;
-
-    final ok = await showDialog<bool>(
-      context: context,
-      barrierDismissible: !requiredEntry,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setLocal) {
-            return Dialog(
-              insetPadding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      requiredEntry
-                          ? tr('Opening Balance Required')
-                          : tr('Opening Balance'),
-                      style: AppText.h3,
-                    ),
-                    if (requiredEntry) ...[
-                      SizedBox(height: 6),
-                      Text(
-                        tr('Enter opening amount for this labourer before continuing.'),
-                        style: AppText.caption,
-                      ),
-                    ],
-                    SizedBox(height: 12),
-                    TextField(
-                      controller: nameCtrl,
-                      readOnly: requiredEntry && nameCtrl.text.trim().isNotEmpty,
-                      decoration: InputDecoration(
-                        labelText: tr('Name'),
-                        prefixIcon: const Icon(Icons.person_rounded),
-                      ),
-                      textCapitalization: TextCapitalization.words,
-                    ),
-                    SizedBox(height: 10),
-                    TextField(
-                      controller: mobileCtrl,
-                      decoration: InputDecoration(
-                        labelText: tr('Mobile (optional)'),
-                        prefixIcon: const Icon(Icons.phone_rounded),
-                      ),
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(10),
-                      ],
-                    ),
-                    SizedBox(height: 10),
-                    TextField(
-                      controller: amountCtrl,
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        labelText: tr('Opening amount'),
-                        prefixIcon: const Icon(Icons.currency_rupee_rounded),
-                        helperText: tr('Positive = payable opening'),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.calendar_today_rounded,
-                          color: AppColors.primary),
-                      title: Text(DateFormat('dd/MM/yyyy').format(date)),
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: ctx,
-                          initialDate: date,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime(2101),
-                        );
-                        if (picked != null) setLocal(() => date = picked);
-                      },
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        if (!requiredEntry)
-                          TextButton(
-                            onPressed: () {
-                              FocusManager.instance.primaryFocus?.unfocus();
-                              Navigator.pop(ctx, false);
-                            },
-                            child: Text(tr('Cancel')),
-                          )
-                        else
-                          TextButton(
-                            onPressed: () {
-                              FocusManager.instance.primaryFocus?.unfocus();
-                              Navigator.pop(ctx, false);
-                            },
-                            child: Text(tr('Later')),
-                          ),
-                        FilledButton(
-                          onPressed: () {
-                            FocusManager.instance.primaryFocus?.unfocus();
-                            Navigator.pop(ctx, true);
-                          },
-                          child: Text(tr('Save')),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    final name = nameCtrl.text.trim();
-    final mobile = mobileCtrl.text.trim();
-    final amount = double.tryParse(amountCtrl.text.trim());
-    // Dispose after dialog route finishes removing (Cancel with empty fields
-    // otherwise hits TextField still attached → '_dependents.isEmpty').
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      nameCtrl.dispose();
-      mobileCtrl.dispose();
-      amountCtrl.dispose();
-    });
-
-    if (ok != true) return false;
-    if (name.isEmpty) {
-      _showSnack(tr('Enter labourer name'), error: true);
-      return false;
-    }
-    if (amount == null || amount == 0) {
-      _showSnack(tr('Enter valid amount'), error: true);
-      return false;
-    }
-    if (mobile.isNotEmpty && mobile.length != 10) {
-      _showSnack(tr('Mobile must be 10 digits'), error: true);
-      return false;
-    }
-
-    var token = await getAuthToken();
-    if (token == null || token.isEmpty) {
-      final loggedIn = await _promptLoginForSave();
-      if (loggedIn != true) return false;
-    }
-
-    setState(() => _submitting = true);
-    final result = await _api.createLabor({
-      'name': name,
-      if (mobile.isNotEmpty) 'mobile': mobile,
-      'wage': amount.abs(),
-      'hours': 1,
-      'number_of_labours': 1,
-      'entry_kind': 'opening',
-      'category': 'Opening Balance',
-      'shift': 'fullday',
-      'gender': _selectedGender,
-      'work_type': 'Daily Wages',
-      'location': _selectedLocation ?? 'Farm',
-      'date': DateFormat('yyyy-MM-dd').format(date),
-      'narration': tr('Opening Balance'),
-    });
-    if (!mounted) return false;
-    setState(() => _submitting = false);
-    if (result['success'] == true) {
-      _showSnack(tr('Opening balance saved'));
-      setState(() => _labourNeedsOpening = false);
-      await _refreshLabourBalance(
-        mobile: mobile.isNotEmpty ? mobile : null,
-        name: name,
-      );
-      await _loadLabors();
-      return true;
-    }
-    _showSnack(
-      result['message']?.toString() ?? tr('Failed to save opening balance'),
-      error: true,
-    );
-    return false;
   }
 
   Future<void> _loadLabors() async {
@@ -1025,15 +784,6 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       _showSnack('Enter labourer name', error: true);
       return;
     }
-    final openingOk = await _ensureLabourOpeningBalance(
-      mobile: mobile.isNotEmpty ? mobile : null,
-      name: name,
-    );
-    if (openingOk != true) {
-      _showSnack(tr('Opening balance is required for this labourer'),
-          error: true);
-      return;
-    }
     if (mobile.isNotEmpty && mobile.length != 10) {
       _showSnack('Mobile must be 10 digits', error: true);
       return;
@@ -1087,15 +837,6 @@ class _LaborManagementPageState extends State<LaborManagementPage>
 
     if (name.isEmpty) {
       _showSnack(tr('Enter labourer name'), error: true);
-      return;
-    }
-    final openingOk = await _ensureLabourOpeningBalance(
-      mobile: mobile.isNotEmpty ? mobile : null,
-      name: name,
-    );
-    if (openingOk != true) {
-      _showSnack(tr('Opening balance is required for this labourer'),
-          error: true);
       return;
     }
     if (mobile.isNotEmpty && mobile.length != 10) {
@@ -1229,14 +970,12 @@ class _LaborManagementPageState extends State<LaborManagementPage>
         'location': _selectedLocation,
         'narration': narration,
         'date': dateStr,
-        'entry_kind': 'payable',
+        'entry_kind':
+            row.category == 'Opening Balance' ? 'opening' : 'payable',
         if (row.mobile != null && row.mobile!.isNotEmpty) 'mobile': row.mobile,
       };
-      if (_settleAsPaid) {
-        map['paid_amount'] = row.totalCost;
-      } else if (partialPaid != null && partialPaid > 0) {
-        // Apply explicit partial payment to first row only (batch-safe).
-        if (i == 0) map['paid_amount'] = partialPaid;
+      if (partialPaid != null && partialPaid > 0 && i == 0) {
+        map['paid_amount'] = partialPaid;
       }
       payloads.add(map);
     }
@@ -1281,7 +1020,6 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       _daysHourController.clear();
       _rateController.clear();
       _paidAmountController.clear();
-      _settleAsPaid = false;
       _selectedDate = DateTime.now();
       _selectedWorkType = 'Daily Wages';
       _selectedLocation = 'Farm';
@@ -1475,21 +1213,6 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                   children: withFeedbackAction(
                     context,
                     menu: 'labour',
-                    actions: [
-                      PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert_rounded,
-                            color: Colors.white),
-                        onSelected: (v) {
-                          if (v == 'opening') _showOpeningBalanceDialog();
-                        },
-                        itemBuilder: (_) => [
-                          PopupMenuItem(
-                            value: 'opening',
-                            child: Text(tr('Opening Balance')),
-                          ),
-                        ],
-                      ),
-                    ],
                   ),
                 ),
               ),
@@ -1548,34 +1271,53 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     );
   }
 
+  Widget _buildEntryModeTabs() {
+    final primary = Theme.of(context).colorScheme.primary;
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<String>(
+        showSelectedIcon: false,
+        segments: [
+          ButtonSegment(
+            value: 'Payable',
+            label: Text(tr('Labour Entry')),
+            icon: const Icon(Icons.person_add_alt_1_rounded, size: 16),
+          ),
+          ButtonSegment(
+            value: 'Payment',
+            label: Text(tr('Payment')),
+            icon: const Icon(Icons.payments_rounded, size: 16),
+          ),
+        ],
+        selected: {_entryMode},
+        onSelectionChanged: (s) => setState(() {
+          _entryMode = s.first;
+          if (_entryMode == 'Payment') {
+            _pending.clear();
+          }
+        }),
+        style: SegmentedButton.styleFrom(
+          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          foregroundColor: primary,
+          selectedForegroundColor: Theme.of(context).colorScheme.onPrimary,
+          selectedBackgroundColor: primary,
+          side: BorderSide(color: primary, width: 1.1),
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        ),
+      ),
+    );
+  }
+
   Widget _buildAddFormCard() {
     final isPayment = _entryMode == 'Payment';
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SectionTitle(
-            icon: Icons.person_add_alt_1_rounded,
-            title: tr('Add Labour Entry'),
-            subtitle: isPayment
-                ? tr('Record a labour payment')
-                : tr('Record daily wages or contract labour'),
-          ),
-          SizedBox(height: 14),
-          AppDropdown(
-            label: tr('Mode'),
-            value: _entryMode,
-            items: const ['Payable', 'Payment'],
-            icon: Icons.swap_horiz_rounded,
-            onChanged: (v) => setState(() {
-              _entryMode = v ?? 'Payable';
-              if (_entryMode == 'Payment') {
-                _pending.clear();
-              }
-            }),
-          ),
-          SizedBox(height: 10),
           _compactDateField(),
+          SizedBox(height: 12),
+          _buildEntryModeTabs(),
           if (isPayment) ...[
             SizedBox(height: 14),
             SectionTitle(
@@ -1605,7 +1347,6 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               _buildNameSuggestions(),
             ],
             if (_labourBalance != null ||
-                _labourNeedsOpening ||
                 _nameController.text.trim().length >= 2) ...[
               SizedBox(height: 8),
               _buildBalanceChip(),
@@ -1613,7 +1354,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
             SizedBox(height: 10),
             AppField(
               controller: _paymentAmountController,
-              label: tr('Amount'),
+              label: tr('Payment'),
               icon: Icons.currency_rupee_rounded,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
             ),
@@ -1715,7 +1456,6 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               _buildNameSuggestions(),
             ],
             if (_labourBalance != null ||
-                _labourNeedsOpening ||
                 _nameController.text.trim().length >= 2) ...[
               SizedBox(height: 8),
               _buildBalanceChip(),
@@ -1851,42 +1591,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
             SizedBox(height: 12),
             AppField(
               controller: _paidAmountController,
-              label: tr('Paid amount'),
+              label: tr('Payment'),
               icon: Icons.payments_outlined,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               required: false,
-            ),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                Text(tr('Settlement'), style: AppText.bodyStrong),
-                const Spacer(),
-                ChoiceChip(
-                  label: Text(tr('Payable')),
-                  selected: !_settleAsPaid,
-                  onSelected: (_) => setState(() => _settleAsPaid = false),
-                  selectedColor: AppColors.primarySoft,
-                  labelStyle: TextStyle(
-                    color: !_settleAsPaid
-                        ? AppColors.primary
-                        : AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(width: 8),
-                ChoiceChip(
-                  label: Text(tr('Paid')),
-                  selected: _settleAsPaid,
-                  onSelected: (_) => setState(() => _settleAsPaid = true),
-                  selectedColor: AppColors.incomeSoft,
-                  labelStyle: TextStyle(
-                    color: _settleAsPaid
-                        ? AppColors.income
-                        : AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
             ),
             SizedBox(height: 14),
             PrimaryButton(
@@ -1908,54 +1616,32 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     final label = receivable > 0
         ? '${tr('Receivable')}: ₹${receivable.toStringAsFixed(0)}'
         : '${tr('Payable')}: ₹${payable > 0 ? payable.toStringAsFixed(0) : bal.toStringAsFixed(0)}';
+    if (_labourBalance == null) return const SizedBox.shrink();
     return Align(
       alignment: Alignment.centerLeft,
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 6,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          if (_labourBalance != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.incomeSoft,
-                borderRadius: BorderRadius.circular(20),
-                border:
-                    Border.all(color: AppColors.income.withValues(alpha: 0.35)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.account_balance_wallet_rounded,
-                      size: 16, color: AppColors.income),
-                  SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: AppColors.income,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.incomeSoft,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.income.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.account_balance_wallet_rounded,
+                size: 16, color: AppColors.income),
+            SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.income,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
               ),
             ),
-          if (_labourNeedsOpening)
-            TextButton.icon(
-              onPressed: () => _ensureLabourOpeningBalance(forcePrompt: true),
-              icon: const Icon(Icons.add_card_rounded, size: 18),
-              label: Text(tr('Enter opening')),
-              style: TextButton.styleFrom(foregroundColor: AppColors.warning),
-            )
-          else
-            TextButton.icon(
-              onPressed: () => _showOpeningBalanceDialog(),
-              icon: const Icon(Icons.account_balance_rounded, size: 18),
-              label: Text(tr('Opening')),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

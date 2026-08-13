@@ -8,6 +8,8 @@ const List<String> kLaborWorkCategories = [
   'Grading',
   'Packing',
   'Transport',
+  'Others',
+  'Opening Balance',
 ];
 
 const String _customCategoriesKey = 'custom_labor_categories';
