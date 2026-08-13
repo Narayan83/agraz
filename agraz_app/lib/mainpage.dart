@@ -11,6 +11,7 @@ import 'marke_report.dart';
 import 'buy_and_sell.dart';
 import 'farmer_education.dart';
 import 'government_facilities.dart';
+import 'rtc_entry.dart';
 import 'auth_token.dart';
 import 'login.dart';
 import 'welcome_screen.dart';
@@ -19,6 +20,7 @@ import 'feedback_fab.dart';
 import 'feedback_page.dart';
 import 'l10n/app_l10n.dart';
 import 'l10n/locale_controller.dart';
+import 'app_update.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -71,6 +73,9 @@ class _MainPageState extends State<MainPage> {
           curve: Curves.easeInOut,
         );
       }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) promptInAppUpdateIfNeeded(context);
     });
   }
 
@@ -363,6 +368,15 @@ class _MainPageState extends State<MainPage> {
                     AppColors.info,
                     () => _openModule(
                       const GovernmentFacilitiesPage(),
+                      closeDrawer: true,
+                    ),
+                  ),
+                  _drawerTile(
+                    Icons.map_outlined,
+                    tr('RTC Entry'),
+                    AppColors.primaryDark,
+                    () => _openProtected(
+                      const RtcEntryPage(),
                       closeDrawer: true,
                     ),
                   ),
@@ -741,6 +755,12 @@ class _MainPageState extends State<MainPage> {
         label: tr('Govt'),
         color: AppColors.info,
         open: () => _openModule(const GovernmentFacilitiesPage()),
+      ),
+      (
+        icon: Icons.map_outlined,
+        label: tr('RTC'),
+        color: AppColors.primaryDark,
+        open: () => _openProtected(const RtcEntryPage()),
       ),
       (
         icon: Icons.feedback_outlined,

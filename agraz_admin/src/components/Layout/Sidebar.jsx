@@ -30,6 +30,7 @@ import {
   Activity,
   FileText,
   Building2,
+  Map,
 } from "lucide-react";
 import "./Sidebar.css";
 
@@ -63,6 +64,7 @@ const iconMap = {
   Activity: <Activity size={18} strokeWidth={1.75} />,
   FileText: <FileText size={18} strokeWidth={1.75} />,
   Building2: <Building2 size={18} strokeWidth={1.75} />,
+  Map: <Map size={18} strokeWidth={1.75} />,
 };
 
 /** Normalize menu rows from `/my-menus` (snake_case + occasional PascalCase). */
@@ -154,6 +156,7 @@ const HARD_CODED_TOOLS_NAV = [
   { menu_name: "Entry Analytics", url: "/entry-analytics", icon: "Activity" },
   { menu_name: "Organizations", url: "/organizations", icon: "Building2" },
   { menu_name: "App Contents", url: "/app-contents", icon: "FileText" },
+  { menu_name: "RTC Entry", url: "/rtc-entry", icon: "Map" },
 ];
 
 const LOGOUT_NAV_ITEM = { menu_name: "Logout", url: "/logout", icon: "LogOut" };

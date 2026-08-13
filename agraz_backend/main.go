@@ -56,6 +56,7 @@ func init() {
 		&models.MarketDailyPrice{},
 		&models.MarketLot{},
 		&models.MarketQuantity{},
+		&models.LandRtc{},
 	)
 	seeds.SeedAll()
 }
@@ -86,6 +87,7 @@ func main() {
 	handler.SetStorefrontBannerDB(initializers.DB)
 	handler.SetGovDB(initializers.DB)
 	handler.SetMarketDB(initializers.DB)
+	handler.SetLandRtcDB(initializers.DB)
 
 	// set up fiber (large body limit for multi-image uploads)
 	app := fiber.New(fiber.Config{
@@ -198,6 +200,14 @@ func main() {
 	api.Delete("/labors/:id", handler.DeleteLabor)
 	api.Get("/labor_rates", handler.GetLaborRates)
 	api.Put("/labor_rates", handler.UpsertLaborRates)
+
+	// Land RTC / Karnataka land records (per logged-in user)
+	api.Post("/land_rtcs/upload", handler.UploadLandRtcDocument)
+	api.Get("/land_rtcs", handler.ListMyLandRtcs)
+	api.Get("/land_rtcs/:id", handler.GetMyLandRtc)
+	api.Post("/land_rtcs", handler.CreateLandRtc)
+	api.Put("/land_rtcs/:id", handler.UpdateLandRtc)
+	api.Delete("/land_rtcs/:id", handler.DeleteLandRtc)
 
 	// Users
 	api.Get("/vendor-users", handler.GetVendorUsers)
@@ -386,6 +396,14 @@ func main() {
 	api.Get("/admin/organizations", handler.AdminListOrganizations)
 	api.Get("/admin/org_ledgers", handler.AdminListOrgLedgers)
 	api.Get("/admin/org_transactions", handler.AdminListOrgTransactions)
+
+	// Admin land RTC / entry menu
+	api.Post("/admin/land_rtcs/upload", handler.AdminUploadLandRtcDocument)
+	api.Get("/admin/land_rtcs", handler.AdminListLandRtcs)
+	api.Get("/admin/land_rtcs/:id", handler.AdminGetLandRtc)
+	api.Post("/admin/land_rtcs", handler.AdminCreateLandRtc)
+	api.Put("/admin/land_rtcs/:id", handler.AdminUpdateLandRtc)
+	api.Delete("/admin/land_rtcs/:id", handler.AdminDeleteLandRtc)
 
 	// start server
 	port := os.Getenv("PORT")

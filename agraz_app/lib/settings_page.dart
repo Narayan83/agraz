@@ -107,9 +107,11 @@ class _SettingsPageState extends State<SettingsPage> {
     );
 
     if (ok != true || !mounted) {
-      currentCtrl.dispose();
-      newCtrl.dispose();
-      confirmCtrl.dispose();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        currentCtrl.dispose();
+        newCtrl.dispose();
+        confirmCtrl.dispose();
+      });
       return;
     }
 
@@ -149,9 +151,11 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       );
     } finally {
-      currentCtrl.dispose();
-      newCtrl.dispose();
-      confirmCtrl.dispose();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        currentCtrl.dispose();
+        newCtrl.dispose();
+        confirmCtrl.dispose();
+      });
     }
   }
 

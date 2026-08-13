@@ -489,11 +489,17 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
+                  onPressed: () {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    Navigator.pop(ctx, false);
+                  },
                   child: Text(tr('Cancel')),
                 ),
                 FilledButton(
-                  onPressed: () => Navigator.pop(ctx, true),
+                  onPressed: () {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    Navigator.pop(ctx, true);
+                  },
                   child: Text(tr('Save')),
                 ),
               ],
@@ -503,7 +509,9 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
       },
     );
     final amount = double.tryParse(amountCtrl.text.trim());
-    amountCtrl.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      amountCtrl.dispose();
+    });
     if (ok != true) return;
     if (amount == null || amount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1941,11 +1949,17 @@ Future<bool?> showLaborEntryEditDialog(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
+                        onPressed: () {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          Navigator.pop(ctx, false);
+                        },
                         child: Text(tr('Cancel')),
                       ),
                       FilledButton(
-                        onPressed: () => Navigator.pop(ctx, true),
+                        onPressed: () {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          Navigator.pop(ctx, true);
+                        },
                         child: Text(tr('Save')),
                       ),
                     ],
@@ -1964,11 +1978,13 @@ Future<bool?> showLaborEntryEditDialog(
   final hours = double.tryParse(hoursCtrl.text.trim());
   final category = categoryCtrl.text.trim();
   final narration = narrationCtrl.text.trim();
-  nameCtrl.dispose();
-  wageCtrl.dispose();
-  hoursCtrl.dispose();
-  narrationCtrl.dispose();
-  categoryCtrl.dispose();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    nameCtrl.dispose();
+    wageCtrl.dispose();
+    hoursCtrl.dispose();
+    narrationCtrl.dispose();
+    categoryCtrl.dispose();
+  });
 
   if (saved != true) return false;
   if (name.isEmpty || wage == null || hours == null || hours <= 0) {

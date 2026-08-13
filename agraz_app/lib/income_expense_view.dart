@@ -981,7 +981,10 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
                     child: OutlinedButton(
                       onPressed: _saving
                           ? null
-                          : () => setState(() => _editing = false),
+                          : () {
+                              FocusManager.instance.primaryFocus?.unfocus();
+                              setState(() => _editing = false);
+                            },
                       child: Text(tr('Cancel')),
                     ),
                   ),

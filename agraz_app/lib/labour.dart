@@ -479,16 +479,25 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                       children: [
                         if (!requiredEntry)
                           TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
+                            onPressed: () {
+                              FocusManager.instance.primaryFocus?.unfocus();
+                              Navigator.pop(ctx, false);
+                            },
                             child: Text(tr('Cancel')),
                           )
                         else
                           TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
+                            onPressed: () {
+                              FocusManager.instance.primaryFocus?.unfocus();
+                              Navigator.pop(ctx, false);
+                            },
                             child: Text(tr('Later')),
                           ),
                         FilledButton(
-                          onPressed: () => Navigator.pop(ctx, true),
+                          onPressed: () {
+                            FocusManager.instance.primaryFocus?.unfocus();
+                            Navigator.pop(ctx, true);
+                          },
                           child: Text(tr('Save')),
                         ),
                       ],
@@ -505,9 +514,13 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     final name = nameCtrl.text.trim();
     final mobile = mobileCtrl.text.trim();
     final amount = double.tryParse(amountCtrl.text.trim());
-    nameCtrl.dispose();
-    mobileCtrl.dispose();
-    amountCtrl.dispose();
+    // Dispose after dialog route finishes removing (Cancel with empty fields
+    // otherwise hits TextField still attached → '_dependents.isEmpty').
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      nameCtrl.dispose();
+      mobileCtrl.dispose();
+      amountCtrl.dispose();
+    });
 
     if (ok != true) return false;
     if (name.isEmpty) {
@@ -780,7 +793,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () {
+                FocusManager.instance.primaryFocus?.unfocus();
+                Navigator.pop(ctx);
+              },
               child: Text(tr('Cancel')),
             ),
             ElevatedButton(
@@ -950,7 +966,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () {
+              FocusManager.instance.primaryFocus?.unfocus();
+              Navigator.pop(ctx, false);
+            },
             child: Text(tr('Cancel')),
           ),
           FilledButton(
@@ -966,6 +985,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                 );
                 return;
               }
+              FocusManager.instance.primaryFocus?.unfocus();
               Navigator.pop(ctx, true);
             },
             child: Text(tr('Save')),
@@ -989,8 +1009,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
         _loadRatesForLabourer(mobile: mobile, name: name);
       }
     }
-    mobileCtrl.dispose();
-    addressCtrl.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      mobileCtrl.dispose();
+      addressCtrl.dispose();
+    });
   }
 
   Future<void> _addPendingLabour() async {

@@ -497,6 +497,9 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   }
 
   Future<void> _showOtherInfoSheet() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -540,7 +543,10 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                         child: Text('Other Information', style: AppText.h3),
                       ),
                       IconButton(
-                        onPressed: () => Navigator.pop(ctx),
+                        onPressed: () {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          Navigator.pop(ctx);
+                        },
                         icon: const Icon(Icons.close_rounded),
                       ),
                     ],
@@ -589,7 +595,10 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                   PrimaryButton(
                     label: 'Done',
                     icon: Icons.check_rounded,
-                    onPressed: () => Navigator.pop(ctx),
+                    onPressed: () {
+                      FocusManager.instance.primaryFocus?.unfocus();
+                      Navigator.pop(ctx);
+                    },
                   ),
                 ],
               ),
