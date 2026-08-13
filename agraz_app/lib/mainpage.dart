@@ -19,6 +19,7 @@ import 'feedback_fab.dart';
 import 'feedback_page.dart';
 import 'l10n/app_l10n.dart';
 import 'l10n/locale_controller.dart';
+import 'app_update.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -71,6 +72,9 @@ class _MainPageState extends State<MainPage> {
           curve: Curves.easeInOut,
         );
       }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) promptInAppUpdateIfNeeded(context);
     });
   }
 

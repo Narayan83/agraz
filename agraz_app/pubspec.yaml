@@ -27,6 +27,7 @@ dependencies:
   printing: ^5.13.4
   path_provider: ^2.1.5
   share_plus: ^10.1.4
+  in_app_update: ^4.2.3
 
 dev_dependencies:
   flutter_test:
