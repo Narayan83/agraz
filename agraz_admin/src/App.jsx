@@ -20,6 +20,7 @@ import EntryAnalytics from "./pages/EntryAnalytics";
 import AppContentAdmin from "./pages/AppContentAdmin";
 import OrganizationsAdmin from "./pages/OrganizationsAdmin";
 import Login from "./pages/Login";
+import RtcEntryAdmin from "./pages/RtcEntryAdmin";
 import { logoutAndRedirect } from "./lib/authStorage";
 import "./App.css";
 
@@ -134,6 +135,10 @@ function App() {
 
         <Route path="/app-contents" element={
           <ProtectedRoute><AppContentAdmin /></ProtectedRoute>
+        } />
+
+        <Route path="/rtc-entry" element={
+          <ProtectedRoute><RtcEntryAdmin /></ProtectedRoute>
         } />
         
         <Route path="/auditlogs" element={

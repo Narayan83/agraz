@@ -964,4 +964,114 @@ class ApiService {
     final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
     throw Exception(_apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to delete transaction'));
   }
+
+  // --- Land RTC ---
+
+  Future<List<Map<String, dynamic>>> fetchMyLandRtcs({
+    int page = 1,
+    int limit = 100,
+  }) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/land_rtcs').replace(
+      queryParameters: {
+        'page': page.toString(),
+        'limit': limit.toString(),
+      },
+    );
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load RTC list (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map && decoded['data'] is List) {
+      return (decoded['data'] as List)
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+    if (decoded is List) {
+      return decoded
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>> createLandRtc(Map<String, dynamic> body) async {
+    final headers = await authJsonHeaders();
+    final response = await http.post(
+      Uri.parse('$BASE_URL/api/land_rtcs'),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : {};
+    }
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to save RTC'),
+    );
+  }
+
+  Future<Map<String, dynamic>> updateLandRtc(int id, Map<String, dynamic> body) async {
+    final headers = await authJsonHeaders();
+    final response = await http.put(
+      Uri.parse('$BASE_URL/api/land_rtcs/$id'),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : {};
+    }
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to update RTC'),
+    );
+  }
+
+  Future<bool> deleteLandRtc(int id) async {
+    final headers = await authGetHeaders();
+    final response = await http.delete(
+      Uri.parse('$BASE_URL/api/land_rtcs/$id'),
+      headers: headers,
+    );
+    if (response.statusCode == 200 || response.statusCode == 204) return true;
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to delete RTC'),
+    );
+  }
+
+  /// Multipart upload field "file" → { url: "/uploads/land-rtcs/..." }
+  Future<String> uploadLandRtcDocument({
+    required String filePath,
+    String? filename,
+  }) async {
+    final token = await getAuthToken();
+    final uri = Uri.parse('$BASE_URL/api/land_rtcs/upload');
+    final req = http.MultipartRequest('POST', uri);
+    mergeTenantHeaders(req.headers);
+    if (token != null && token.isNotEmpty) {
+      req.headers['Authorization'] = 'Bearer $token';
+    }
+    req.files.add(
+      await http.MultipartFile.fromPath(
+        'file',
+        filePath,
+        filename: filename ?? filePath.split(Platform.pathSeparator).last,
+      ),
+    );
+    final streamed = await req.send();
+    final response = await http.Response.fromStream(streamed);
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (decoded is Map && decoded['url'] != null) {
+        return decoded['url'].toString();
+      }
+    }
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to upload document'),
+    );
+  }
 }

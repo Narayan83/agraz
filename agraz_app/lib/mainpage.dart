@@ -11,6 +11,7 @@ import 'marke_report.dart';
 import 'buy_and_sell.dart';
 import 'farmer_education.dart';
 import 'government_facilities.dart';
+import 'rtc_entry.dart';
 import 'auth_token.dart';
 import 'login.dart';
 import 'welcome_screen.dart';
@@ -367,6 +368,15 @@ class _MainPageState extends State<MainPage> {
                     AppColors.info,
                     () => _openModule(
                       const GovernmentFacilitiesPage(),
+                      closeDrawer: true,
+                    ),
+                  ),
+                  _drawerTile(
+                    Icons.map_outlined,
+                    tr('RTC Entry'),
+                    AppColors.primaryDark,
+                    () => _openProtected(
+                      const RtcEntryPage(),
                       closeDrawer: true,
                     ),
                   ),
@@ -745,6 +755,12 @@ class _MainPageState extends State<MainPage> {
         label: tr('Govt'),
         color: AppColors.info,
         open: () => _openModule(const GovernmentFacilitiesPage()),
+      ),
+      (
+        icon: Icons.map_outlined,
+        label: tr('RTC'),
+        color: AppColors.primaryDark,
+        open: () => _openProtected(const RtcEntryPage()),
       ),
       (
         icon: Icons.feedback_outlined,

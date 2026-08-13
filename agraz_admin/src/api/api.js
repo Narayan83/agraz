@@ -596,4 +596,32 @@ export const deleteAdminAppContent = async (id) => {
   return response.data;
 };
 
+// Admin land RTC / entry menu
+export const getAdminLandRtcs = async (params = {}) => {
+  const response = await api.get('/admin/land_rtcs', { params });
+  return response.data;
+};
+export const getAdminLandRtc = async (id) => {
+  const response = await api.get(`/admin/land_rtcs/${id}`);
+  return response.data;
+};
+export const createAdminLandRtc = async (data) => {
+  const response = await api.post('/admin/land_rtcs', data);
+  return response.data;
+};
+export const updateAdminLandRtc = async (id, data) => {
+  const response = await api.put(`/admin/land_rtcs/${id}`, data);
+  return response.data;
+};
+export const deleteAdminLandRtc = async (id) => {
+  const response = await api.delete(`/admin/land_rtcs/${id}`);
+  return response.data;
+};
+export const uploadAdminLandRtcDocument = async (file) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  const response = await api.post('/admin/land_rtcs/upload', fd);
+  return response.data;
+};
+
 export default api;

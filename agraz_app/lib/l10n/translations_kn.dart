@@ -177,6 +177,8 @@ const Map<String, String> kKannadaTranslations = {
   'Buy & Sell': 'ಖರೀದಿ ಮತ್ತು ಮಾರಾಟ',
   'Farmer Education': 'ರೈತ ಶಿಕ್ಷಣ',
   'Government Facilities': 'ಸರ್ಕಾರಿ ಸೌಲಭ್ಯಗಳು',
+  'RTC Entry': 'ಆರ್‌ಟಿಸಿ ನಮೂದು',
+  'RTC': 'ಆರ್‌ಟಿಸಿ',
   'ACCOUNT': 'ಖಾತೆ',
   'Profile': 'ಪ್ರೊಫೈಲ್',
   'Smart Agriculture ERP': 'ಸ್ಮಾರ್ಟ್ ಕೃಷಿ ERP',

@@ -28,6 +28,9 @@ dependencies:
   path_provider: ^2.1.5
   share_plus: ^10.1.4
   in_app_update: ^4.2.3
+  image_picker: ^1.1.2
+  file_picker: ^8.1.7
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:
