@@ -530,7 +530,6 @@ class AppCard extends StatelessWidget {
 }
 
 class AppHeader extends StatelessWidget {
-  final IconData icon;
   final String title;
   final String subtitle;
   final bool showBack;
@@ -541,7 +540,6 @@ class AppHeader extends StatelessWidget {
 
   const AppHeader({
     super.key,
-    required this.icon,
     required this.title,
     required this.subtitle,
     this.showBack = true,
@@ -584,16 +582,6 @@ class AppHeader extends StatelessWidget {
             ),
             const SizedBox(width: 12),
           ],
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: Colors.white, size: 22),
-          ),
-          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -621,6 +609,51 @@ class AppHeader extends StatelessWidget {
           if (trailing != null) trailing!,
         ],
       ),
+    );
+  }
+}
+
+class GradientAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final String? title;
+  final List<Widget>? actions;
+  final bool centerTitle;
+
+  const GradientAppBar({
+    super.key,
+    this.title,
+    this.actions,
+    this.centerTitle = true,
+  });
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      iconTheme: const IconThemeData(color: Colors.white),
+      title: title == null
+          ? null
+          : Text(
+              title!,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+      centerTitle: centerTitle,
+      elevation: 0,
+      flexibleSpace: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: AppColors.headerGradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+      ),
+      actions: actions,
     );
   }
 }

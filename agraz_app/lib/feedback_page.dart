@@ -162,7 +162,6 @@ class _FeedbackPageState extends State<FeedbackPage>
         child: Column(
           children: [
             AppHeader(
-              icon: Icons.feedback_rounded,
               title: tr('Feedback'),
               subtitle: tr('Share ideas and report issues'),
             ),

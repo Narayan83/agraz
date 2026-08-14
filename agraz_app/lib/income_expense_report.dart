@@ -255,7 +255,6 @@ class _IncomeExpenseReportPageState extends State<IncomeExpenseReportPage>
         child: Column(
           children: [
             AppHeader(
-              icon: Icons.insights_rounded,
               title: tr('Financial Reports'),
               subtitle: tr('Income & Expense'),
               trailing: Row(

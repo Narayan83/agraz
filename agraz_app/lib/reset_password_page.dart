@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl_phone_field/intl_phone_field.dart';
 
 import 'config.dart';
+import 'app_theme.dart';
 import 'l10n/app_l10n.dart';
 
 class ResetPasswordPage extends StatefulWidget {
@@ -85,11 +86,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   Widget build(BuildContext context) {
     final green = Colors.green[700]!;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(tr('Reset password')),
-        backgroundColor: green,
-        foregroundColor: Colors.white,
-      ),
+      appBar: GradientAppBar(title: tr('Reset password')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(

@@ -1205,7 +1205,6 @@ class _LaborManagementPageState extends State<LaborManagementPage>
           child: Column(
             children: [
               AppHeader(
-                icon: Icons.engineering_rounded,
                 title: tr('Labour Management'),
                 subtitle: tr('Daily wages & contract labour'),
                 trailing: Row(
@@ -1272,38 +1271,88 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   }
 
   Widget _buildEntryModeTabs() {
-    final primary = Theme.of(context).colorScheme.primary;
-    return SizedBox(
-      width: double.infinity,
-      child: SegmentedButton<String>(
-        showSelectedIcon: false,
-        segments: [
-          ButtonSegment(
-            value: 'Payable',
-            label: Text(tr('Labour Entry')),
-            icon: const Icon(Icons.person_add_alt_1_rounded, size: 16),
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.field,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _modeTab(
+              'Payable',
+              Icons.person_add_alt_1_rounded,
+              tr('Labour Entry'),
+            ),
           ),
-          ButtonSegment(
-            value: 'Payment',
-            label: Text(tr('Payment')),
-            icon: const Icon(Icons.payments_rounded, size: 16),
+          Expanded(
+            child: _modeTab(
+              'Payment',
+              Icons.payments_rounded,
+              tr('Payment'),
+            ),
           ),
         ],
-        selected: {_entryMode},
-        onSelectionChanged: (s) => setState(() {
-          _entryMode = s.first;
-          if (_entryMode == 'Payment') {
-            _pending.clear();
-          }
-        }),
-        style: SegmentedButton.styleFrom(
-          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-          foregroundColor: primary,
-          selectedForegroundColor: Theme.of(context).colorScheme.onPrimary,
-          selectedBackgroundColor: primary,
-          side: BorderSide(color: primary, width: 1.1),
-          visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      ),
+    );
+  }
+
+  Widget _modeTab(String value, IconData icon, String label) {
+    final selected = _entryMode == value;
+    return GestureDetector(
+      onTap: () => setState(() {
+        _entryMode = value;
+        if (_entryMode == 'Payment') {
+          _pending.clear();
+        }
+      }),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: BoxDecoration(
+          gradient: selected
+              ? const LinearGradient(
+                  colors: AppColors.buttonGradient,
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                )
+              : null,
+          color: selected ? null : Colors.transparent,
+          borderRadius: BorderRadius.circular(11),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 17,
+              color: selected ? Colors.white : AppColors.primary,
+            ),
+            const SizedBox(width: 7),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? Colors.white : AppColors.primary,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1622,16 +1671,34 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: AppColors.incomeSoft,
-          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            colors: [
+              AppColors.incomeSoft,
+              AppColors.income.withValues(alpha: 0.06),
+            ],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.income.withValues(alpha: 0.35)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.account_balance_wallet_rounded,
-                size: 16, color: AppColors.income),
-            SizedBox(width: 6),
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: AppColors.income.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.account_balance_wallet_rounded,
+                size: 15,
+                color: AppColors.income,
+              ),
+            ),
+            const SizedBox(width: 8),
             Text(
               label,
               style: const TextStyle(
@@ -1650,13 +1717,30 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     return SizedBox(
       width: 56,
       height: 56,
-      child: Material(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: AppColors.buttonGradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(14),
-          onTap: _addLocation,
-          child: const Icon(Icons.add_rounded, color: Colors.white),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: _addLocation,
+            child: const Icon(Icons.add_rounded, color: Colors.white),
+          ),
         ),
       ),
     );
@@ -1677,10 +1761,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       width: _fieldHeight,
       child: Material(
         color: background,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           child: Icon(icon, color: color, size: 20),
         ),
       ),
@@ -1694,15 +1778,17 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     return Container(
       constraints: const BoxConstraints(maxHeight: 190),
       decoration: BoxDecoration(
-        color: AppColors.field,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
+        boxShadow: [AppColors.softShadow],
       ),
       child: ListView.separated(
         shrinkWrap: true,
         padding: const EdgeInsets.symmetric(vertical: 4),
         itemCount: _nameSuggestions.length,
-        separatorBuilder: (_, _) => Divider(height: 1, color: AppColors.border),
+        separatorBuilder: (_, _) =>
+            Divider(height: 1, color: AppColors.border),
         itemBuilder: (_, i) {
           final n = _nameSuggestions[i];
           return InkWell(
@@ -1711,13 +1797,26 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySoft,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: const Icon(
+                      Icons.person_outline_rounded,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(n, style: AppText.bodyStrong)),
                   const Icon(
-                    Icons.person_outline_rounded,
-                    size: 16,
+                    Icons.chevron_right_rounded,
+                    size: 18,
                     color: AppColors.textMuted,
                   ),
-                  SizedBox(width: 8),
-                  Expanded(child: Text(n, style: AppText.bodyStrong)),
                 ],
               ),
             ),
@@ -1728,78 +1827,122 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   }
 
   Widget _buildPendingGrid() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.field,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minWidth: MediaQuery.of(context).size.width - 64,
+    return Column(
+      children: List.generate(_pending.length, (index) {
+        final row = _pending[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.field.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
           ),
-          child: DataTable(
-            columnSpacing: 14,
-            horizontalMargin: 12,
-            headingRowHeight: 36,
-            dataRowMinHeight: 38,
-            dataRowMaxHeight: 44,
-            headingTextStyle: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primary,
-            ),
-            dataTextStyle: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textPrimary,
-            ),
-            columns: [
-              DataColumn(label: Text(tr('Name'))),
-              DataColumn(label: Text(tr('Shift'))),
-              DataColumn(label: Text(tr('D/H')), numeric: true),
-              DataColumn(label: Text(tr('Gender'))),
-              DataColumn(label: Text(tr('Rate')), numeric: true),
-              DataColumn(label: Text(tr('Category'))),
-              DataColumn(label: Text('')),
-            ],
-            rows: List.generate(_pending.length, (index) {
-              final row = _pending[index];
-              return DataRow(
-                cells: [
-                  DataCell(
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: AppColors.buttonGradient,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.person_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
                       row.name,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        _miniChip(row.shift, AppColors.warning),
+                        _miniChip('${row.daysHour}', AppColors.info),
+                        _miniChip(row.gender, AppColors.primary),
+                        _miniChip(row.category, AppColors.expense),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '₹${row.rate.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
                     ),
                   ),
-                  DataCell(Text(row.shift)),
-                  DataCell(Text(row.daysHour.toString())),
-                  DataCell(Text(row.gender)),
-                  DataCell(Text(row.rate.toStringAsFixed(0))),
-                  DataCell(Text(row.category, overflow: TextOverflow.ellipsis)),
-                  DataCell(
-                    IconButton(
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 28,
-                        minHeight: 28,
-                      ),
-                      icon: const Icon(
-                        Icons.close_rounded,
-                        size: 16,
-                        color: AppColors.expense,
-                      ),
-                      onPressed: () => _removePending(index),
+                  const SizedBox(height: 2),
+                  Text(
+                    '₹${row.totalCost.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.income,
                     ),
                   ),
                 ],
-              );
-            }),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 32,
+                  minHeight: 32,
+                ),
+                icon: const Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: AppColors.expense,
+                ),
+                onPressed: () => _removePending(index),
+              ),
+            ],
           ),
+        );
+      }),
+    );
+  }
+
+  Widget _miniChip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Text(
+        text,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 10,
+          color: color,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -1809,27 +1952,43 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     return InkWell(
       onTap: () => _selectDate(context),
       borderRadius: BorderRadius.circular(14),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: tr('Date'),
-          prefixIcon: Icon(Icons.calendar_today_rounded, size: 18),
-          prefixIconConstraints: BoxConstraints(minWidth: 44, minHeight: 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.field,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: [
-            Text(
-              DateFormat('dd/MM/yyyy').format(_selectedDate),
-              style: const TextStyle(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.calendar_today_rounded,
+                color: AppColors.primary,
+                size: 16,
               ),
             ),
-            const Spacer(),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                DateFormat('dd/MM/yyyy').format(_selectedDate),
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
             const Icon(
               Icons.expand_more_rounded,
               color: AppColors.textMuted,
-              size: 18,
+              size: 20,
             ),
           ],
         ),
@@ -1840,7 +1999,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   Widget _buildSummaryCard() {
     final entries = _filteredLaborers.length;
     return AppCard(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.all(14),
       child: Row(
         children: [
           Expanded(
@@ -1851,10 +2010,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               AppColors.info,
             ),
           ),
-          SizedBox(
-            height: 40,
-            child: VerticalDivider(color: AppColors.border, width: 1),
-          ),
+          const SizedBox(width: 10),
           Expanded(
             child: _summaryItem(
               Icons.currency_rupee_rounded,
@@ -1863,10 +2019,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               AppColors.income,
             ),
           ),
-          SizedBox(
-            height: 40,
-            child: VerticalDivider(color: AppColors.border, width: 1),
-          ),
+          const SizedBox(width: 10),
           Expanded(
             child: _summaryItem(
               Icons.hourglass_bottom_rounded,
@@ -1881,20 +2034,36 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   }
 
   Widget _summaryItem(IconData icon, String value, String label, Color color) {
-    return Column(
-      children: [
-        TintedIcon(icon: icon, color: color, boxSize: 38, size: 18, radius: 11),
-        SizedBox(height: 6),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        children: [
+          TintedIcon(
+            icon: icon,
+            color: color,
+            boxSize: 34,
+            size: 17,
+            radius: 10,
+            backgroundColor: color.withValues(alpha: 0.12),
           ),
-        ),
-        Text(label, style: AppText.caption),
-      ],
+          const SizedBox(height: 6),
+          Text(
+            value,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          Text(label, style: AppText.caption),
+        ],
+      ),
     );
   }
 
@@ -1913,16 +2082,35 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_laborers.length > 1) ...[
-          TextField(
-            onChanged: (v) => setState(() => _searchQuery = v),
-            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-            decoration: InputDecoration(
-              labelText: tr('Search labourers'),
-              prefixIcon: Icon(Icons.search_rounded, size: 20),
-              prefixIconConstraints: BoxConstraints(minWidth: 44, minHeight: 0),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+              boxShadow: [AppColors.softShadow],
+            ),
+            child: TextField(
+              onChanged: (v) => setState(() => _searchQuery = v),
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
+              decoration: InputDecoration(
+                labelText: tr('Search labourers'),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  size: 20,
+                  color: AppColors.primary,
+                ),
+                prefixIconConstraints: BoxConstraints(
+                  minWidth: 44,
+                  minHeight: 0,
+                ),
+              ),
             ),
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 12),
         ],
         ..._filteredLaborers.asMap().entries.map((entry) {
           final index = _laborers.indexOf(entry.value);
@@ -1935,7 +2123,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   Widget _laborerCard(Laborer laborer, int index) {
     final cost = laborer.totalCost;
     return AppCard(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 10),
       radius: 16,
       child: InkWell(
@@ -1943,20 +2131,37 @@ class _LaborManagementPageState extends State<LaborManagementPage>
         onTap: () => _openLaborDetail(laborer),
         child: Row(
           children: [
-            TintedIcon(
-              icon: Icons.person_rounded,
-              color: AppColors.primary,
-              boxSize: 42,
-              size: 20,
-              radius: 12,
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: AppColors.buttonGradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.person_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(laborer.name, style: AppText.bodyStrong),
-                  SizedBox(height: 5),
+                  const SizedBox(height: 5),
                   Wrap(
                     spacing: 5,
                     runSpacing: 4,
@@ -1971,10 +2176,33 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                         _chip(laborer.location, AppColors.textMuted),
                     ],
                   ),
-                  SizedBox(height: 5),
-                  Text(
-                    '₹${laborer.wage.toStringAsFixed(0)} × ${laborer.hours} = ₹${cost.toStringAsFixed(0)}',
-                    style: AppText.small,
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Text(
+                        '₹${laborer.wage.toStringAsFixed(0)} × ${laborer.hours}',
+                        style: AppText.small,
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.incomeSoft,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '= ₹${cost.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.income,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   Text(
                     DateFormat('dd/MM/yyyy').format(laborer.date),
@@ -1983,42 +2211,66 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                 ],
               ),
             ),
-            IconButton(
-              icon: const Icon(
-                Icons.badge_outlined,
-                color: AppColors.info,
-                size: 22,
-              ),
-              tooltip: tr('Labourer schedule'),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => LabourerDetailPage(
-                      name: laborer.name,
-                      mobile: laborer.mobile,
-                    ),
+            Column(
+              children: [
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
                   ),
-                );
-              },
-            ),
-            IconButton(
-              icon: const Icon(
-                Icons.visibility_outlined,
-                color: AppColors.primary,
-                size: 22,
-              ),
-              tooltip: tr('View / Edit'),
-              onPressed: () => _openLaborDetail(laborer),
-            ),
-            IconButton(
-              icon: const Icon(
-                Icons.delete_outline_rounded,
-                color: AppColors.expense,
-                size: 22,
-              ),
-              tooltip: tr('Delete'),
-              onPressed: () => _removeLaborer(index),
+                  icon: const Icon(
+                    Icons.badge_outlined,
+                    color: AppColors.info,
+                    size: 21,
+                  ),
+                  tooltip: tr('Labourer schedule'),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => LabourerDetailPage(
+                          name: laborer.name,
+                          mobile: laborer.mobile,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 34,
+                        minHeight: 34,
+                      ),
+                      icon: const Icon(
+                        Icons.visibility_outlined,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                      tooltip: tr('View / Edit'),
+                      onPressed: () => _openLaborDetail(laborer),
+                    ),
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 34,
+                        minHeight: 34,
+                      ),
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: AppColors.expense,
+                        size: 20,
+                      ),
+                      tooltip: tr('Delete'),
+                      onPressed: () => _removeLaborer(index),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),

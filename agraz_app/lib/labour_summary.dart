@@ -121,7 +121,6 @@ class _LabourSummaryPageState extends State<LabourSummaryPage> {
         child: Column(
           children: [
             AppHeader(
-              icon: Icons.badge_rounded,
               title: tr('Labour Summary'),
               subtitle: tr('Search & schedule by labourer'),
               trailing: Row(
@@ -778,7 +777,6 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
         child: Column(
           children: [
             AppHeader(
-              icon: Icons.person_rounded,
               title: displayName,
               subtitle: displayMobile.isNotEmpty
                   ? displayMobile
@@ -1647,7 +1645,6 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
         child: Column(
           children: [
             AppHeader(
-              icon: Icons.history_rounded,
               title: tr('History'),
               subtitle: tr('All labour entries'),
               trailing: Row(

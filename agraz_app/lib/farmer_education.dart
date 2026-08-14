@@ -1,6 +1,7 @@
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'app_theme.dart';
 import 'feedback_fab.dart';
 import 'l10n/app_l10n.dart';
 
@@ -10,10 +11,8 @@ class FarmerEducationPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(tr('Arecanut Farming Guide')),
-        centerTitle: true,
-        backgroundColor: Colors.green[700],
+      appBar: GradientAppBar(
+        title: tr('Arecanut Farming Guide'),
         actions: withFeedbackAction(context, menu: 'farmer_education'),
       ),
       body: SingleChildScrollView(
@@ -236,7 +235,7 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: GradientAppBar(title: widget.title),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(

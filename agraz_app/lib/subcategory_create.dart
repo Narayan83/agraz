@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'app_theme.dart';
 import 'l10n/app_l10n.dart';
 
 class SubcategoryManagementPage extends StatefulWidget {
@@ -210,8 +211,8 @@ class _SubcategoryManagementPageState extends State<SubcategoryManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(tr('Subcategory Management')),
+      appBar: GradientAppBar(
+        title: tr('Subcategory Management'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import 'auth_token.dart';
 import 'config.dart';
+import 'app_theme.dart';
 import 'l10n/app_l10n.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -148,10 +149,8 @@ class _ProfilePageState extends State<ProfilePage> {
             .toUpperCase();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(tr('Profile')),
-        backgroundColor: green,
-        foregroundColor: Colors.white,
+      appBar: GradientAppBar(
+        title: tr('Profile'),
         actions: [
           if (!_loading && _error == null && _user != null)
             TextButton(

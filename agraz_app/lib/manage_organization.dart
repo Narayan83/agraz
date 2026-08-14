@@ -622,7 +622,6 @@ class _ManageOrganizationPageState extends State<ManageOrganizationPage> {
         child: Column(
           children: [
             AppHeader(
-              icon: Icons.business_rounded,
               title: tr('Manage Organization'),
               subtitle: tr('Org books & ledgers'),
               trailing: Row(

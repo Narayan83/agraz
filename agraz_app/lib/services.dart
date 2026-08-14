@@ -86,19 +86,8 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(tr('General Services')),
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: AppColors.headerGradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
+      appBar: GradientAppBar(
+        title: tr('General Services'),
         actions: withFeedbackAction(
           context,
           menu: 'services',

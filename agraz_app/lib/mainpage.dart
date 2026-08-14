@@ -158,28 +158,8 @@ class _MainPageState extends State<MainPage> {
     return ListenableBuilder(
       listenable: LocaleController.instance,
       builder: (context, _) => Scaffold(
-      appBar: AppBar(
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: Text(
-          "AgRaz",
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
-            color: Colors.white,
-            fontSize: 19,
-          ),
-        ),
-        centerTitle: true,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: AppColors.headerGradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        elevation: 0,
+      appBar: GradientAppBar(
+        title: "AgRaz",
         actions: withFeedbackAction(
           context,
           menu: 'home',

@@ -153,7 +153,6 @@ class _OrganizationReportPageState extends State<OrganizationReportPage>
         child: Column(
           children: [
             AppHeader(
-              icon: Icons.insights_rounded,
               title: tr('Organization Reports'),
               subtitle: tr('Balances, trends & filters'),
             ),

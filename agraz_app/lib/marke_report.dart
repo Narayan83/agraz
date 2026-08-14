@@ -239,7 +239,6 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
         child: Column(
           children: [
             AppHeader(
-              icon: Icons.trending_up_rounded,
               title: tr('Market Reports'),
               subtitle: tr('Commodity prices, arrivals & trends'),
               trailing: Row(
