@@ -683,7 +683,7 @@ class _ManageOrganizationPageState extends State<ManageOrganizationPage> {
                             children: [
                               Expanded(
                                 child: _summaryBox(
-                                  tr('Income'),
+                                  tr('Credit'),
                                   _money(_income),
                                   AppColors.income,
                                   Icons.trending_up_rounded,
@@ -692,7 +692,7 @@ class _ManageOrganizationPageState extends State<ManageOrganizationPage> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: _summaryBox(
-                                  tr('Expense'),
+                                  tr('Debit'),
                                   _money(_expense),
                                   AppColors.expense,
                                   Icons.trending_down_rounded,
@@ -789,6 +789,7 @@ class _ManageOrganizationPageState extends State<ManageOrganizationPage> {
                                     Expanded(
                                       child: _typeToggle(
                                         'Income',
+                                        tr('Credit'),
                                         Icons.trending_up_rounded,
                                         AppColors.income,
                                         AppColors.incomeSoft,
@@ -798,6 +799,7 @@ class _ManageOrganizationPageState extends State<ManageOrganizationPage> {
                                     Expanded(
                                       child: _typeToggle(
                                         'Expense',
+                                        tr('Debit'),
                                         Icons.trending_down_rounded,
                                         AppColors.expense,
                                         AppColors.expenseSoft,
@@ -1002,7 +1004,13 @@ class _ManageOrganizationPageState extends State<ManageOrganizationPage> {
     );
   }
 
-  Widget _typeToggle(String type, IconData icon, Color color, Color soft) {
+  Widget _typeToggle(
+    String type,
+    String label,
+    IconData icon,
+    Color color,
+    Color soft,
+  ) {
     final selected = _type == type;
     final pressed = _pressedToggle == type;
     return GestureDetector(
@@ -1027,7 +1035,7 @@ class _ManageOrganizationPageState extends State<ManageOrganizationPage> {
               Icon(icon, color: selected ? Colors.white : color),
               const SizedBox(width: 8),
               Text(
-                type,
+                label,
                 style: TextStyle(
                   color: selected ? Colors.white : color,
                   fontWeight: FontWeight.w800,
@@ -1038,6 +1046,12 @@ class _ManageOrganizationPageState extends State<ManageOrganizationPage> {
         ),
       ),
     );
+  }
+
+  String _typeLabel(String type) {
+    if (type == 'Income') return tr('Credit');
+    if (type == 'Expense') return tr('Debit');
+    return type;
   }
 
   Widget _txnTile(Map<String, dynamic> t) {
@@ -1052,7 +1066,7 @@ class _ManageOrganizationPageState extends State<ManageOrganizationPage> {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        title: Text('$type · $led'),
+        title: Text('${_typeLabel(type)} · $led'),
         subtitle: Text('$date · $mode'),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,

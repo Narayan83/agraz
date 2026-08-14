@@ -44,6 +44,9 @@ const Map<String, String> kKannadaTranslations = {
   'Expense': 'ವೆಚ್ಚ',
   'Debit': 'ಡೆಬಿಟ್',
   'Credit': 'ಕ್ರೆಡಿಟ್',
+  'Balance': 'ಬಾಕಿ',
+  'Others': 'ಇತರೆ',
+  'Opening Balance': 'ಆರಂಭಿಕ ಬಾಕಿ',
   'Settled': 'ಇತ್ಯರ್ಥ',
   'Overview': 'ಅವಲೋಕನ',
   'Monthly': 'ಮಾಸಿಕ',
@@ -452,6 +455,8 @@ const Map<String, String> kKannadaTranslations = {
   'Daily wages & contract labour': 'ದೈನಂದಿನ ಕೂಲಿ ಮತ್ತು ಗುತ್ತಿಗೆ ಕೂಲಿ',
   'Labour Summary & Schedule': 'ಕೂಲಿ ಸಾರಾಂಶ ಮತ್ತು ವೇಳಾಪಟ್ಟಿ',
   'Add Labour Entry': 'ಕೂಲಿ ನಮೂದು ಸೇರಿಸಿ',
+  'Labour Entry': 'ಕೂಲಿ ನಮೂದು',
+  'Payment': 'ಪಾವತಿ',
   'Record daily wages or contract labour':
       'ದೈನಂದಿನ ಕೂಲಿ ಅಥವಾ ಗುತ್ತಿಗೆ ಕೂಲಿ ದಾಖಲಿಸಿ',
   'Work Type': 'ಕೆಲಸದ ಪ್ರಕಾರ',
