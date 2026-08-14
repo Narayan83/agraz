@@ -1,0 +1,11 @@
+[Unit]
+Description=AgRaz weather scrape every 8 hours
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=8h
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

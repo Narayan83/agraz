@@ -11,6 +11,7 @@ import 'marke_report.dart';
 import 'buy_and_sell.dart';
 import 'farmer_education.dart';
 import 'government_facilities.dart';
+import 'weather_report.dart';
 import 'rtc_entry.dart';
 import 'auth_token.dart';
 import 'login.dart';
@@ -315,6 +316,15 @@ class _MainPageState extends State<MainPage> {
                     AppColors.info,
                     () => _openModule(
                       const RatesComparisonPage(),
+                      closeDrawer: true,
+                    ),
+                  ),
+                  _drawerTile(
+                    Icons.cloud_outlined,
+                    tr('Weather Report'),
+                    AppColors.info,
+                    () => _openModule(
+                      const WeatherReportPage(),
                       closeDrawer: true,
                     ),
                   ),
@@ -711,6 +721,12 @@ class _MainPageState extends State<MainPage> {
         label: tr('Market'),
         color: AppColors.info,
         open: () => _openModule(const RatesComparisonPage()),
+      ),
+      (
+        icon: Icons.cloud_outlined,
+        label: tr('Weather'),
+        color: AppColors.info,
+        open: () => _openModule(const WeatherReportPage()),
       ),
       (
         icon: Icons.miscellaneous_services_rounded,

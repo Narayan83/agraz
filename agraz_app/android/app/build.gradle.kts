@@ -58,7 +58,10 @@ android {
             }
             isMinifyEnabled = true
             isShrinkResources = true
-            // ADD THIS NDK CONFIGURATION:
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             ndk {
                 debugSymbolLevel = "FULL"
             }

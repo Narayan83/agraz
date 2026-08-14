@@ -190,20 +190,6 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
     });
   }
 
-  Future<void> _pickGallery() async {
-    final shot = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-      maxWidth: 2000,
-    );
-    if (shot == null) return;
-    setState(() {
-      _localFilePath = shot.path;
-      _localFileName = shot.name;
-      _documentUrl = '';
-    });
-  }
-
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -564,14 +550,6 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
                   onPressed: _pickCamera,
                   icon: const Icon(Icons.photo_camera_outlined, size: 18),
                   label: const Text('Camera'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _pickGallery,
-                  icon: const Icon(Icons.image_outlined, size: 18),
-                  label: const Text('Gallery'),
                 ),
               ),
               const SizedBox(width: 8),

@@ -29,8 +29,12 @@ class _AppSplashPageState extends State<AppSplashPage> {
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(
-        statusBarColor: Colors.transparent,
+      // Avoid statusBarColor / navigationBarColor (deprecated on Android 15+).
+      value: const SystemUiOverlayStyle(
+        statusBarIconBrightness: Brightness.dark,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemStatusBarContrastEnforced: false,
+        systemNavigationBarContrastEnforced: false,
       ),
       child: const Scaffold(
         backgroundColor: Colors.white,

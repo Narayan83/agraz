@@ -57,6 +57,8 @@ func init() {
 		&models.MarketLot{},
 		&models.MarketQuantity{},
 		&models.LandRtc{},
+		&models.WeatherReport{},
+		&models.WeatherDaily{},
 	)
 	seeds.SeedAll()
 }
@@ -88,6 +90,8 @@ func main() {
 	handler.SetGovDB(initializers.DB)
 	handler.SetMarketDB(initializers.DB)
 	handler.SetLandRtcDB(initializers.DB)
+	handler.SetWeatherDB(initializers.DB)
+	handler.StartWeatherScheduler()
 
 	// set up fiber (large body limit for multi-image uploads)
 	app := fiber.New(fiber.Config{
@@ -142,6 +146,12 @@ func main() {
 	api.Get("/market/lots", handler.GetMarketLotsPublic)
 	api.Get("/market/quantities", handler.GetMarketQuantitiesPublic)
 	api.Get("/market/analytics", handler.GetMarketAnalyticsPublic)
+
+	// Weather report (public read; scrape runs every 8 hours in-process + cron)
+	api.Get("/weather", handler.GetWeatherReportPublic)
+	api.Get("/weather/locations", handler.GetWeatherLocationsPublic)
+	api.Get("/weather/cron", handler.WeatherCronRefresh)
+	api.Post("/weather/cron", handler.WeatherCronRefresh)
 
 	// Use Middleware
 	api.Use(middleware.Protected())
@@ -404,6 +414,8 @@ func main() {
 	api.Post("/admin/land_rtcs", handler.AdminCreateLandRtc)
 	api.Put("/admin/land_rtcs/:id", handler.AdminUpdateLandRtc)
 	api.Delete("/admin/land_rtcs/:id", handler.AdminDeleteLandRtc)
+
+	api.Post("/admin/weather/refresh", handler.AdminRefreshWeather)
 
 	// start server
 	port := os.Getenv("PORT")

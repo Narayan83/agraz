@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh AgRaz weather report
+After=network.target agraz.service
+Wants=agraz.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/var/www/agraz_backend/.env
+ExecStart=/bin/bash -c 'curl -fsS -H "X-Weather-Cron-Token: ${WEATHER_CRON_SECRET}" http://127.0.0.1:8000/api/weather/cron'
+User=www-data
+Group=www-data
