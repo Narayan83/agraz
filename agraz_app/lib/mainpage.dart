@@ -158,28 +158,8 @@ class _MainPageState extends State<MainPage> {
     return ListenableBuilder(
       listenable: LocaleController.instance,
       builder: (context, _) => Scaffold(
-      appBar: AppBar(
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: Text(
-          "AgRaz",
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
-            color: Colors.white,
-            fontSize: 19,
-          ),
-        ),
-        centerTitle: true,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: AppColors.headerGradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        elevation: 0,
+      appBar: GradientAppBar(
+        title: "AgRaz",
         actions: withFeedbackAction(
           context,
           menu: 'home',
@@ -777,7 +757,7 @@ class _MainPageState extends State<MainPage> {
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: items.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 10),
+          separatorBuilder: (_, _) => const SizedBox(width: 10),
           itemBuilder: (context, i) {
             final item = items[i];
             return InkWell(

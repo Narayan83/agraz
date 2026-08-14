@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'config.dart';
+import 'app_theme.dart';
 import 'feedback_fab.dart';
 import 'gov_facilities_service.dart';
 import 'l10n/app_l10n.dart';
@@ -159,11 +160,8 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
     final green = Colors.green[700]!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(tr('Government Facilities')),
-        centerTitle: true,
-        backgroundColor: green,
-        foregroundColor: Colors.white,
+      appBar: GradientAppBar(
+        title: tr('Government Facilities'),
         actions: withFeedbackAction(context, menu: 'government_facilities'),
       ),
       body: _loading
@@ -436,7 +434,7 @@ class _GovernmentFacilitiesPageState extends State<GovernmentFacilitiesPage> {
 
 class _EmptyHint extends StatelessWidget {
   final String text;
-  _EmptyHint(this.text);
+  const _EmptyHint(this.text);
 
   @override
   Widget build(BuildContext context) {
@@ -496,11 +494,7 @@ class GovFacilityDetailPage extends StatelessWidget {
     final phone = facility['phone']?.toString() ?? '';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: green,
-        foregroundColor: Colors.white,
-      ),
+      appBar: GradientAppBar(title: title),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

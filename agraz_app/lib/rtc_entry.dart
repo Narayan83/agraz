@@ -329,10 +329,8 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('RTC Entry'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+      appBar: GradientAppBar(
+        title: 'RTC Entry',
         actions: [
           if (_editingId != null)
             TextButton(

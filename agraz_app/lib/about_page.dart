@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_theme.dart';
 import 'l10n/app_l10n.dart';
 
 class AboutTeamPage extends StatelessWidget {
@@ -7,13 +8,7 @@ class AboutTeamPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(tr('About Our Team')),
-      ),
+      appBar: GradientAppBar(title: tr('About Our Team')),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_theme.dart';
 import 'l10n/app_l10n.dart';
 
 class TermsAndConditionsPage extends StatelessWidget {
@@ -7,10 +8,7 @@ class TermsAndConditionsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(tr('Privacy Policy & Terms')),
-        centerTitle: true,
-      ),
+      appBar: GradientAppBar(title: tr('Privacy Policy & Terms')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(

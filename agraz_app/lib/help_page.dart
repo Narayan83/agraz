@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_theme.dart';
 import 'l10n/app_l10n.dart';
 
 class HelpPage extends StatelessWidget {
@@ -7,7 +8,7 @@ class HelpPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(tr('Help'))),
+      appBar: GradientAppBar(title: tr('Help')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

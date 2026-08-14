@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'buy_sell_service.dart';
 import 'config.dart';
+import 'app_theme.dart';
 import 'feedback_fab.dart';
 import 'l10n/app_l10n.dart';
 
@@ -26,23 +27,7 @@ class BuySellApp extends StatelessWidget {
         ),
       ),
       home: Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back),
-            onPressed: () {
-              // Handle back button press
-              // If this is the first screen, you might want to exit the app
-              // or handle it differently
-              Navigator.of(context).pop();
-            },
-          ),
-          title: Text(tr('Buy & Sell')),
-          actions: withFeedbackAction(
-            context,
-            menu: 'buy_and_sell',
-            color: Colors.black87,
-          ),
-        ),
+        appBar: GradientAppBar(title: tr('Buy & Sell')),
         body: const BuySellPage(),
       ),
       debugShowCheckedModeBanner: false,
@@ -95,12 +80,11 @@ class _BuySellPageState extends State<BuySellPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(tr('Buy & Sell')),
+      appBar: GradientAppBar(
+        title: tr('Buy & Sell'),
         actions: withFeedbackAction(
           context,
           menu: 'buy_and_sell',
-          color: Colors.black87,
           actions: [
             IconButton(
               icon: const Icon(Icons.search),
@@ -200,7 +184,7 @@ class _BuySellPageState extends State<BuySellPage> {
 class ItemsList extends StatelessWidget {
   final List<Item> items;
 
-  ItemsList({super.key, required this.items});
+  const ItemsList({super.key, required this.items});
 
   @override
   Widget build(BuildContext context) {
@@ -310,7 +294,7 @@ class ItemDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(item.title)),
+      appBar: GradientAppBar(title: item.title),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -507,8 +491,8 @@ class _AddItemPageState extends State<AddItemPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(tr('Add New Item')),
+      appBar: GradientAppBar(
+        title: tr('Add New Item'),
         actions: [
           IconButton(
             icon: const Icon(Icons.check),

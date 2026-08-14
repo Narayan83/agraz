@@ -554,22 +554,8 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          'Income & Expense',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-        ),
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: AppColors.headerGradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
+      appBar: GradientAppBar(
+        title: 'Income & Expense',
         actions: withFeedbackAction(
           context,
           menu: 'income_expense_view',
@@ -676,7 +662,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
 class _TransactionDetailSheet extends StatefulWidget {
   final Map<String, dynamic> transaction;
 
-  _TransactionDetailSheet({required this.transaction});
+  const _TransactionDetailSheet({required this.transaction});
 
   @override
   State<_TransactionDetailSheet> createState() =>

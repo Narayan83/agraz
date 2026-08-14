@@ -644,7 +644,6 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           child: Column(
             children: [
               AppHeader(
-                icon: Icons.account_balance_wallet_rounded,
                 title: tr('Record Transaction'),
                 subtitle: tr('Income & Expense'),
                 trailing: Row(
@@ -658,34 +657,36 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
               ),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 16),
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
                   child: Form(
                     key: _formKey,
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        _buildStepper(),
+                        const SizedBox(height: 12),
                         _buildTransactionTypeCard(),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         _buildTransactionModeCard(),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         _buildDateAmountCard(),
-                        SizedBox(height: 8),
                         if (_formData.receiptPaymentType != null &&
                             categories.isNotEmpty) ...[
-                          SizedBox(height: 14),
+                          const SizedBox(height: 12),
                           _buildCategorySection(),
                         ],
                         if (_formData.category != null &&
                             subCategories.isNotEmpty) ...[
-                          SizedBox(height: 14),
+                          const SizedBox(height: 12),
                           _buildSubCategorySection(),
                         ],
-                        SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         _buildPartyCard(),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         _buildNarrationCard(),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 14),
                         _buildSubmitButton(),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 10),
                         _buildSecondaryActions(),
                       ],
                     ),
@@ -699,19 +700,121 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     );
   }
 
-  Widget _sectionTitle(String title, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+  Widget _buildStepper() {
+    final typeDone = _formData.receiptPaymentType != null;
+    final detailsDone =
+        _formData.category != null && (_formData.amount ?? 0) > 0;
+    final partyDone = _nameController.text.trim().isNotEmpty ||
+        _mobileController.text.trim().isNotEmpty;
+
+    Widget step(String label, bool done) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: done
+                  ? const LinearGradient(
+                      colors: AppColors.buttonGradient,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: done ? null : AppColors.field,
+              border: Border.all(
+                color: done ? Colors.transparent : AppColors.border,
+                width: 1.4,
+              ),
+              boxShadow: done
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Icon(
+              done ? Icons.check_rounded : Icons.circle_outlined,
+              color: done ? Colors.white : AppColors.textMuted,
+              size: 15,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: done ? FontWeight.w700 : FontWeight.w500,
+              color: done ? AppColors.primary : AppColors.textMuted,
+            ),
+          ),
+        ],
+      );
+    }
+
+    Widget connector(bool done) {
+      return Expanded(
+        child: Container(
+          height: 2,
+          margin: const EdgeInsets.fromLTRB(6, 0, 6, 18),
+          decoration: BoxDecoration(
+            color: done
+                ? AppColors.primary.withValues(alpha: 0.35)
+                : AppColors.border,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [AppColors.softShadow],
+      ),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: const Color(0xFF2E7D32)),
-          SizedBox(width: 6),
+          step(tr('Type'), typeDone),
+          connector(typeDone),
+          step(tr('Details'), detailsDone),
+          connector(detailsDone),
+          step(tr('Party'), partyDone),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 14, color: AppColors.primary),
+          ),
+          const SizedBox(width: 8),
           Text(
             title,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: 13.5,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF1B5E20),
+              color: AppColors.textPrimary,
             ),
           ),
         ],
@@ -768,7 +871,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           ),
           SizedBox(height: 10),
           DropdownButtonFormField<String>(
-            value: _formData.transactionMode,
+            initialValue: _formData.transactionMode,
             decoration: InputDecoration(
               labelText: tr('Mode'),
               prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
@@ -791,7 +894,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           if (_formData.transactionMode == 'Transfer') ...[
             SizedBox(height: 10),
             DropdownButtonFormField<int>(
-              value: _formData.organizationId,
+              initialValue: _formData.organizationId,
               decoration: InputDecoration(
                 labelText: tr('Organization'),
                 prefixIcon: const Icon(Icons.business_rounded),
@@ -837,37 +940,40 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOutCubic,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
+          duration: const Duration(milliseconds: 260),
           curve: Curves.easeOutCubic,
-          height: 92,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          height: 96,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             gradient: selected
                 ? LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color.lerp(color, Colors.white, 0.12)!, color],
+                    colors: [
+                      Color.lerp(color, Colors.white, 0.18)!,
+                      color,
+                    ],
                   )
                 : null,
-            color: selected ? null : softColor,
-            borderRadius: BorderRadius.circular(16),
+            color: selected ? null : Colors.white,
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: selected ? color : color.withValues(alpha: 0.35),
+              color: selected ? color : AppColors.border,
               width: selected ? 1.6 : 1.2,
             ),
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: color.withValues(alpha: 0.35),
-                      blurRadius: 18,
-                      offset: Offset(0, 8),
+                      color: color.withValues(alpha: 0.32),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
                     ),
                   ]
                 : [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 8,
-                      offset: Offset(0, 3),
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
           ),
@@ -876,27 +982,36 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
               Row(
                 children: [
                   AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    width: 42,
-                    height: 42,
+                    duration: const Duration(milliseconds: 260),
+                    width: 46,
+                    height: 46,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: selected
-                          ? Colors.white.withValues(alpha: 0.22)
-                          : Colors.white,
+                      gradient: selected
+                          ? LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.white.withValues(alpha: 0.35),
+                                Colors.white.withValues(alpha: 0.12),
+                              ],
+                            )
+                          : null,
+                      color: selected ? null : softColor,
                       border: Border.all(
                         color: selected
-                            ? Colors.white.withValues(alpha: 0.35)
-                            : color.withValues(alpha: 0.25),
+                            ? Colors.white.withValues(alpha: 0.4)
+                            : color.withValues(alpha: 0.2),
+                        width: 1.4,
                       ),
                     ),
                     child: Icon(
                       icon,
                       color: selected ? Colors.white : color,
-                      size: 22,
+                      size: 23,
                     ),
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -905,13 +1020,15 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                         Text(
                           type,
                           style: TextStyle(
-                            color: selected ? Colors.white : color,
-                            fontSize: 14,
+                            color: selected
+                                ? Colors.white
+                                : AppColors.textPrimary,
+                            fontSize: 15,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.2,
                           ),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 3),
                         Text(
                           selected ? 'Selected' : 'Tap to select',
                           maxLines: 1,
@@ -920,7 +1037,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                             color: selected
                                 ? Colors.white.withValues(alpha: 0.9)
                                 : AppColors.textMuted,
-                            fontSize: 10.5,
+                            fontSize: 11,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -931,27 +1048,24 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
               ),
               if (selected)
                 Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    width: 18,
-                    height: 18,
+                  top: 6,
+                  right: 6,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 260),
+                    width: 22,
+                    height: 22,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: Colors.white,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.18),
-                          blurRadius: 6,
-                          offset: Offset(0, 2),
+                          color: Colors.black.withValues(alpha: 0.16),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                    child: Icon(
-                      Icons.check_rounded,
-                      color: color,
-                      size: 13,
-                    ),
+                    child: Icon(Icons.check_rounded, color: color, size: 14),
                   ),
                 ),
             ],
@@ -991,24 +1105,40 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F7F5),
-          borderRadius: BorderRadius.circular(12),
+          color: AppColors.field,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: [
-            const Icon(
-              Icons.calendar_today_rounded,
-              color: Color(0xFF2E7D32),
-              size: 16,
-            ),
-            SizedBox(width: 8),
-            Text(
-              DateFormat('dd/MM/yyyy').format(_formData.transactionDate!),
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1B5E20),
+            Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(8),
               ),
+              child: const Icon(
+                Icons.calendar_today_rounded,
+                color: AppColors.primary,
+                size: 14,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                DateFormat('dd/MM/yyyy').format(_formData.transactionDate!),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.expand_more_rounded,
+              color: AppColors.textMuted,
+              size: 18,
             ),
           ],
         ),
@@ -1017,18 +1147,21 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   }
 
   Widget _buildAmountField() {
+    final type = _formData.receiptPaymentType;
+    final accent = type == 'Expense' ? AppColors.expense : AppColors.income;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7F5),
-        borderRadius: BorderRadius.circular(12),
+        color: accent.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: accent.withValues(alpha: 0.25), width: 1.2),
       ),
       child: TextFormField(
         controller: _amountController,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF1B5E20),
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          color: accent,
         ),
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         onChanged: (v) {
@@ -1046,14 +1179,14 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
         decoration: InputDecoration(
           border: InputBorder.none,
           isDense: true,
-          prefixIcon: const Icon(
+          prefixIcon: Icon(
             Icons.currency_rupee_rounded,
-            color: Color(0xFF2E7D32),
-            size: 16,
+            color: accent,
+            size: 18,
           ),
           prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
           hintText: tr('Amount'),
-          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+          hintStyle: TextStyle(color: accent.withValues(alpha: 0.5), fontSize: 15),
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
         ),
       ),
@@ -1081,6 +1214,21 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     );
   }
 
+  IconData _categoryIcon(String category) {
+    switch (category) {
+      case 'Farming Income':
+        return Icons.agriculture_rounded;
+      case 'Non-Farming Income':
+        return Icons.storefront_rounded;
+      case 'Farming Expense':
+        return Icons.eco_rounded;
+      case 'Living Expense':
+        return Icons.home_rounded;
+      default:
+        return Icons.category_rounded;
+    }
+  }
+
   Widget _categoryChip(String label) {
     final selected = _formData.category == label;
     final color = _getCategoryColor(label);
@@ -1093,31 +1241,60 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
         decoration: BoxDecoration(
-          color: selected ? color : color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
+          gradient: selected
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color.lerp(color, Colors.white, 0.2)!, color],
+                )
+              : null,
+          color: selected ? null : color.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: selected ? color : color.withValues(alpha: 0.3),
-            width: 1.4,
+            width: selected ? 1.6 : 1.2,
           ),
           boxShadow: selected
               ? [
                   BoxShadow(
-                    color: color.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                    offset: Offset(0, 3),
+                    color: color.withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ]
               : null,
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : color,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: selected
+                    ? Colors.white.withValues(alpha: 0.22)
+                    : Colors.white,
+              ),
+              child: Icon(
+                _categoryIcon(label),
+                color: selected ? Colors.white : color,
+                size: 16,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : color,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1125,46 +1302,57 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
 
   Widget _buildSubCategorySection() {
     final preview = _formData.splitPreview();
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      child: _card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _sectionTitle(tr('Sub Category'), Icons.list_alt_rounded),
-            Text(
-              tr('Select one or more — amount splits equally'),
-              style: AppText.caption,
-            ),
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle(tr('Sub Category'), Icons.list_alt_rounded),
+          Text(
+            tr('Select one or more — amount splits equally'),
+            style: AppText.caption,
+          ),
+          SizedBox(height: 10),
+          _buildSubCategoryGrid(),
+          if (preview.length >= 2) ...[
+            SizedBox(height: 14),
+            Text(tr('Split preview'), style: AppText.label),
             SizedBox(height: 8),
-            _buildSubCategoryGrid(),
-            if (preview.length >= 2) ...[
-              SizedBox(height: 12),
-              Text(tr('Split preview'), style: AppText.label),
-              SizedBox(height: 6),
-              ...preview.map(
-                (p) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(p.name, style: AppText.small),
-                      ),
-                      Text(
-                        '₹${NumberFormat('#,##0').format(p.amount)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12.5,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.15),
                 ),
               ),
-            ],
+              child: Column(
+                children: preview
+                    .map(
+                      (p) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(p.name, style: AppText.small),
+                            ),
+                            Text(
+                              '₹${NumberFormat('#,##0').format(p.amount)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12.5,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -1172,8 +1360,8 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   Widget _buildSubCategoryGrid() {
     final color = _getCategoryColor(_formData.category!);
     return Wrap(
-      spacing: 6,
-      runSpacing: 6,
+      spacing: 8,
+      runSpacing: 8,
       children: subCategories.map((option) {
         final selected = _formData.subCategories.contains(option);
         final emoji =
@@ -1182,22 +1370,33 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
         return FilterChip(
           selected: selected,
           showCheckmark: true,
-          avatar: Text(emoji, style: const TextStyle(fontSize: 14)),
+          checkmarkColor: Colors.white,
+          avatar: Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: selected
+                  ? Colors.white.withValues(alpha: 0.22)
+                  : color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(child: Text(emoji, style: const TextStyle(fontSize: 13))),
+          ),
           label: Text(
             option,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 11.5,
               fontWeight: FontWeight.w600,
               color: selected ? Colors.white : AppColors.textPrimary,
             ),
           ),
           selectedColor: color,
           backgroundColor: Colors.white,
-          checkmarkColor: Colors.white,
           side: BorderSide(
             color: selected ? color : AppColors.border,
             width: 1.2,
           ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           onSelected: (_) => _toggleSubCategory(option),
         );
       }).toList(),
@@ -1209,23 +1408,45 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle(_partyLabel, Icons.person_rounded),
+          Row(
+            children: [
+              Expanded(
+                child: _sectionTitle(_partyLabel, Icons.person_rounded),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  tr('Search by name or mobile'),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5F7F5),
-                    borderRadius: BorderRadius.circular(12),
+                    color: AppColors.field,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: TextFormField(
                     controller: _nameController,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF1B5E20),
+                      color: AppColors.textPrimary,
                     ),
                     onChanged: _onNameChanged,
                     onSaved: (v) => _formData.name = v?.trim() ?? '',
@@ -1234,15 +1455,15 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                       isDense: true,
                       prefixIcon: const Icon(
                         Icons.badge_rounded,
-                        color: Color(0xFF2E7D32),
-                        size: 16,
+                        color: AppColors.primary,
+                        size: 18,
                       ),
                       prefixIconConstraints:
                           const BoxConstraints(minWidth: 0, minHeight: 0),
                       hintText: tr('Name (optional, for search)'),
                       hintStyle:
                           TextStyle(color: Colors.grey.shade400, fontSize: 13),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
                 ),
@@ -1260,15 +1481,15 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
               constraints: const BoxConstraints(maxHeight: 180),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AppColors.border),
                 boxShadow: [AppColors.softShadow],
               ),
               child: ListView.separated(
                 shrinkWrap: true,
-                padding: EdgeInsets.zero,
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 itemCount: _nameSuggestions.length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (_, _) =>
                     Divider(height: 1, color: AppColors.border),
                 itemBuilder: (context, index) {
                   final row = _nameSuggestions[index];
@@ -1277,8 +1498,19 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                   final village = row['village']?.toString() ?? '';
                   return ListTile(
                     dense: true,
-                    leading: const Icon(Icons.person_search_rounded,
-                        color: AppColors.primary, size: 20),
+                    leading: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySoft,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.person_search_rounded,
+                        color: AppColors.primary,
+                        size: 18,
+                      ),
+                    ),
                     title: Text(
                       name,
                       style: const TextStyle(
@@ -1299,19 +1531,20 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
               ),
             ),
           ],
-          SizedBox(height: 6),
+          SizedBox(height: 10),
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F7F5),
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.field,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: TextFormField(
               controller: _mobileController,
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF1B5E20),
+                color: AppColors.textPrimary,
               ),
               keyboardType: TextInputType.phone,
               inputFormatters: [
@@ -1333,19 +1566,19 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                 isDense: true,
                 prefixIcon: const Icon(
                   Icons.phone_rounded,
-                  color: Color(0xFF2E7D32),
-                  size: 16,
+                  color: AppColors.primary,
+                  size: 18,
                 ),
                 prefixIconConstraints:
                     const BoxConstraints(minWidth: 0, minHeight: 0),
                 hintText: tr('By/To mobile'),
                 hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
           if (_partyDetailsLoaded && _partyBalance != null) ...[
-            SizedBox(height: 6),
+            SizedBox(height: 10),
             _buildBalanceChip(),
           ],
         ],
@@ -1358,10 +1591,10 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     final isCredit = _partyBalanceSide == 'credit' || (_partyBalance! > 0);
     final isDebit = _partyBalanceSide == 'debit' || (_partyBalance! < 0);
     final color = isDebit
-        ? const Color(0xFFD32F2F)
+        ? AppColors.expense
         : isCredit
-            ? const Color(0xFF2E7D32)
-            : Colors.grey.shade700;
+            ? AppColors.income
+            : Colors.grey.shade600;
     final label = isDebit
         ? 'Debit'
         : isCredit
@@ -1370,28 +1603,43 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
+        gradient: LinearGradient(
+          colors: [
+            color.withValues(alpha: 0.12),
+            color.withValues(alpha: 0.04),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          Icon(
-            isDebit
-                ? Icons.arrow_downward_rounded
-                : isCredit
-                    ? Icons.arrow_upward_rounded
-                    : Icons.check_circle_outline,
-            size: 14,
-            color: color,
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isDebit
+                  ? Icons.arrow_downward_rounded
+                  : isCredit
+                      ? Icons.arrow_upward_rounded
+                      : Icons.check_circle_outline,
+              size: 14,
+              color: color,
+            ),
           ),
-          SizedBox(width: 6),
+          SizedBox(width: 8),
           Text(
             'Balance: $label ${fmt.format(amount)}',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 12.5,
               fontWeight: FontWeight.w700,
               color: color,
             ),
@@ -1422,13 +1670,17 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           ),
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F7F5),
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.field,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: TextFormField(
               controller: _narrationController,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF1B5E20)),
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
               maxLines: 2,
               validator: (value) {
                 if (value != null && value.length > 200) {
@@ -1517,12 +1769,12 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       ),
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
-        side: BorderSide(color: color.withValues(alpha: 0.55), width: 1.4),
-        backgroundColor: color.withValues(alpha: 0.04),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-        minimumSize: const Size(0, 42),
+        side: BorderSide(color: color.withValues(alpha: 0.45), width: 1.3),
+        backgroundColor: color.withValues(alpha: 0.05),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
+        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+        minimumSize: const Size(0, 44),
       ),
     );
   }
@@ -1530,57 +1782,65 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   Widget _buildSubmitButton() {
     return SizedBox(
       width: double.infinity,
-      height: 46,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : _submitForm,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF2E7D32),
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: const Color(0xFFA5D6A7),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+      height: 54,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: AppColors.ctaGradient,
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
           ),
-        ),
-        child: isLoading
-            ? SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2.5,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.save_rounded, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Submit',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: isLoading
+              ? null
+              : [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
                   ),
                 ],
-              ),
-      ),
-    );
-  }
-
-  Widget _card({required Widget child}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: isLoading ? null : _submitForm,
+            child: Center(
+              child: isLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.6,
+                      ),
+                    )
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.check_circle_rounded,
+                          size: 20,
+                          color: Colors.white,
+                        ),
+                        SizedBox(width: 9),
+                        Text(
+                          'Submit',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
           ),
-        ],
+        ),
       ),
-      padding: const EdgeInsets.all(12),
-      child: child,
     );
   }
 }

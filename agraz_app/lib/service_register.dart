@@ -290,7 +290,6 @@ class _ServiceRegisterFormState extends State<ServiceRegisterForm> {
           SizedBox(height: 4),
         ],
         AppHeader(
-          icon: Icons.miscellaneous_services_rounded,
           title: tr('Register your Business or Service'),
           subtitle: tr('Fill in the details below'),
           showBack: !widget.asSheet,

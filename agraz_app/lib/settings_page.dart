@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'auth_token.dart';
 import 'config.dart';
+import 'app_theme.dart';
 import 'l10n/app_l10n.dart';
 import 'l10n/locale_controller.dart';
 import 'reset_password_page.dart';
@@ -170,16 +171,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final green = Colors.green[700]!;
     final theme = ThemeController.instance;
     final locale = LocaleController.instance;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(tr('Settings')),
-        backgroundColor: green,
-        foregroundColor: Colors.white,
-      ),
+      appBar: GradientAppBar(title: tr('Settings')),
       body: ListenableBuilder(
         listenable: Listenable.merge([theme, locale]),
         builder: (context, _) {
@@ -290,7 +286,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
 class _SectionHeader extends StatelessWidget {
   final String text;
-  _SectionHeader(this.text);
+  const _SectionHeader(this.text);
 
   @override
   Widget build(BuildContext context) {
