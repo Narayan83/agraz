@@ -29,6 +29,12 @@ func init() {
 		&models.Vendor{},
 		&models.Labor{},
 		&models.LaborRate{},
+		&models.LaborExtra{},
+		&models.DiaryLabel{},
+		&models.DiaryEntry{},
+		&models.FuturePlan{},
+		&models.FuturePlanLine{},
+		&models.LaborWorkEntry{},
 		&models.IncomeExpense{},
 		&models.Organization{},
 		&models.OrgLedger{},
@@ -83,6 +89,9 @@ func main() {
 	handler.SetAppContentDB(initializers.DB)
 	handler.SetLaborDB(initializers.DB)
 	handler.SetLaborRateDB(initializers.DB)
+	handler.SetDiaryDB(initializers.DB)
+	handler.SetFuturePlanDB(initializers.DB)
+	handler.SetLaborWorkDB(initializers.DB)
 	handler.SetServiceRegistrationDB(initializers.DB)
 	handler.SetEcomDB(initializers.DB)
 	handler.SetVendorDB(initializers.DB)
@@ -202,6 +211,7 @@ func main() {
 	api.Get("/labors/people", handler.GetLaborPeoplePublic)
 	api.Get("/labors/reports", handler.GetLaborReportsPublic)
 	api.Get("/labors/balance", handler.GetLaborBalancePublic)
+	api.Put("/labors/bulk-rate", handler.BulkUpdateLaborRate)
 	api.Get("/labors", handler.GetLabors)
 	api.Post("/labors/batch", handler.CreateLaborsBatch)
 	api.Post("/labors", handler.CreateLabor)
@@ -210,6 +220,32 @@ func main() {
 	api.Delete("/labors/:id", handler.DeleteLabor)
 	api.Get("/labor_rates", handler.GetLaborRates)
 	api.Put("/labor_rates", handler.UpsertLaborRates)
+
+	// Diary
+	api.Get("/diary/labels", handler.ListDiaryLabels)
+	api.Post("/diary/labels", handler.CreateDiaryLabel)
+	api.Put("/diary/labels/:id", handler.UpdateDiaryLabel)
+	api.Delete("/diary/labels/:id", handler.DeleteDiaryLabel)
+	api.Get("/diary/entries", handler.ListDiaryEntries)
+	api.Post("/diary/entries", handler.CreateDiaryEntry)
+	api.Put("/diary/entries/:id", handler.UpdateDiaryEntry)
+	api.Delete("/diary/entries/:id", handler.DeleteDiaryEntry)
+
+	// Future plans
+	api.Get("/future_plans", handler.ListFuturePlans)
+	api.Post("/future_plans", handler.CreateFuturePlan)
+	api.Get("/future_plans/:id", handler.GetFuturePlan)
+	api.Put("/future_plans/:id", handler.UpdateFuturePlan)
+	api.Delete("/future_plans/:id", handler.DeleteFuturePlan)
+
+	// Labour self work-entry (receivable / receipt)
+	api.Get("/labor_works/reports", handler.GetLaborWorkReportsPublic)
+	api.Get("/labor_works", handler.GetLaborWorks)
+	api.Post("/labor_works/batch", handler.CreateLaborWorksBatch)
+	api.Post("/labor_works", handler.CreateLaborWork)
+	api.Get("/labor_works/:id", handler.GetLaborWork)
+	api.Put("/labor_works/:id", handler.UpdateLaborWork)
+	api.Delete("/labor_works/:id", handler.DeleteLaborWork)
 
 	// Land RTC / Karnataka land records (per logged-in user)
 	api.Post("/land_rtcs/upload", handler.UploadLandRtcDocument)

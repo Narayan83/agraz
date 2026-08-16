@@ -665,6 +665,565 @@ class ApiService {
     }
   }
 
+  /// PUT /api/labors/bulk-rate — update wage on payable/opening rows in a date range.
+  Future<Map<String, dynamic>> bulkUpdateLaborRate({
+    required String name,
+    String? mobile,
+    required String from,
+    required String to,
+    required double rate,
+  }) async {
+    final headers = await authJsonHeaders();
+    final response = await http.put(
+      Uri.parse('$BASE_URL/api/labors/bulk-rate'),
+      headers: headers,
+      body: jsonEncode({
+        'name': name,
+        if (mobile != null && mobile.isNotEmpty) 'mobile': mobile,
+        'from': from,
+        'to': to,
+        'rate': rate,
+      }),
+    );
+    final decoded =
+        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return {'success': true};
+    }
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode,
+          fallback: 'Failed to update labour rates'),
+    );
+  }
+
+  // ── Diary labels ──────────────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> fetchDiaryLabels() async {
+    try {
+      final headers = await authGetHeaders();
+      final response = await http.get(
+        Uri.parse('$BASE_URL/api/diary/labels'),
+        headers: headers,
+      );
+      final decoded =
+          response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'data': _mapListFromBody(response.body),
+        };
+      }
+      return {
+        'success': false,
+        'statusCode': response.statusCode,
+        'message': _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to load diary labels'),
+        'data': <Map<String, dynamic>>[],
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Failed to load diary labels: $e',
+        'data': <Map<String, dynamic>>[],
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> createDiaryLabel({
+    required String name,
+    String icon = 'label',
+  }) async {
+    try {
+      final headers = await authJsonHeaders();
+      final response = await http.post(
+        Uri.parse('$BASE_URL/api/diary/labels'),
+        headers: headers,
+        body: jsonEncode({'name': name, 'icon': icon}),
+      );
+      final decoded =
+          response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          'success': true,
+          'data': decoded is Map ? (decoded['data'] ?? decoded) : decoded,
+          'message': decoded is Map
+              ? (decoded['message'] ?? 'Label created')
+              : 'Label created',
+        };
+      }
+      return {
+        'success': false,
+        'statusCode': response.statusCode,
+        'message': _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to create diary label'),
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to create diary label: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> updateDiaryLabel(
+    int id, {
+    required String name,
+    String? icon,
+  }) async {
+    try {
+      final headers = await authJsonHeaders();
+      final response = await http.put(
+        Uri.parse('$BASE_URL/api/diary/labels/$id'),
+        headers: headers,
+        body: jsonEncode({
+          'name': name,
+          if (icon != null && icon.isNotEmpty) 'icon': icon,
+        }),
+      );
+      final decoded =
+          response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          'success': true,
+          'data': decoded is Map ? (decoded['data'] ?? decoded) : decoded,
+          'message': decoded is Map
+              ? (decoded['message'] ?? 'Label updated')
+              : 'Label updated',
+        };
+      }
+      return {
+        'success': false,
+        'statusCode': response.statusCode,
+        'message': _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to update diary label'),
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to update diary label: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteDiaryLabel(int id) async {
+    try {
+      final headers = await authGetHeaders();
+      final response = await http.delete(
+        Uri.parse('$BASE_URL/api/diary/labels/$id'),
+        headers: headers,
+      );
+      final decoded =
+          response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return {'success': true, 'message': 'Label deleted'};
+      }
+      return {
+        'success': false,
+        'statusCode': response.statusCode,
+        'message': _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to delete diary label'),
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to delete diary label: $e'};
+    }
+  }
+
+  // ── Diary entries ─────────────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> fetchDiaryEntries({
+    String? from,
+    String? to,
+    String? q,
+    int? labelId,
+    int page = 1,
+    int limit = 50,
+  }) async {
+    try {
+      final headers = await authGetHeaders();
+      final uri = Uri.parse('$BASE_URL/api/diary/entries').replace(
+        queryParameters: {
+          'page': page.toString(),
+          'limit': limit.toString(),
+          if (from != null && from.isNotEmpty) 'from': from,
+          if (to != null && to.isNotEmpty) 'to': to,
+          if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+          if (labelId != null) 'label_id': labelId.toString(),
+        },
+      );
+      final response = await http.get(uri, headers: headers);
+      final decoded =
+          response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+      if (response.statusCode == 200) {
+        if (decoded is Map) {
+          return {
+            'success': true,
+            ...Map<String, dynamic>.from(decoded),
+          };
+        }
+        return {'success': true, 'data': _mapListFromBody(response.body)};
+      }
+      return {
+        'success': false,
+        'statusCode': response.statusCode,
+        'message': _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to load diary entries'),
+        'data': <dynamic>[],
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Failed to load diary entries: $e',
+        'data': <dynamic>[],
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> createDiaryEntry(Map<String, dynamic> data) async {
+    try {
+      final headers = await authJsonHeaders();
+      final response = await http.post(
+        Uri.parse('$BASE_URL/api/diary/entries'),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+      final decoded =
+          response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          'success': true,
+          'data': decoded is Map ? (decoded['data'] ?? decoded) : decoded,
+          'message': decoded is Map
+              ? (decoded['message'] ?? 'Diary entry created')
+              : 'Diary entry created',
+        };
+      }
+      return {
+        'success': false,
+        'statusCode': response.statusCode,
+        'message': _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to create diary entry'),
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to create diary entry: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> updateDiaryEntry(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final headers = await authJsonHeaders();
+      final response = await http.put(
+        Uri.parse('$BASE_URL/api/diary/entries/$id'),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+      final decoded =
+          response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          'success': true,
+          'data': decoded is Map ? (decoded['data'] ?? decoded) : decoded,
+          'message': decoded is Map
+              ? (decoded['message'] ?? 'Diary entry updated')
+              : 'Diary entry updated',
+        };
+      }
+      return {
+        'success': false,
+        'statusCode': response.statusCode,
+        'message': _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to update diary entry'),
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to update diary entry: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteDiaryEntry(int id) async {
+    try {
+      final headers = await authGetHeaders();
+      final response = await http.delete(
+        Uri.parse('$BASE_URL/api/diary/entries/$id'),
+        headers: headers,
+      );
+      final decoded =
+          response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return {'success': true, 'message': 'Diary entry deleted'};
+      }
+      return {
+        'success': false,
+        'statusCode': response.statusCode,
+        'message': _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to delete diary entry'),
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to delete diary entry: $e'};
+    }
+  }
+
+  // ── Future plans ──────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> fetchFuturePlans({
+    int? year,
+    int? month,
+    String? status,
+    String? q,
+  }) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/future_plans').replace(
+      queryParameters: {
+        if (year != null && year > 0) 'year': year.toString(),
+        if (month != null && month > 0) 'month': month.toString(),
+        if (status != null && status.isNotEmpty) 'status': status,
+        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+      },
+    );
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load future plans (${response.statusCode})');
+    }
+    return _mapListFromBody(response.body);
+  }
+
+  Future<Map<String, dynamic>> fetchFuturePlan(int id) async {
+    final headers = await authGetHeaders();
+    final response = await http.get(
+      Uri.parse('$BASE_URL/api/future_plans/$id'),
+      headers: headers,
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load plan (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    return {};
+  }
+
+  Future<Map<String, dynamic>> createFuturePlan(Map<String, dynamic> data) async {
+    final headers = await authJsonHeaders();
+    final response = await http.post(
+      Uri.parse('$BASE_URL/api/future_plans'),
+      headers: headers,
+      body: jsonEncode(data),
+    );
+    final decoded =
+        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded['data'] ?? decoded);
+      }
+      return {};
+    }
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode,
+          fallback: 'Failed to create future plan'),
+    );
+  }
+
+  Future<Map<String, dynamic>> updateFuturePlan(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    final headers = await authJsonHeaders();
+    final response = await http.put(
+      Uri.parse('$BASE_URL/api/future_plans/$id'),
+      headers: headers,
+      body: jsonEncode(data),
+    );
+    final decoded =
+        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded['data'] ?? decoded);
+      }
+      return {};
+    }
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode,
+          fallback: 'Failed to update future plan'),
+    );
+  }
+
+  Future<void> deleteFuturePlan(int id) async {
+    final headers = await authGetHeaders();
+    final response = await http.delete(
+      Uri.parse('$BASE_URL/api/future_plans/$id'),
+      headers: headers,
+    );
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      final decoded =
+          response.body.isNotEmpty ? jsonDecode(response.body) : null;
+      throw Exception(
+        _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to delete future plan'),
+      );
+    }
+  }
+
+  // ── Labor works (self receivable / receipt) ───────────────────────────────
+
+  Future<Map<String, dynamic>> createLaborWork(Map<String, dynamic> data) async {
+    final headers = await authJsonHeaders();
+    final response = await http.post(
+      Uri.parse('$BASE_URL/api/labor_works'),
+      headers: headers,
+      body: jsonEncode(data),
+    );
+    final decoded =
+        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return {
+        'success': true,
+        'data': decoded is Map ? (decoded['data'] ?? decoded) : decoded,
+        'message': decoded is Map
+            ? (decoded['message'] ?? 'Work entry created')
+            : 'Work entry created',
+      };
+    }
+    return {
+      'success': false,
+      'message': _apiErrorMessage(decoded, response.statusCode,
+          fallback: 'Failed to create work entry'),
+      'statusCode': response.statusCode,
+    };
+  }
+
+  Future<Map<String, dynamic>> createLaborWorksBatch(
+    List<Map<String, dynamic>> rows,
+  ) async {
+    final headers = await authJsonHeaders();
+    final response = await http.post(
+      Uri.parse('$BASE_URL/api/labor_works/batch'),
+      headers: headers,
+      body: jsonEncode(rows),
+    );
+    final decoded =
+        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return {
+        'success': true,
+        'data': decoded is Map ? (decoded['data'] ?? decoded) : decoded,
+        'message': decoded is Map
+            ? (decoded['message'] ?? 'Work entries created')
+            : 'Work entries created',
+      };
+    }
+    return {
+      'success': false,
+      'message': _apiErrorMessage(decoded, response.statusCode,
+          fallback: 'Failed to create work entries'),
+      'statusCode': response.statusCode,
+    };
+  }
+
+  Future<Map<String, dynamic>> fetchLaborWorks({
+    String? name,
+    String? q,
+    String? entryKind,
+    String? from,
+    String? to,
+    int page = 1,
+    int limit = 50,
+  }) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/labor_works').replace(
+      queryParameters: {
+        'page': page.toString(),
+        'limit': limit.toString(),
+        if (name != null && name.isNotEmpty) 'name': name,
+        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+        if (entryKind != null && entryKind.isNotEmpty) 'entry_kind': entryKind,
+        if (from != null && from.isNotEmpty) 'from': from,
+        if (to != null && to.isNotEmpty) 'to': to,
+      },
+    );
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load labor works (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    return {'data': _mapListFromBody(response.body)};
+  }
+
+  Future<Map<String, dynamic>> updateLaborWork(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    final headers = await authJsonHeaders();
+    final response = await http.put(
+      Uri.parse('$BASE_URL/api/labor_works/$id'),
+      headers: headers,
+      body: jsonEncode(data),
+    );
+    final decoded =
+        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded['data'] ?? decoded);
+      }
+      return {};
+    }
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode,
+          fallback: 'Failed to update work entry'),
+    );
+  }
+
+  Future<void> deleteLaborWork(int id) async {
+    final headers = await authGetHeaders();
+    final response = await http.delete(
+      Uri.parse('$BASE_URL/api/labor_works/$id'),
+      headers: headers,
+    );
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      final decoded =
+          response.body.isNotEmpty ? jsonDecode(response.body) : null;
+      throw Exception(
+        _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to delete work entry'),
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchLaborWorkReports({
+    String? name,
+    String? from,
+    String? to,
+  }) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/labor_works/reports').replace(
+      queryParameters: {
+        if (name != null && name.isNotEmpty) 'name': name,
+        if (from != null && from.isNotEmpty) 'from': from,
+        if (to != null && to.isNotEmpty) 'to': to,
+      },
+    );
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception(
+          'Failed to load labor work reports (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    throw Exception('Invalid labor work report response');
+  }
+
+  List<Map<String, dynamic>> _mapListFromBody(String body) {
+    final decoded = jsonDecode(body);
+    if (decoded is Map && decoded['data'] is List) {
+      return (decoded['data'] as List)
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+    if (decoded is List) {
+      return decoded
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+    return [];
+  }
+
   /// POST /api/feedbacks
   Future<Map<String, dynamic>> createFeedback({
     required String subject,

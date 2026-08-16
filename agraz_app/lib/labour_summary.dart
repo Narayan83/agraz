@@ -1565,7 +1565,7 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
     var sum = 0.0;
     for (final e in _entries) {
       final kind = (e['entry_kind']?.toString() ?? 'payable').toLowerCase();
-      if (kind == 'payment') continue;
+      if (kind == 'payment' || kind == 'tally') continue;
       sum += _num(e['wage']) * _num(e['hours']);
     }
     return sum;
@@ -1586,13 +1586,62 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
   String _entryKindLabel(String? kind) {
     final k = (kind ?? 'payable').toLowerCase();
     if (k == 'payment') return tr('Debit');
+    if (k == 'tally') return tr('Tally');
     return tr('Credit'); // payable + opening
   }
 
   Color _entryKindColor(String? kind) {
     final k = (kind ?? 'payable').toLowerCase();
     if (k == 'payment') return AppColors.expense;
+    if (k == 'tally') return AppColors.info;
     return AppColors.income;
+  }
+
+  Map<String, double> _extrasFrom(Map e) {
+    final extra = e['extra'];
+    double toD(dynamic v) {
+      if (v is num) return v.toDouble();
+      return double.tryParse(v?.toString() ?? '') ?? 0;
+    }
+    if (extra is Map) {
+      return {
+        'rent': toD(extra['rent']),
+        'food': toD(extra['food']),
+        'bonus': toD(extra['bonus']),
+      };
+    }
+    return {'rent': 0.0, 'food': 0.0, 'bonus': 0.0};
+  }
+
+  void _showOthersDetail(Map e) {
+    final x = _extrasFrom(e);
+    final sum = x['rent']! + x['food']! + x['bonus']!;
+    if (sum <= 0) return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('Others')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${tr('Rent')}: ${_money(x['rent']!)}'),
+            const SizedBox(height: 6),
+            Text('${tr('Food')}: ${_money(x['food']!)}'),
+            const SizedBox(height: 6),
+            Text('${tr('Bonus')}: ${_money(x['bonus']!)}'),
+            const Divider(),
+            Text(
+              '${tr('Total')}: ${_money(sum)}',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('Close'))),
+        ],
+      ),
+    );
   }
 
   Widget _summaryBox(String title, String value, Color color, IconData icon) {
@@ -1864,9 +1913,13 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                               final e = _entries[i];
                               final wage = _num(e['wage']);
                               final hours = _num(e['hours']);
-                              final amount = wage * hours;
                               final kind = e['entry_kind']?.toString();
+                              final isTally = (kind ?? '').toLowerCase() == 'tally';
+                              final amount = isTally ? 0.0 : wage * hours;
                               final kindColor = _entryKindColor(kind);
+                              final extras = _extrasFrom(e);
+                              final others =
+                                  extras['rent']! + extras['food']! + extras['bonus']!;
                               DateTime? date;
                               try {
                                 date = DateTime.parse(e['date'].toString());
@@ -1874,6 +1927,9 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                               return AppCard(
                                 onTap: () => _editEntry(e),
                                 padding: const EdgeInsets.all(14),
+                                color: isTally
+                                    ? AppColors.info.withValues(alpha: 0.08)
+                                    : AppColors.surface,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -1882,11 +1938,13 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                                         Expanded(
                                           child: Text(
                                             e['name']?.toString() ?? '',
-                                            style: AppText.bodyStrong,
+                                            style: AppText.bodyStrong.copyWith(
+                                              color: isTally ? AppColors.info : null,
+                                            ),
                                           ),
                                         ),
                                         Text(
-                                          _money(amount),
+                                          isTally ? tr('Tally') : _money(amount),
                                           style: TextStyle(
                                             fontWeight: FontWeight.w800,
                                             color: kindColor,
@@ -1903,14 +1961,17 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                                             .isNotEmpty)
                                           InfoChip(
                                             label: e['category'].toString(),
-                                            color: AppColors.expense,
+                                            color: isTally
+                                                ? AppColors.info
+                                                : AppColors.expense,
                                           ),
                                         InfoChip(
                                           label: _entryKindLabel(kind),
                                           color: kindColor,
                                         ),
-                                        if ((e['shift']?.toString() ?? '')
-                                            .isNotEmpty)
+                                        if (!isTally &&
+                                            (e['shift']?.toString() ?? '')
+                                                .isNotEmpty)
                                           InfoChip(
                                             label: e['shift'].toString(),
                                             color: AppColors.warning,
@@ -1921,6 +1982,15 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                                             label: e['location'].toString(),
                                             color: AppColors.textMuted,
                                           ),
+                                        if (others > 0)
+                                          GestureDetector(
+                                            onTap: () => _showOthersDetail(e),
+                                            child: InfoChip(
+                                              label:
+                                                  '${tr('Others')} ${_money(others)}',
+                                              color: AppColors.accent,
+                                            ),
+                                          ),
                                       ],
                                     ),
                                     SizedBox(height: 5),
@@ -1928,9 +1998,16 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                                       [
                                         if (date != null)
                                           DateFormat('dd/MM/yyyy').format(date),
-                                        '₹${wage.toStringAsFixed(0)} × ${hours.toStringAsFixed(hours == hours.roundToDouble() ? 0 : 1)}',
+                                        if (!isTally)
+                                          '₹${wage.toStringAsFixed(0)} × ${hours.toStringAsFixed(hours == hours.roundToDouble() ? 0 : 1)}',
+                                        if (isTally &&
+                                            (e['narration']?.toString() ?? '')
+                                                .isNotEmpty)
+                                          e['narration'].toString(),
                                       ].join('  ·  '),
-                                      style: AppText.caption,
+                                      style: AppText.caption.copyWith(
+                                        color: isTally ? AppColors.info : null,
+                                      ),
                                     ),
                                     if ((e['narration']?.toString() ?? '')
                                         .isNotEmpty) ...[

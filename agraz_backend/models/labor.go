@@ -24,12 +24,14 @@ type Labor struct {
 	Narration       string          `gorm:"type:text;not null;default:''" json:"narration"`
 	Date            time.Time       `gorm:"not null" json:"date"`
 	Mobile          *string         `gorm:"type:varchar(15)" json:"mobile,omitempty"`
-	// EntryKind: payable | payment | opening
+	// EntryKind: payable | payment | opening | tally
 	EntryKind string `gorm:"type:varchar(20);not null;default:'payable';index" json:"entry_kind"`
 	// Linked income/expense row when payment (or paid portion) posts to I&E.
 	IncomeExpenseID *uint `gorm:"index" json:"income_expense_id,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	// Optional rent/food/bonus extras (one row per labour entry).
+	Extra     *LaborExtra `gorm:"foreignKey:LaborID" json:"extra,omitempty"`
+	CreatedAt time.Time   `json:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at"`
 }
 
 func (Labor) TableName() string {

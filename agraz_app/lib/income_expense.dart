@@ -1681,11 +1681,10 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                 fontSize: 14,
                 color: AppColors.textPrimary,
               ),
-              maxLines: 2,
+              minLines: 3,
+              maxLines: 8,
+              keyboardType: TextInputType.multiline,
               validator: (value) {
-                if (value != null && value.length > 200) {
-                  return 'Max 200 characters';
-                }
                 return null;
               },
               onSaved: (value) => _formData.narration =

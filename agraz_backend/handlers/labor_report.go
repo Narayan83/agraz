@@ -54,8 +54,8 @@ func GetLaborPeoplePublic(c *fiber.Ctx) error {
 			MAX(mobile) as mobile,
 			MAX(gender) as gender,
 			COUNT(*) as entry_count,
-			COALESCE(SUM(wage * hours),0)::float8 as total_cost,
-			COALESCE(SUM(hours),0)::float8 as total_hours,
+			COALESCE(SUM(CASE WHEN COALESCE(entry_kind,'payable') <> 'tally' THEN wage * hours ELSE 0 END),0)::float8 as total_cost,
+			COALESCE(SUM(CASE WHEN COALESCE(entry_kind,'payable') <> 'tally' THEN hours ELSE 0 END),0)::float8 as total_hours,
 			COALESCE(SUM(CASE WHEN COALESCE(entry_kind,'payable') IN ('payable','opening') THEN wage * hours ELSE 0 END),0)::float8 as total_payable,
 			COALESCE(SUM(CASE WHEN entry_kind = 'payment' THEN wage * hours ELSE 0 END),0)::float8 as total_paid,
 			MAX(date) as last_date,
@@ -270,10 +270,10 @@ func laborAggSummary(q *gorm.DB) (laborSumAgg, error) {
 	}
 	var r row
 	err := q.Select(`
-		COALESCE(SUM(wage * hours),0)::float8 as total_cost,
-		COALESCE(SUM(hours),0)::float8 as total_hours,
+		COALESCE(SUM(CASE WHEN COALESCE(entry_kind,'payable') <> 'tally' THEN wage * hours ELSE 0 END),0)::float8 as total_cost,
+		COALESCE(SUM(CASE WHEN COALESCE(entry_kind,'payable') <> 'tally' THEN hours ELSE 0 END),0)::float8 as total_hours,
 		COUNT(*) as entry_count,
-		COALESCE(AVG(wage),0)::float8 as avg_rate,
+		COALESCE(AVG(CASE WHEN COALESCE(entry_kind,'payable') IN ('payable','opening') THEN wage END),0)::float8 as avg_rate,
 		COALESCE(SUM(CASE WHEN COALESCE(entry_kind,'payable') IN ('payable','opening') THEN wage * hours ELSE 0 END),0)::float8 as total_payable,
 		COALESCE(SUM(CASE WHEN entry_kind = 'payment' THEN wage * hours ELSE 0 END),0)::float8 as total_paid
 	`).Scan(&r).Error
@@ -309,9 +309,9 @@ func laborMonthlySchedule(q *gorm.DB, from, to time.Time) ([]laborPeriodRow, err
 	err := q.Select(`
 		EXTRACT(YEAR FROM date)::int as y,
 		EXTRACT(MONTH FROM date)::int as m,
-		COALESCE(SUM(wage * hours),0)::float8 as total_cost,
-		COALESCE(SUM(hours),0)::float8 as total_hours,
-		COUNT(*) as count
+		COALESCE(SUM(CASE WHEN COALESCE(entry_kind,'payable') <> 'tally' THEN wage * hours ELSE 0 END),0)::float8 as total_cost,
+		COALESCE(SUM(CASE WHEN COALESCE(entry_kind,'payable') <> 'tally' THEN hours ELSE 0 END),0)::float8 as total_hours,
+		COUNT(*) FILTER (WHERE COALESCE(entry_kind,'payable') <> 'tally') as count
 	`).
 		Where("date >= ? AND date <= ?", from, to).
 		Group("y, m").

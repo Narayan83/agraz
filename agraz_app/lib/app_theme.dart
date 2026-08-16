@@ -669,6 +669,7 @@ class AppField extends StatelessWidget {
   final FormFieldSetter<String>? onSaved;
   final List<TextInputFormatter>? inputFormatters;
   final int maxLines;
+  final int? minLines;
   final bool required;
   final bool enabled;
   final VoidCallback? onTap;
@@ -685,6 +686,7 @@ class AppField extends StatelessWidget {
     this.onSaved,
     this.inputFormatters,
     this.maxLines = 1,
+    this.minLines,
     this.required = false,
     this.enabled = true,
     this.onTap,
@@ -692,11 +694,15 @@ class AppField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final multi = maxLines > 1 || (minLines ?? 1) > 1;
     return TextFormField(
       controller: controller,
       onTap: onTap,
       enabled: enabled,
-      keyboardType: keyboardType,
+      keyboardType: multi
+          ? TextInputType.multiline
+          : keyboardType,
+      minLines: minLines ?? (multi ? 3 : 1),
       maxLines: maxLines,
       inputFormatters: inputFormatters,
       validator: validator,
@@ -712,7 +718,7 @@ class AppField extends StatelessWidget {
         hintText: hint,
         prefixIcon: Icon(icon, size: 20),
         prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 0),
-        alignLabelWithHint: maxLines > 1,
+        alignLabelWithHint: multi,
       ),
     );
   }

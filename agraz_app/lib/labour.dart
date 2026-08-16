@@ -12,6 +12,7 @@ import 'labor_categories.dart';
 import 'labour_summary.dart';
 import 'l10n/app_l10n.dart';
 import 'login.dart';
+import 'update_labour_rate.dart';
 import 'voice_dictation.dart';
 
 const double _fieldHeight = 48;
@@ -24,6 +25,9 @@ class _PendingLabour {
   final String gender;
   final double rate;
   final String category;
+  final double rent;
+  final double food;
+  final double bonus;
 
   const _PendingLabour({
     required this.name,
@@ -33,9 +37,13 @@ class _PendingLabour {
     required this.gender,
     required this.rate,
     required this.category,
+    this.rent = 0,
+    this.food = 0,
+    this.bonus = 0,
   });
 
   double get totalCost => rate * daysHour;
+  double get othersTotal => rent + food + bonus;
 }
 
 class LaborManagementPage extends StatefulWidget {
@@ -66,15 +74,19 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   String _selectedShift = 'fullday';
   String _selectedGender = 'Male';
   String _selectedCategory = 'Plucking';
-  /// Top mode: Payable / Labour Entry (work accrual) or Payment (settlement).
+  /// Top mode: Payable / Labour Entry, Payment, or Mark Tally.
   String _entryMode = 'Payable';
   /// Outstanding balance for selected labourer (green chip).
   double? _labourBalance;
   double? _labourPayable;
   double? _labourReceivable;
+  /// Optional extras (rent/food/bonus) applied to next pending labourer.
+  double _extraRent = 0;
+  double _extraFood = 0;
+  double _extraBonus = 0;
 
   final List<String> _workTypes = ['Daily Wages', 'Contract'];
-  final List<String> _shifts = ['fullday', 'morning', 'evening', 'hour'];
+  final List<String> _shifts = ['fullday', 'morning', 'evening', 'night'];
   final List<String> _genders = ['Male', 'Female'];
   List<String> _categories = List<String>.from(kLaborWorkCategories);
   final List<String> _locations = [
@@ -97,6 +109,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   Map<String, double> _latestRatesForLabourer = {};
   /// Name suggestions shown below the Name field while typing.
   List<String> _nameSuggestions = [];
+  /// Gender remembered per suggested name (from last history row).
+  Map<String, String> _nameSuggestionGenders = {};
   bool _suppressSuggestions = false;
   Timer? _rateLookupDebounce;
   bool _suppressIdentityListener = false;
@@ -115,8 +129,19 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     _animController.forward();
     _nameController.addListener(_onLabourerIdentityChanged);
     _mobileController.addListener(_onLabourerIdentityChanged);
+    _applyShiftDefaultDays(_selectedShift);
     _loadLabors();
     _loadCategories();
+  }
+
+  /// Default days/hour by shift: fullday=1, morning=0.5, evening=0.5, night=1.
+  void _applyShiftDefaultDays(String shift) {
+    final v = switch (shift) {
+      'morning' || 'evening' => '0.5',
+      'night' || 'fullday' => '1',
+      _ => '1',
+    };
+    _daysHourController.text = v;
   }
 
   @override
@@ -175,6 +200,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       _ratesForLabourer = {};
       _latestRatesForLabourer = {};
       _nameSuggestions = [];
+      _nameSuggestionGenders = {};
       _labourBalance = null;
       _labourPayable = null;
       _labourReceivable = null;
@@ -194,6 +220,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     _ratesForLabourer = {};
     _latestRatesForLabourer = {};
     _nameSuggestions = [];
+    _nameSuggestionGenders = {};
     _suppressSuggestions = false;
     _labourBalance = null;
     _labourPayable = null;
@@ -271,25 +298,70 @@ class _LaborManagementPageState extends State<LaborManagementPage>
 
     final latestMap = <String, double>{};
     final suggestions = <String>{};
+    final suggestionGender = <String, String>{};
     final query = (name ?? '').trim().toLowerCase();
+    String? lastGender;
     for (final r in historyRows) {
+      final rowName = r['name']?.toString().trim() ?? '';
+      final rowGender = r['gender']?.toString().trim() ?? '';
+      final exactNameMatch =
+          query.isNotEmpty && rowName.toLowerCase() == query;
+
       final cat = r['category']?.toString() ?? '';
-      if (cat.isNotEmpty && !latestMap.containsKey(cat)) {
+      final kind = (r['entry_kind']?.toString() ?? 'payable').toLowerCase();
+      // Prefer rates from work/opening rows (not payment/tally).
+      if (cat.isNotEmpty &&
+          !latestMap.containsKey(cat) &&
+          (kind == 'payable' || kind == 'opening')) {
         final wage = r['wage'];
         final value = wage is num
             ? wage.toDouble()
             : double.tryParse(wage?.toString() ?? '');
         if (value != null && value > 0) latestMap[cat] = value;
       }
-      if (!byMobile) {
-        final n = r['name']?.toString().trim() ?? '';
-        if (n.isNotEmpty && n.toLowerCase() != query) suggestions.add(n);
+
+      // Gender from most recent matching transaction (prefer exact name).
+      if (lastGender == null &&
+          (rowGender == 'Male' || rowGender == 'Female') &&
+          (exactNameMatch || byMobile || query.isEmpty)) {
+        lastGender = rowGender;
+      } else if (lastGender == null &&
+          (rowGender == 'Male' || rowGender == 'Female') &&
+          !byMobile &&
+          query.isNotEmpty &&
+          rowName.toLowerCase().startsWith(query)) {
+        // While typing, take gender from closest name prefix match.
+        lastGender = rowGender;
+      }
+
+      if (!byMobile && rowName.isNotEmpty && rowName.toLowerCase() != query) {
+        suggestions.add(rowName);
+        if ((rowGender == 'Male' || rowGender == 'Female') &&
+            !suggestionGender.containsKey(rowName)) {
+          suggestionGender[rowName] = rowGender;
+        }
+      }
+    }
+
+    // If searching by mobile, fall back to first history gender.
+    // For name search, only use exact/prefix matches above (avoid ILIKE noise).
+    if (lastGender == null && byMobile) {
+      for (final r in historyRows) {
+        final g = r['gender']?.toString().trim() ?? '';
+        if (g == 'Male' || g == 'Female') {
+          lastGender = g;
+          break;
+        }
       }
     }
 
     setState(() {
       _ratesForLabourer = settingsMap;
       _latestRatesForLabourer = latestMap;
+      _nameSuggestionGenders = suggestionGender;
+      if (lastGender != null) {
+        _selectedGender = lastGender;
+      }
       if (!_suppressSuggestions) {
         final list = suggestions.toList()
           ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
@@ -308,15 +380,20 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   }
 
   /// Fills the name field with a picked suggestion, then restores any saved
-  /// mobile/address and loads rates for that labourer.
+  /// mobile/address and loads rates + gender for that labourer.
   Future<void> _selectNameSuggestion(String name) async {
     _suppressIdentityListener = true;
     _nameController.text = name;
     _nameController.selection = TextSelection.collapsed(offset: name.length);
     _suppressIdentityListener = false;
+
+    final knownGender = _nameSuggestionGenders[name];
     setState(() {
       _nameSuggestions = [];
       _suppressSuggestions = true;
+      if (knownGender == 'Male' || knownGender == 'Female') {
+        _selectedGender = knownGender!;
+      }
     });
     FocusManager.instance.primaryFocus?.unfocus();
 
@@ -390,6 +467,67 @@ class _LaborManagementPageState extends State<LaborManagementPage>
         backgroundColor: error ? AppColors.expense : AppColors.primary,
       ),
     );
+  }
+
+  Future<void> _showExtrasPopup() async {
+    final rentCtrl =
+        TextEditingController(text: _extraRent > 0 ? _extraRent.toStringAsFixed(0) : '');
+    final foodCtrl =
+        TextEditingController(text: _extraFood > 0 ? _extraFood.toStringAsFixed(0) : '');
+    final bonusCtrl =
+        TextEditingController(text: _extraBonus > 0 ? _extraBonus.toStringAsFixed(0) : '');
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(tr('Others (Rent / Food / Bonus)')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppField(
+              controller: rentCtrl,
+              label: tr('Rent'),
+              icon: Icons.home_outlined,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              required: false,
+            ),
+            const SizedBox(height: 10),
+            AppField(
+              controller: foodCtrl,
+              label: tr('Food'),
+              icon: Icons.restaurant_outlined,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              required: false,
+            ),
+            const SizedBox(height: 10),
+            AppField(
+              controller: bonusCtrl,
+              label: tr('Bonus'),
+              icon: Icons.card_giftcard_outlined,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              required: false,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Apply'))),
+        ],
+      ),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      rentCtrl.dispose();
+      foodCtrl.dispose();
+      bonusCtrl.dispose();
+    });
+    if (ok == true && mounted) {
+      setState(() {
+        _extraRent = double.tryParse(rentCtrl.text.trim()) ?? 0;
+        _extraFood = double.tryParse(foodCtrl.text.trim()) ?? 0;
+        _extraBonus = double.tryParse(bonusCtrl.text.trim()) ?? 0;
+      });
+    }
   }
 
   Future<void> _showLaborRatesPopup() async {
@@ -808,7 +946,13 @@ class _LaborManagementPageState extends State<LaborManagementPage>
         gender: _selectedGender,
         rate: rate,
         category: _selectedCategory,
+        rent: _extraRent,
+        food: _extraFood,
+        bonus: _extraBonus,
       ));
+      _extraRent = 0;
+      _extraFood = 0;
+      _extraBonus = 0;
     });
     // Remember mobile/address for this name so autocomplete can restore it.
     if (mobile.isNotEmpty) saveLaborMobile(name, mobile);
@@ -914,6 +1058,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       await _submitPayment();
       return;
     }
+    if (_entryMode == 'Tally') {
+      await _submitTally();
+      return;
+    }
 
     final narration = _narrationController.text.trim();
     final labourHead = _labourHeadController.text.trim();
@@ -973,6 +1121,9 @@ class _LaborManagementPageState extends State<LaborManagementPage>
         'entry_kind':
             row.category == 'Opening Balance' ? 'opening' : 'payable',
         if (row.mobile != null && row.mobile!.isNotEmpty) 'mobile': row.mobile,
+        if (row.rent > 0) 'rent': row.rent,
+        if (row.food > 0) 'food': row.food,
+        if (row.bonus > 0) 'bonus': row.bonus,
       };
       if (partialPaid != null && partialPaid > 0 && i == 0) {
         map['paid_amount'] = partialPaid;
@@ -1027,6 +1178,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       _selectedGender = 'Male';
       _selectedCategory = _categories.isNotEmpty ? _categories.first : 'Plucking';
       _searchQuery = '';
+      _extraRent = 0;
+      _extraFood = 0;
+      _extraBonus = 0;
+      _applyShiftDefaultDays('fullday');
     });
     _clearLabourerIdentityFields();
     if (mounted) setState(() {});
@@ -1037,6 +1192,84 @@ class _LaborManagementPageState extends State<LaborManagementPage>
         createdCount == 1
             ? tr('Laborer added successfully')
             : trf('{0} labourers added successfully', [createdCount]));
+  }
+
+  Future<void> _submitTally() async {
+    final name = _nameController.text.trim();
+    final mobile = _mobileController.text.trim();
+    final narration = _narrationController.text.trim();
+
+    if (name.isEmpty) {
+      _showSnack(tr('Enter labourer name'), error: true);
+      return;
+    }
+    if (narration.isEmpty) {
+      _showSnack(tr('Enter tally description'), error: true);
+      return;
+    }
+    if (mobile.isNotEmpty && mobile.length != 10) {
+      _showSnack(tr('Mobile must be 10 digits'), error: true);
+      return;
+    }
+
+    var token = await getAuthToken();
+    if (token == null || token.isEmpty) {
+      final ok = await _promptLoginForSave();
+      if (ok != true) return;
+      token = await getAuthToken();
+      if (token == null || token.isEmpty) {
+        _showSnack(tr('Login required to save labour'), error: true);
+        return;
+      }
+    }
+
+    final payload = <String, dynamic>{
+      'name': name,
+      if (mobile.isNotEmpty) 'mobile': mobile,
+      'wage': 0,
+      'hours': 1,
+      'number_of_labours': 1,
+      'entry_kind': 'tally',
+      'shift': 'fullday',
+      'category': 'Tally',
+      'gender': _selectedGender,
+      'work_type': 'Daily Wages',
+      'location': _selectedLocation ?? 'Farm',
+      'narration': narration,
+      'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
+    };
+
+    setState(() => _submitting = true);
+    var result = await _api.createLabor(payload);
+    if (!mounted) return;
+    if (result['success'] != true && _isAuthFailure(result)) {
+      setState(() => _submitting = false);
+      final ok = await _promptLoginForSave();
+      if (ok == true && mounted) {
+        setState(() => _submitting = true);
+        result = await _api.createLabor(payload);
+        if (!mounted) return;
+      }
+    }
+    setState(() => _submitting = false);
+
+    if (result['success'] != true) {
+      final msg = result['message']?.toString() ?? tr('Failed to save tally');
+      if (_isAuthFailure(result)) {
+        await _showJwtExpiredDialog(msg);
+      } else {
+        _showSnack(msg, error: true);
+      }
+      return;
+    }
+
+    setState(() {
+      _narrationController.clear();
+      _selectedDate = DateTime.now();
+    });
+    _clearLabourerIdentityFields();
+    await _loadLabors();
+    _showSnack(tr('Tally marked'));
   }
 
   bool _isAuthFailure(Map<String, dynamic> result) {
@@ -1180,7 +1413,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   }
 
   double get _totalLaborCost {
-    return _filteredLaborers.fold(0, (sum, l) => sum + l.totalCost);
+    return _filteredLaborers.fold(
+      0.0,
+      (sum, l) => sum + (l.isTally ? 0.0 : l.totalCost),
+    );
   }
 
   List<Laborer> get _filteredLaborers {
@@ -1209,10 +1445,18 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                 subtitle: tr('Daily wages & contract labour'),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: withFeedbackAction(
-                    context,
-                    menu: 'labour',
-                  ),
+                  children: [
+                    IconButton(
+                      tooltip: tr('Update Labour Rate'),
+                      icon: const Icon(Icons.currency_exchange_rounded),
+                      color: AppColors.primaryDeep,
+                      onPressed: () => showUpdateLabourRateDialog(context),
+                    ),
+                    ...withFeedbackAction(
+                      context,
+                      menu: 'labour',
+                    ),
+                  ],
                 ),
               ),
               Expanded(
@@ -1241,30 +1485,41 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   }
 
   Widget _buildLabourSummaryButton() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: SecondaryButton(
-            label: tr('Summary'),
-            icon: Icons.badge_rounded,
-            color: AppColors.info,
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const LabourSummaryPage()),
+        Row(
+          children: [
+            Expanded(
+              child: SecondaryButton(
+                label: tr('Summary'),
+                icon: Icons.badge_rounded,
+                color: AppColors.info,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LabourSummaryPage()),
+                ),
+              ),
             ),
-          ),
+            SizedBox(width: 10),
+            Expanded(
+              child: SecondaryButton(
+                label: tr('History'),
+                icon: Icons.history_rounded,
+                color: AppColors.accent,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LaborHistoryPage()),
+                ),
+              ),
+            ),
+          ],
         ),
-        SizedBox(width: 10),
-        Expanded(
-          child: SecondaryButton(
-            label: tr('History'),
-            icon: Icons.history_rounded,
-            color: AppColors.accent,
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const LaborHistoryPage()),
-            ),
-          ),
+        SizedBox(height: 10),
+        SecondaryButton(
+          label: tr('Update Labour Rate'),
+          icon: Icons.currency_exchange_rounded,
+          color: AppColors.expense,
+          onPressed: () => showUpdateLabourRateDialog(context),
         ),
       ],
     );
@@ -1294,6 +1549,13 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               tr('Payment'),
             ),
           ),
+          Expanded(
+            child: _modeTab(
+              'Tally',
+              Icons.fact_check_rounded,
+              tr('Mark Tally'),
+            ),
+          ),
         ],
       ),
     );
@@ -1304,7 +1566,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     return GestureDetector(
       onTap: () => setState(() {
         _entryMode = value;
-        if (_entryMode == 'Payment') {
+        if (_entryMode == 'Payment' || _entryMode == 'Tally') {
           _pending.clear();
         }
       }),
@@ -1337,16 +1599,16 @@ class _LaborManagementPageState extends State<LaborManagementPage>
           children: [
             Icon(
               icon,
-              size: 17,
+              size: 15,
               color: selected ? Colors.white : AppColors.primary,
             ),
-            const SizedBox(width: 7),
+            const SizedBox(width: 5),
             Flexible(
               child: Text(
                 label,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                   color: selected ? Colors.white : AppColors.primary,
                 ),
@@ -1360,6 +1622,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
 
   Widget _buildAddFormCard() {
     final isPayment = _entryMode == 'Payment';
+    final isTally = _entryMode == 'Tally';
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1367,7 +1630,61 @@ class _LaborManagementPageState extends State<LaborManagementPage>
           _compactDateField(),
           SizedBox(height: 12),
           _buildEntryModeTabs(),
-          if (isPayment) ...[
+          if (isTally) ...[
+            SizedBox(height: 14),
+            SectionTitle(
+              icon: Icons.fact_check_rounded,
+              title: tr('Mark Tally'),
+              subtitle: tr('Record agreement note — no amount'),
+            ),
+            SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: AppField(
+                    controller: _nameController,
+                    label: tr('Name'),
+                    icon: Icons.person_rounded,
+                  ),
+                ),
+                VoiceMicButton(
+                  fieldId: 'labor_name_tally',
+                  controller: _nameController,
+                ),
+              ],
+            ),
+            if (_nameSuggestions.isNotEmpty) ...[
+              SizedBox(height: 6),
+              _buildNameSuggestions(),
+            ],
+            SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: AppField(
+                    controller: _narrationController,
+                    label: tr('Description'),
+                    icon: Icons.description_rounded,
+                    minLines: 3,
+                    maxLines: 8,
+                  ),
+                ),
+                VoiceMicButton(
+                  fieldId: 'labor_tally_narration',
+                  controller: _narrationController,
+                ),
+              ],
+            ),
+            SizedBox(height: 14),
+            PrimaryButton(
+              label: _submitting ? tr('Saving…') : tr('Save Tally'),
+              icon: Icons.save_rounded,
+              onPressed: _submitting ? null : _submitLabours,
+              loading: _submitting,
+            ),
+          ] else if (isPayment) ...[
             SizedBox(height: 14),
             SectionTitle(
               icon: Icons.payments_rounded,
@@ -1416,7 +1733,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                     controller: _narrationController,
                     label: tr('Narration (optional)'),
                     icon: Icons.description_rounded,
-                    maxLines: 2,
+                    minLines: 3,
+                    maxLines: 8,
                     required: false,
                   ),
                 ),
@@ -1559,8 +1877,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                     value: _selectedShift,
                     items: _shifts,
                     icon: Icons.wb_sunny_rounded,
-                    onChanged: (v) =>
-                        setState(() => _selectedShift = v ?? 'fullday'),
+                    onChanged: (v) => setState(() {
+                      _selectedShift = v ?? 'fullday';
+                      _applyShiftDefaultDays(_selectedShift);
+                    }),
                   ),
                 ),
                 SizedBox(width: 10),
@@ -1600,8 +1920,30 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                     ),
                   ),
                 ),
+                SizedBox(width: 6),
+                _squareIconButton(
+                  icon: Icons.add_rounded,
+                  tooltip: tr('Rent / Food / Bonus'),
+                  onTap: _showExtrasPopup,
+                  color: Colors.white,
+                  background: AppColors.accent,
+                ),
               ],
             ),
+            if (_extraRent > 0 || _extraFood > 0 || _extraBonus > 0) ...[
+              SizedBox(height: 8),
+              Text(
+                '${tr('Others')}: ₹${(_extraRent + _extraFood + _extraBonus).toStringAsFixed(0)}'
+                ' (${tr('Rent')} ${_extraRent.toStringAsFixed(0)}, '
+                '${tr('Food')} ${_extraFood.toStringAsFixed(0)}, '
+                '${tr('Bonus')} ${_extraBonus.toStringAsFixed(0)})',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.accent,
+                ),
+              ),
+            ],
             SizedBox(height: 12),
             PrimaryButton(
               label: tr('Add Labourer'),
@@ -1627,7 +1969,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                     controller: _narrationController,
                     label: tr('Narration (optional)'),
                     icon: Icons.description_rounded,
-                    maxLines: 2,
+                    minLines: 3,
+                    maxLines: 8,
                     required: false,
                   ),
                 ),
@@ -1791,6 +2134,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
             Divider(height: 1, color: AppColors.border),
         itemBuilder: (_, i) {
           final n = _nameSuggestions[i];
+          final g = _nameSuggestionGenders[n];
           return InkWell(
             onTap: () => _selectNameSuggestion(n),
             child: Padding(
@@ -1811,7 +2155,21 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(child: Text(n, style: AppText.bodyStrong)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(n, style: AppText.bodyStrong),
+                        if (g != null && g.isNotEmpty)
+                          Text(
+                            g,
+                            style: AppText.caption.copyWith(
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                   const Icon(
                     Icons.chevron_right_rounded,
                     size: 18,
@@ -2122,10 +2480,14 @@ class _LaborManagementPageState extends State<LaborManagementPage>
 
   Widget _laborerCard(Laborer laborer, int index) {
     final cost = laborer.totalCost;
+    final isTally = laborer.isTally;
     return AppCard(
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 10),
       radius: 16,
+      color: isTally
+          ? AppColors.info.withValues(alpha: 0.08)
+          : AppColors.surface,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => _openLaborDetail(laborer),
@@ -2135,22 +2497,25 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               width: 46,
               height: 46,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: AppColors.buttonGradient,
+                gradient: LinearGradient(
+                  colors: isTally
+                      ? [AppColors.info, AppColors.info.withValues(alpha: 0.75)]
+                      : AppColors.buttonGradient,
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.3),
+                    color: (isTally ? AppColors.info : AppColors.primary)
+                        .withValues(alpha: 0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.person_rounded,
+              child: Icon(
+                isTally ? Icons.fact_check_rounded : Icons.person_rounded,
                 color: Colors.white,
                 size: 22,
               ),
@@ -2160,48 +2525,74 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(laborer.name, style: AppText.bodyStrong),
+                  Text(
+                    laborer.name,
+                    style: AppText.bodyStrong.copyWith(
+                      color: isTally ? AppColors.info : null,
+                    ),
+                  ),
                   const SizedBox(height: 5),
                   Wrap(
                     spacing: 5,
                     runSpacing: 4,
                     children: [
-                      if (laborer.workType.isNotEmpty)
-                        _chip(laborer.workType, AppColors.info),
-                      _chip(laborer.shift, AppColors.warning),
-                      _chip(laborer.gender, AppColors.primary),
-                      if (laborer.category.isNotEmpty)
-                        _chip(laborer.category, AppColors.expense),
+                      if (isTally)
+                        _chip(tr('Tally'), AppColors.info)
+                      else ...[
+                        if (laborer.workType.isNotEmpty)
+                          _chip(laborer.workType, AppColors.info),
+                        _chip(laborer.shift, AppColors.warning),
+                        _chip(laborer.gender, AppColors.primary),
+                        if (laborer.category.isNotEmpty)
+                          _chip(laborer.category, AppColors.expense),
+                      ],
                       if (laborer.location.isNotEmpty)
                         _chip(laborer.location, AppColors.textMuted),
+                      if (laborer.othersTotal > 0)
+                        _chip(
+                          '${tr('Others')} ₹${laborer.othersTotal.toStringAsFixed(0)}',
+                          AppColors.accent,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Text(
-                        '₹${laborer.wage.toStringAsFixed(0)} × ${laborer.hours}',
-                        style: AppText.small,
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.incomeSoft,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
+                      Flexible(
                         child: Text(
-                          '= ₹${cost.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.income,
+                          isTally
+                              ? (laborer.narration.isEmpty
+                                  ? tr('Tally')
+                                  : laborer.narration)
+                              : '₹${laborer.wage.toStringAsFixed(0)} × ${laborer.hours}',
+                          style: AppText.small.copyWith(
+                            color: isTally ? AppColors.info : null,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (!isTally) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.incomeSoft,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '= ₹${cost.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.income,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                   Text(
@@ -3047,7 +3438,9 @@ class _LaborDetailSheetState extends State<_LaborDetailSheet> {
         SizedBox(height: 10),
         TextField(
           controller: _narrationCtrl,
-          maxLines: 2,
+          minLines: 3,
+          maxLines: 8,
+          keyboardType: TextInputType.multiline,
           decoration: InputDecoration(
             labelText: tr('Narration (optional)'),
             filled: true,
@@ -3073,6 +3466,10 @@ class Laborer {
   final String labourHead;
   final String location;
   final String narration;
+  final String entryKind;
+  final double rent;
+  final double food;
+  final double bonus;
 
   Laborer({
     this.id,
@@ -3089,9 +3486,15 @@ class Laborer {
     this.labourHead = '',
     this.location = '',
     required this.narration,
+    this.entryKind = 'payable',
+    this.rent = 0,
+    this.food = 0,
+    this.bonus = 0,
   });
 
   double get totalCost => wage * hours;
+  double get othersTotal => rent + food + bonus;
+  bool get isTally => entryKind == 'tally';
 
   factory Laborer.fromJson(Map<String, dynamic> json) {
     DateTime parseDate(dynamic v) {
@@ -3115,6 +3518,17 @@ class Laborer {
     }
 
     final mobileRaw = json['mobile']?.toString().trim();
+    final extra = json['extra'];
+    double rent = 0, food = 0, bonus = 0;
+    if (extra is Map) {
+      rent = toDouble(extra['rent']);
+      food = toDouble(extra['food']);
+      bonus = toDouble(extra['bonus']);
+    } else {
+      rent = toDouble(json['rent']);
+      food = toDouble(json['food']);
+      bonus = toDouble(json['bonus']);
+    }
     return Laborer(
       id: json['id'] is int ? json['id'] as int : int.tryParse('${json['id']}'),
       name: json['name']?.toString() ?? '',
@@ -3130,6 +3544,10 @@ class Laborer {
       labourHead: json['labour_head']?.toString() ?? '',
       location: json['location']?.toString() ?? '',
       narration: json['narration']?.toString() ?? '',
+      entryKind: json['entry_kind']?.toString() ?? 'payable',
+      rent: rent,
+      food: food,
+      bonus: bonus,
     );
   }
 }

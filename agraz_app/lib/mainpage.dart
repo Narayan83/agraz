@@ -7,6 +7,9 @@ import 'income_expense.dart';
 import 'manage_organization.dart';
 import 'services.dart';
 import 'labour.dart';
+import 'diary.dart';
+import 'future_plans.dart';
+import 'labour_work.dart';
 import 'marke_report.dart';
 import 'buy_and_sell.dart';
 import 'farmer_education.dart';
@@ -307,6 +310,30 @@ class _MainPageState extends State<MainPage> {
                     AppColors.warning,
                     () => _openModule(
                       const LaborManagementPage(),
+                      closeDrawer: true,
+                    ),
+                  ),
+                  _drawerTile(
+                    Icons.handshake_rounded,
+                    tr('Labour Work Entry'),
+                    AppColors.primaryLight,
+                    () => _openProtected(
+                      const LabourWorkPage(),
+                      closeDrawer: true,
+                    ),
+                  ),
+                  _drawerTile(
+                    Icons.menu_book_outlined,
+                    tr('Diary'),
+                    AppColors.accent,
+                    () => _openProtected(const DiaryPage(), closeDrawer: true),
+                  ),
+                  _drawerTile(
+                    Icons.flag_outlined,
+                    tr('Future Plans'),
+                    AppColors.info,
+                    () => _openProtected(
+                      const FuturePlansPage(),
                       closeDrawer: true,
                     ),
                   ),
@@ -715,6 +742,24 @@ class _MainPageState extends State<MainPage> {
         label: tr('Labour'),
         color: AppColors.warning,
         open: () => _openModule(const LaborManagementPage()),
+      ),
+      (
+        icon: Icons.handshake_rounded,
+        label: tr('Work Entry'),
+        color: AppColors.primaryLight,
+        open: () => _openProtected(const LabourWorkPage()),
+      ),
+      (
+        icon: Icons.menu_book_outlined,
+        label: tr('Diary'),
+        color: AppColors.accent,
+        open: () => _openProtected(const DiaryPage()),
+      ),
+      (
+        icon: Icons.flag_outlined,
+        label: tr('Plans'),
+        color: AppColors.info,
+        open: () => _openProtected(const FuturePlansPage()),
       ),
       (
         icon: Icons.trending_up_rounded,

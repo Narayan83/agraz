@@ -41,6 +41,10 @@ type laborPayload struct {
 	EntryKind       string  `json:"entry_kind"`
 	// PaidAmount is optional; when >0 with payable, also create payment + IE.
 	PaidAmount float64 `json:"paid_amount"`
+	// Optional extras mapped to the labour entry (separate labor_extras table).
+	Rent  float64 `json:"rent"`
+	Food  float64 `json:"food"`
+	Bonus float64 `json:"bonus"`
 	// Date accepts RFC3339 and common Flutter layouts (with/without timezone).
 	Date   flexibleTime `json:"date"`
 	Mobile *string      `json:"mobile"`
@@ -88,14 +92,63 @@ func normalizeLaborEntryKind(kind string) string {
 
 func validateLaborPayload(body *laborPayload) string {
 	kind := normalizeLaborEntryKind(body.EntryKind)
-	if kind != "payable" && kind != "payment" && kind != "opening" {
-		return "entry_kind must be payable, payment, or opening"
+	if kind != "payable" && kind != "payment" && kind != "opening" && kind != "tally" {
+		return "entry_kind must be payable, payment, opening, or tally"
 	}
 	body.EntryKind = kind
 
 	if strings.TrimSpace(body.Name) == "" {
 		return "name is required"
 	}
+
+	// Mark tally: description-only note (no amount).
+	if kind == "tally" {
+		body.Wage = 0
+		if body.Hours <= 0 {
+			body.Hours = 1
+		}
+		if body.NumberOfLabours < 1 {
+			body.NumberOfLabours = 1
+		}
+		if strings.TrimSpace(body.Shift) == "" {
+			body.Shift = "fullday"
+		}
+		if strings.TrimSpace(body.Category) == "" {
+			body.Category = "Tally"
+		}
+		gender := strings.TrimSpace(body.Gender)
+		if gender == "" {
+			body.Gender = "Male"
+		} else if !validGenders[gender] {
+			return "gender must be Male or Female"
+		} else {
+			body.Gender = gender
+		}
+		workType := strings.TrimSpace(body.WorkType)
+		if workType == "" {
+			body.WorkType = "Daily Wages"
+		} else if !validWorkTypes[workType] {
+			return "work_type must be Daily Wages or Contract"
+		} else {
+			body.WorkType = workType
+		}
+		body.LabourHead = strings.TrimSpace(body.LabourHead)
+		if strings.TrimSpace(body.Location) == "" {
+			body.Location = "Farm"
+		} else {
+			body.Location = strings.TrimSpace(body.Location)
+		}
+		body.Narration = strings.TrimSpace(body.Narration)
+		if body.Narration == "" {
+			return "description (narration) is required for tally"
+		}
+		if body.Date.Time.IsZero() {
+			return "date is required"
+		}
+		body.Rent, body.Food, body.Bonus = 0, 0, 0
+		return ""
+	}
+
 	if body.Wage <= 0 {
 		return "rate (wage) must be greater than zero"
 	}
@@ -215,6 +268,42 @@ func applyLaborPayload(row *models.Labor, body *laborPayload) {
 	row.EntryKind = body.EntryKind
 }
 
+func upsertLaborExtra(uid uint, laborID uint, rent, food, bonus float64) (*models.LaborExtra, error) {
+	if rent < 0 {
+		rent = 0
+	}
+	if food < 0 {
+		food = 0
+	}
+	if bonus < 0 {
+		bonus = 0
+	}
+	if rent == 0 && food == 0 && bonus == 0 {
+		// Clear existing extras if all zero.
+		_ = laborDB.Where("user_id = ? AND labor_id = ?", uid, laborID).Delete(&models.LaborExtra{})
+		return nil, nil
+	}
+	var extra models.LaborExtra
+	err := laborDB.Where("user_id = ? AND labor_id = ?", uid, laborID).First(&extra).Error
+	if err != nil {
+		if err != gorm.ErrRecordNotFound {
+			return nil, err
+		}
+		extra = models.LaborExtra{UserID: uid, LaborID: laborID}
+	}
+	extra.Rent = decimal.NewFromFloat(rent)
+	extra.Food = decimal.NewFromFloat(food)
+	extra.Bonus = decimal.NewFromFloat(bonus)
+	if extra.ID == 0 {
+		if err := laborDB.Create(&extra).Error; err != nil {
+			return nil, err
+		}
+	} else if err := laborDB.Save(&extra).Error; err != nil {
+		return nil, err
+	}
+	return &extra, nil
+}
+
 func createLaborExpenseIE(uid uint, name string, mobile *string, amount float64, date time.Time, narration string) (*models.IncomeExpense, error) {
 	mob := ""
 	if mobile != nil {
@@ -315,8 +404,14 @@ func CreateLabor(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create labor record", "details": err.Error()})
 	}
 
+	if extra, err := upsertLaborExtra(uid, row.ID, body.Rent, body.Food, body.Bonus); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Labor created but extras failed", "details": err.Error(), "data": row})
+	} else if extra != nil {
+		row.Extra = extra
+	}
+
 	resp := fiber.Map{"message": "Laborer added successfully", "data": row}
-	if body.PaidAmount > 0 {
+	if body.PaidAmount > 0 && body.EntryKind != "tally" {
 		payment, err := createLaborPaymentRow(uid, &body, body.PaidAmount)
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{
@@ -388,9 +483,19 @@ func CreateLaborsBatch(c *fiber.Ctx) error {
 				"row":     i + 1,
 			})
 		}
+		if extra, err := upsertLaborExtra(uid, row.ID, body.Rent, body.Food, body.Bonus); err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"error":   "Labor created but extras failed",
+				"message": "Labor created but extras failed",
+				"details": err.Error(),
+				"row":     i + 1,
+			})
+		} else if extra != nil {
+			row.Extra = extra
+		}
 		rows = append(rows, row)
 
-		if body.PaidAmount > 0 {
+		if body.PaidAmount > 0 && body.EntryKind != "tally" {
 			payment, err := createLaborPaymentRow(uid, body, body.PaidAmount)
 			if err != nil {
 				return c.Status(500).JSON(fiber.Map{
@@ -460,7 +565,7 @@ func GetLabors(c *fiber.Ctx) error {
 	if err := q.Count(&total).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	if err := q.Order("date DESC, id DESC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
+	if err := q.Preload("Extra").Order("date DESC, id DESC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(fiber.Map{"data": rows, "total": total, "page": page, "limit": limit})
@@ -473,6 +578,7 @@ func GetLabor(c *fiber.Ctx) error {
 	}
 	var row models.Labor
 	if err := scopeByUserID(laborDB.Model(&models.Labor{}), uid).
+		Preload("Extra").
 		First(&row, c.Params("id")).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Labor record not found"})
 	}
@@ -503,6 +609,11 @@ func UpdateLabor(c *fiber.Ctx) error {
 	if err := laborDB.Save(&row).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to update labor record", "details": err.Error()})
 	}
+	if extra, err := upsertLaborExtra(uid, row.ID, body.Rent, body.Food, body.Bonus); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Labor updated but extras failed", "details": err.Error(), "data": row})
+	} else {
+		row.Extra = extra
+	}
 	return c.JSON(fiber.Map{"message": "Labor record updated", "data": row})
 }
 
@@ -511,8 +622,10 @@ func DeleteLabor(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	id := c.Params("id")
+	_ = laborDB.Where("user_id = ? AND labor_id = ?", uid, id).Delete(&models.LaborExtra{})
 	res := scopeByUserID(laborDB.Model(&models.Labor{}), uid).
-		Delete(&models.Labor{}, c.Params("id"))
+		Delete(&models.Labor{}, id)
 	if res.Error != nil {
 		return c.Status(500).JSON(fiber.Map{"error": res.Error.Error()})
 	}
@@ -520,4 +633,60 @@ func DeleteLabor(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Labor record not found"})
 	}
 	return c.JSON(fiber.Map{"message": "Labor record deleted"})
+}
+
+type bulkLaborRatePayload struct {
+	Name   string       `json:"name"`
+	Mobile *string      `json:"mobile"`
+	From   flexibleTime `json:"from"`
+	To     flexibleTime `json:"to"`
+	Rate   float64      `json:"rate"`
+}
+
+// BulkUpdateLaborRate updates wage on payable/opening rows for a labourer in a date range.
+func BulkUpdateLaborRate(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+	var body bulkLaborRatePayload
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body", "details": err.Error()})
+	}
+	name := strings.TrimSpace(body.Name)
+	mobile := ""
+	if body.Mobile != nil {
+		mobile = strings.TrimSpace(*body.Mobile)
+	}
+	if name == "" && mobile == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "name or mobile is required"})
+	}
+	if body.Rate <= 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "rate must be greater than zero"})
+	}
+	if body.From.Time.IsZero() || body.To.Time.IsZero() {
+		return c.Status(400).JSON(fiber.Map{"error": "from and to dates are required"})
+	}
+	from := body.From.Time
+	to := body.To.Time
+	if to.Before(from) {
+		return c.Status(400).JSON(fiber.Map{"error": "to date must be on or after from date"})
+	}
+	// Inclusive end-of-day for "to".
+	toEnd := time.Date(to.Year(), to.Month(), to.Day(), 23, 59, 59, 0, to.Location())
+
+	q := scopeByUserID(laborDB.Model(&models.Labor{}), uid).
+		Where("entry_kind IN ?", []string{"payable", "opening"}).
+		Where("date >= ? AND date <= ?", from, toEnd)
+	q = applyLaborPersonFilter(q, mobile, name)
+
+	res := q.Update("wage", decimal.NewFromFloat(body.Rate))
+	if res.Error != nil {
+		return c.Status(500).JSON(fiber.Map{"error": res.Error.Error()})
+	}
+	return c.JSON(fiber.Map{
+		"message":       "Labour rates updated",
+		"updated_count": res.RowsAffected,
+		"rate":          body.Rate,
+	})
 }
