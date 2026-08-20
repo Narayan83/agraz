@@ -4,6 +4,15 @@
   gap: 1.5rem;
 }
 
+.service-reg-page .title-area a {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.service-reg-page .title-area a:hover {
+  text-decoration: underline;
+}
+
 .sr-toolbar {
   display: flex;
   flex-wrap: wrap;

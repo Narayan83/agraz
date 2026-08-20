@@ -11,31 +11,7 @@ import (
 )
 
 func currentUserID(c *fiber.Ctx) (uint, error) {
-	v := c.Locals("user_id")
-	if v == nil {
-		return 0, errors.New("unauthorized")
-	}
-	switch t := v.(type) {
-	case uint:
-		return t, nil
-	case int:
-		if t < 0 {
-			return 0, errors.New("invalid user_id")
-		}
-		return uint(t), nil
-	case int64:
-		if t < 0 {
-			return 0, errors.New("invalid user_id")
-		}
-		return uint(t), nil
-	case float64:
-		if t < 0 {
-			return 0, errors.New("invalid user_id")
-		}
-		return uint(t), nil
-	default:
-		return 0, errors.New("invalid user_id type")
-	}
+	return requireUserID(c)
 }
 
 func getOrCreateOpenCart(c *fiber.Ctx, userID uint) (models.EcomCart, error) {

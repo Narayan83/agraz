@@ -231,7 +231,9 @@ class _ManageOrganizationPageState extends State<ManageOrganizationPage> {
                                 builder: (d) => AlertDialog(
                                   title: Text(tr('Delete Organization')),
                                   content: Text(
-                                    tr('Delete "$name"? This cannot be undone.'),
+                                    trf('Delete "{0}"? This cannot be undone.', [
+                                      name,
+                                    ]),
                                   ),
                                   actions: [
                                     TextButton(
@@ -411,7 +413,7 @@ class _ManageOrganizationPageState extends State<ManageOrganizationPage> {
                                   context: ctx,
                                   builder: (d) => AlertDialog(
                                     title: Text(tr('Delete Ledger')),
-                                    content: Text(tr('Delete "$name"?')),
+                                    content: Text(trf('Delete "{0}"?', [name])),
                                     actions: [
                                       TextButton(
                                         onPressed: () => Navigator.pop(d, false),
@@ -833,12 +835,12 @@ class _ManageOrganizationPageState extends State<ManageOrganizationPage> {
                                   decoration: InputDecoration(
                                     labelText: tr('Transaction Mode'),
                                   ),
-                                  items: const [
+                                  items: [
                                     DropdownMenuItem(
-                                        value: 'Cash', child: Text('Cash')),
+                                        value: 'Cash', child: Text(tr('Cash'))),
                                     DropdownMenuItem(
                                         value: 'Transfer',
-                                        child: Text('Transfer')),
+                                        child: Text(tr('Transfer'))),
                                   ],
                                   onChanged: (v) async {
                                     setState(() {

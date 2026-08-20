@@ -31,6 +31,9 @@ import {
   FileText,
   Building2,
   Map,
+  Milk,
+  FolderOpen,
+  CalendarDays,
 } from "lucide-react";
 import "./Sidebar.css";
 
@@ -65,6 +68,9 @@ const iconMap = {
   FileText: <FileText size={18} strokeWidth={1.75} />,
   Building2: <Building2 size={18} strokeWidth={1.75} />,
   Map: <Map size={18} strokeWidth={1.75} />,
+  Milk: <Milk size={18} strokeWidth={1.75} />,
+  FolderOpen: <FolderOpen size={18} strokeWidth={1.75} />,
+  CalendarDays: <CalendarDays size={18} strokeWidth={1.75} />,
 };
 
 /** Normalize menu rows from `/my-menus` (snake_case + occasional PascalCase). */
@@ -157,6 +163,9 @@ const HARD_CODED_TOOLS_NAV = [
   { menu_name: "Organizations", url: "/organizations", icon: "Building2" },
   { menu_name: "App Contents", url: "/app-contents", icon: "FileText" },
   { menu_name: "RTC Entry", url: "/rtc-entry", icon: "Map" },
+  { menu_name: "Dairy", url: "/dairy", icon: "Milk" },
+  { menu_name: "Documents", url: "/documents", icon: "FolderOpen" },
+  { menu_name: "Event Manage", url: "/events", icon: "CalendarDays" },
 ];
 
 const LOGOUT_NAV_ITEM = { menu_name: "Logout", url: "/logout", icon: "LogOut" };

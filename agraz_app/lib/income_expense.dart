@@ -76,7 +76,6 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     _formData.transactionDate = DateTime.now();
     _formData.transactionMode = 'Cash';
     _updateCategories();
-    _loadOrganizations();
 
     _animController = AnimationController(
       vsync: this,
@@ -84,6 +83,24 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _animController.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrapLogin());
+  }
+
+  Future<void> _bootstrapLogin() async {
+    var token = await getAuthToken();
+    if (token == null || token.isEmpty) {
+      if (!mounted) return;
+      final loggedIn = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+      token = await getAuthToken();
+      if (loggedIn != true || token == null || token.isEmpty) {
+        if (mounted) Navigator.pop(context);
+        return;
+      }
+    }
+    await _loadOrganizations();
   }
 
   Future<void> _loadOrganizations() async {
@@ -446,7 +463,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       return;
     }
 
-    // Guest can browse; saving requires login.
+    // Saving requires a valid login.
     var token = await getAuthToken();
     if (token == null || token.isEmpty) {
       final loggedIn = await Navigator.push<bool>(
@@ -540,7 +557,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                       ),
                       SizedBox(width: 10),
                       Expanded(
-                        child: Text('Other Information', style: AppText.h3),
+                        child: Text(tr('Other Information'), style: AppText.h3),
                       ),
                       IconButton(
                         onPressed: () {
@@ -552,7 +569,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                     ],
                   ),
                   SizedBox(height: 4),
-                  Text('Optional address details', style: AppText.small),
+                  Text(tr('Optional address details'), style: AppText.small),
                   SizedBox(height: 16),
                   AppField(
                     label: 'Village',
@@ -876,9 +893,9 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
               labelText: tr('Mode'),
               prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
             ),
-            items: const [
-              DropdownMenuItem(value: 'Cash', child: Text('Cash')),
-              DropdownMenuItem(value: 'Transfer', child: Text('Transfer')),
+            items: [
+              DropdownMenuItem(value: 'Cash', child: Text(tr('Cash'))),
+              DropdownMenuItem(value: 'Transfer', child: Text(tr('Transfer'))),
             ],
             onChanged: (v) {
               setState(() {
@@ -1170,9 +1187,9 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           });
         },
         validator: (value) {
-          if (value == null || value.isEmpty) return 'Required';
-          if (double.tryParse(value) == null) return 'Invalid';
-          if (double.parse(value) <= 0) return 'Must be > 0';
+          if (value == null || value.isEmpty) return tr('Required');
+          if (double.tryParse(value) == null) return tr('Invalid');
+          if (double.parse(value) <= 0) return tr('Must be > 0');
           return null;
         },
         onSaved: (value) => _formData.amount = double.tryParse(value!),
@@ -1287,7 +1304,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
             ),
             const SizedBox(width: 8),
             Text(
-              label,
+              tr(label),
               style: TextStyle(
                 color: selected ? Colors.white : color,
                 fontSize: 12.5,
@@ -1334,7 +1351,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                         child: Row(
                           children: [
                             Expanded(
-                              child: Text(p.name, style: AppText.small),
+                              child: Text(tr(p.name), style: AppText.small),
                             ),
                             Text(
                               '₹${NumberFormat('#,##0').format(p.amount)}',
@@ -1383,7 +1400,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
             child: Center(child: Text(emoji, style: const TextStyle(fontSize: 13))),
           ),
           label: Text(
-            option,
+            tr(option),
             style: TextStyle(
               fontSize: 11.5,
               fontWeight: FontWeight.w600,

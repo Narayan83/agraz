@@ -130,8 +130,22 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     _nameController.addListener(_onLabourerIdentityChanged);
     _mobileController.addListener(_onLabourerIdentityChanged);
     _applyShiftDefaultDays(_selectedShift);
-    _loadLabors();
-    _loadCategories();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrapLogin());
+  }
+
+  Future<void> _bootstrapLogin() async {
+    var token = await getAuthToken();
+    if (token == null || token.isEmpty) {
+      if (!mounted) return;
+      final ok = await _promptLoginForSave();
+      token = await getAuthToken();
+      if (ok != true || token == null || token.isEmpty) {
+        if (mounted) Navigator.pop(context);
+        return;
+      }
+    }
+    await _loadLabors();
+    await _loadCategories();
   }
 
   /// Default days/hour by shift: fullday=1, morning=0.5, evening=0.5, night=1.
@@ -575,7 +589,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
             children: [
               Expanded(
                 child: Text(
-                  'Labour Rates',
+                  tr('Labour Rates'),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -596,7 +610,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Edit rates for this labourer. Tap category to apply to Rate field.',
+                  tr('Edit rates for this labourer. Tap category to apply to Rate field.'),
                   style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),
                 SizedBox(height: 8),
@@ -636,7 +650,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                               children: [
                                 Expanded(
                                   child: Text(
-                                    cat,
+                                    tr(cat),
                                     style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
@@ -784,7 +798,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     );
     if (!mounted || result == null) return;
     if (result.isEmpty) {
-      _showSnack('Enter a category name', error: true);
+      _showSnack(tr('Enter a category name'), error: true);
       return;
     }
     final updated = await addCustomLaborCategory(result);
@@ -798,7 +812,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       _selectedCategory = match;
     });
     _applyRateForSelectedCategory();
-    _showSnack('Category "$match" added');
+    _showSnack(trf('Category "{0}" added', [match]));
   }
 
   Future<void> _showCategorySearchDialog() async {
@@ -1485,41 +1499,30 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   }
 
   Widget _buildLabourSummaryButton() {
-    return Column(
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: SecondaryButton(
-                label: tr('Summary'),
-                icon: Icons.badge_rounded,
-                color: AppColors.info,
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LabourSummaryPage()),
-                ),
-              ),
+        Expanded(
+          child: SecondaryButton(
+            label: tr('Summary'),
+            icon: Icons.badge_rounded,
+            color: AppColors.info,
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const LabourSummaryPage()),
             ),
-            SizedBox(width: 10),
-            Expanded(
-              child: SecondaryButton(
-                label: tr('History'),
-                icon: Icons.history_rounded,
-                color: AppColors.accent,
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LaborHistoryPage()),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-        SizedBox(height: 10),
-        SecondaryButton(
-          label: tr('Update Labour Rate'),
-          icon: Icons.currency_exchange_rounded,
-          color: AppColors.expense,
-          onPressed: () => showUpdateLabourRateDialog(context),
+        SizedBox(width: 10),
+        Expanded(
+          child: SecondaryButton(
+            label: tr('History'),
+            icon: Icons.history_rounded,
+            color: AppColors.accent,
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const LaborHistoryPage()),
+            ),
+          ),
         ),
       ],
     );
@@ -1996,6 +1999,13 @@ class _LaborManagementPageState extends State<LaborManagementPage>
               loading: _submitting,
             ),
           ],
+          SizedBox(height: 12),
+          SecondaryButton(
+            label: tr('Update Labour Rate'),
+            icon: Icons.currency_exchange_rounded,
+            color: AppColors.expense,
+            onPressed: () => showUpdateLabourRateDialog(context),
+          ),
         ],
       ),
     );
@@ -2234,10 +2244,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                       spacing: 6,
                       runSpacing: 4,
                       children: [
-                        _miniChip(row.shift, AppColors.warning),
+                        _miniChip(tr(row.shift), AppColors.warning),
                         _miniChip('${row.daysHour}', AppColors.info),
-                        _miniChip(row.gender, AppColors.primary),
-                        _miniChip(row.category, AppColors.expense),
+                        _miniChip(tr(row.gender), AppColors.primary),
+                        _miniChip(tr(row.category), AppColors.expense),
                       ],
                     ),
                   ],
@@ -2540,14 +2550,14 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                         _chip(tr('Tally'), AppColors.info)
                       else ...[
                         if (laborer.workType.isNotEmpty)
-                          _chip(laborer.workType, AppColors.info),
-                        _chip(laborer.shift, AppColors.warning),
-                        _chip(laborer.gender, AppColors.primary),
+                          _chip(tr(laborer.workType), AppColors.info),
+                        _chip(tr(laborer.shift), AppColors.warning),
+                        _chip(tr(laborer.gender), AppColors.primary),
                         if (laborer.category.isNotEmpty)
-                          _chip(laborer.category, AppColors.expense),
+                          _chip(tr(laborer.category), AppColors.expense),
                       ],
                       if (laborer.location.isNotEmpty)
-                        _chip(laborer.location, AppColors.textMuted),
+                        _chip(tr(laborer.location), AppColors.textMuted),
                       if (laborer.othersTotal > 0)
                         _chip(
                           '${tr('Others')} ₹${laborer.othersTotal.toStringAsFixed(0)}',
@@ -2985,7 +2995,7 @@ class _CategorySearchDialogState extends State<_CategorySearchDialog> {
                         return ListTile(
                           dense: true,
                           title: Text(
-                            cat,
+                            tr(cat),
                             style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               color: AppColors.primaryDeep,
@@ -3188,10 +3198,10 @@ class _LaborDetailSheetState extends State<_LaborDetailSheet> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 110, child: Text(label, style: AppText.small)),
+          SizedBox(width: 110, child: Text(tr(label), style: AppText.small)),
           Expanded(
             child: Text(
-              value.isEmpty ? '—' : value,
+              value.isEmpty ? '—' : tr(value),
               style: AppText.bodyStrong,
             ),
           ),
@@ -3315,7 +3325,7 @@ class _LaborDetailSheetState extends State<_LaborDetailSheet> {
         _row('Narration', l.narration),
         SizedBox(height: 8),
         Text(
-          'Tap the edit icon to change this entry.',
+          tr('Tap the edit icon to change this entry.'),
           style: AppText.caption,
           textAlign: TextAlign.center,
         ),

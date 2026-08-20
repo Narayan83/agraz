@@ -21,6 +21,9 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _saving = false;
   String? _error;
   Map<String, dynamic>? _user;
+  bool _isSubUser = false;
+  String? _memberName;
+  String? _memberEmail;
 
   final _firstnameCtrl = TextEditingController();
   final _lastnameCtrl = TextEditingController();
@@ -74,8 +77,21 @@ class _ProfilePageState extends State<ProfilePage> {
       _firstnameCtrl.text = user['firstname']?.toString() ?? '';
       _lastnameCtrl.text = user['lastname']?.toString() ?? '';
       _phoneCtrl.text = user['mobile_number']?.toString() ?? '';
+      String? memberName;
+      String? memberEmail;
+      final member = user['member'];
+      if (member is Map) {
+        final mf = member['firstname']?.toString() ?? '';
+        final ml = member['lastname']?.toString() ?? '';
+        memberName = '$mf $ml'.trim();
+        if (memberName.isEmpty) memberName = null;
+        memberEmail = member['email']?.toString();
+      }
       setState(() {
         _user = user;
+        _isSubUser = user['is_sub_user'] == true;
+        _memberName = memberName;
+        _memberEmail = memberEmail;
         _loading = false;
         _editing = false;
       });
@@ -152,7 +168,7 @@ class _ProfilePageState extends State<ProfilePage> {
       appBar: GradientAppBar(
         title: tr('Profile'),
         actions: [
-          if (!_loading && _error == null && _user != null)
+          if (!_loading && _error == null && _user != null && !_isSubUser)
             TextButton(
               onPressed: _saving
                   ? null
@@ -225,6 +241,36 @@ class _ProfilePageState extends State<ProfilePage> {
                           style: TextStyle(color: Colors.grey[600]),
                         ),
                       ),
+                      if (_isSubUser) ...[
+                        SizedBox(height: 16),
+                        Card(
+                          color: Colors.green[50],
+                          child: ListTile(
+                            leading: Icon(
+                              Icons.family_restroom,
+                              color: Colors.green[800],
+                            ),
+                            title: Text(
+                              tr('Family account'),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Colors.green[800],
+                              ),
+                            ),
+                            subtitle: Text(
+                              trf(
+                                'You are signed in as {0}. Account details below belong to the main holder.',
+                                [
+                                  (_memberName != null &&
+                                          _memberName!.isNotEmpty)
+                                      ? '$_memberName (${_memberEmail ?? ''})'
+                                      : (_memberEmail ?? tr('family member')),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                       SizedBox(height: 24),
                       if (_editing) ...[
                         TextField(

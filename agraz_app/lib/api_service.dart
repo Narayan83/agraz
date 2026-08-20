@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_token.dart';
 import 'income_expense_data.dart';
 import 'config.dart'; // Import the config file
+import 'offline_sync.dart' as offline;
 
 class ApiService {
   Future<bool> submitTransaction(IncomeExpenseData data) async {
@@ -16,7 +18,7 @@ class ApiService {
       print(jsonEncode(jsonData));
 
       final headers = await authJsonHeaders();
-      final response = await http.post(
+      final response = await offline.post(
         Uri.parse('$BASE_URL/api/income_expense'),
         headers: headers,
         body: jsonEncode(jsonData),
@@ -47,7 +49,7 @@ class ApiService {
   Future<bool> updateTransaction(int id, IncomeExpenseData data) async {
     try {
       final headers = await authJsonHeaders();
-      final response = await http.put(
+      final response = await offline.put(
         Uri.parse('$BASE_URL/api/income_expense/$id'),
         headers: headers,
         body: jsonEncode(data.toJson()),
@@ -69,7 +71,7 @@ class ApiService {
   Future<bool> deleteTransaction(int id) async {
     try {
       final headers = await authGetHeaders();
-      final response = await http.delete(
+      final response = await offline.delete(
         Uri.parse('$BASE_URL/api/income_expense/$id'),
         headers: headers,
       );
@@ -87,7 +89,7 @@ class ApiService {
         if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
       },
     );
-    final response = await http.get(uri, headers: headers);
+    final response = await offline.get(uri, headers: headers);
     if (response.statusCode != 200) {
       throw Exception('Failed to load services (${response.statusCode})');
     }
@@ -103,7 +105,7 @@ class ApiService {
     try {
       print('Fetching user details for mobile: $mobile');
       final headers = await authGetHeaders();
-      final response = await http.get(
+      final response = await offline.get(
         Uri.parse('$BASE_URL/api/income_expense/mobile/$mobile'),
         headers: headers,
       );
@@ -146,7 +148,7 @@ class ApiService {
       print('  - remarks: $remarks');
 
       final headers = await authJsonHeaders();
-      final response = await http.post(
+      final response = await offline.post(
         Uri.parse('$BASE_URL/api/register-business'),
         headers: headers,
         body: jsonEncode({
@@ -267,7 +269,7 @@ class ApiService {
   Future<Map<String, dynamic>> createLabor(Map<String, dynamic> data) async {
     try {
       final headers = await authJsonHeaders();
-      final response = await http.post(
+      final response = await offline.post(
         Uri.parse('$BASE_URL/api/labors'),
         headers: headers,
         body: jsonEncode(data),
@@ -299,7 +301,7 @@ class ApiService {
       List<Map<String, dynamic>> rows) async {
     try {
       final headers = await authJsonHeaders();
-      final response = await http.post(
+      final response = await offline.post(
         Uri.parse('$BASE_URL/api/labors/batch'),
         headers: headers,
         body: jsonEncode(rows),
@@ -374,7 +376,7 @@ class ApiService {
         },
       );
       final headers = await authGetHeaders();
-      final response = await http.get(uri, headers: headers);
+      final response = await offline.get(uri, headers: headers);
       if (response.statusCode != 200) return [];
       final decoded = jsonDecode(response.body);
       if (decoded is Map && decoded['data'] is List) {
@@ -407,7 +409,7 @@ class ApiService {
         },
       );
       final headers = await authGetHeaders();
-      final response = await http.get(uri, headers: headers);
+      final response = await offline.get(uri, headers: headers);
       if (response.statusCode != 200) return null;
       final decoded = jsonDecode(response.body);
       if (decoded is Map) return Map<String, dynamic>.from(decoded);
@@ -427,7 +429,7 @@ class ApiService {
         'limit': '200',
       },
     );
-    final response = await http.get(uri, headers: headers);
+    final response = await offline.get(uri, headers: headers);
     if (response.statusCode != 200) {
       throw Exception('Failed to load labourers (${response.statusCode})');
     }
@@ -464,7 +466,7 @@ class ApiService {
         if (workType != null && workType.isNotEmpty) 'work_type': workType,
       },
     );
-    final response = await http.get(uri, headers: headers);
+    final response = await offline.get(uri, headers: headers);
     if (response.statusCode != 200) {
       throw Exception('Failed to load labour report (${response.statusCode})');
     }
@@ -476,7 +478,7 @@ class ApiService {
   Future<bool> deleteLabor(int id) async {
     try {
       final headers = await authGetHeaders();
-      final response = await http.delete(
+      final response = await offline.delete(
         Uri.parse('$BASE_URL/api/labors/$id'),
         headers: headers,
       );
@@ -491,7 +493,7 @@ class ApiService {
       int id, Map<String, dynamic> data) async {
     try {
       final headers = await authJsonHeaders();
-      final response = await http.put(
+      final response = await offline.put(
         Uri.parse('$BASE_URL/api/labors/$id'),
         headers: headers,
         body: jsonEncode(data),
@@ -538,7 +540,7 @@ class ApiService {
         if (category != null && category.isNotEmpty) 'category': category,
       },
     );
-    final response = await http.get(uri, headers: headers);
+    final response = await offline.get(uri, headers: headers);
     if (response.statusCode != 200) {
       throw Exception('Failed to load reports (${response.statusCode})');
     }
@@ -551,7 +553,7 @@ class ApiService {
   Future<Map<String, dynamic>?> fetchPartyBalance(String mobile) async {
     try {
       final headers = await authGetHeaders();
-      final response = await http.get(
+      final response = await offline.get(
         Uri.parse('$BASE_URL/api/income_expense/balance/$mobile'),
         headers: headers,
       );
@@ -579,7 +581,7 @@ class ApiService {
           'page': '1',
         },
       );
-      final response = await http.get(uri, headers: headers);
+      final response = await offline.get(uri, headers: headers);
       if (response.statusCode != 200) return [];
       final decoded = jsonDecode(response.body);
       if (decoded is Map && decoded['data'] is List) {
@@ -621,7 +623,7 @@ class ApiService {
           if (name != null && name.isNotEmpty) 'name': name,
         },
       );
-      final response = await http.get(uri, headers: headers);
+      final response = await offline.get(uri, headers: headers);
       if (response.statusCode != 200) return [];
       final decoded = jsonDecode(response.body);
       if (decoded is Map && decoded['data'] is List) {
@@ -653,7 +655,7 @@ class ApiService {
             .map((e) => {'category': e.key, 'rate': e.value})
             .toList(),
       };
-      final response = await http.put(
+      final response = await offline.put(
         Uri.parse('$BASE_URL/api/labor_rates'),
         headers: headers,
         body: jsonEncode(body),
@@ -674,7 +676,7 @@ class ApiService {
     required double rate,
   }) async {
     final headers = await authJsonHeaders();
-    final response = await http.put(
+    final response = await offline.put(
       Uri.parse('$BASE_URL/api/labors/bulk-rate'),
       headers: headers,
       body: jsonEncode({
@@ -702,7 +704,7 @@ class ApiService {
   Future<Map<String, dynamic>> fetchDiaryLabels() async {
     try {
       final headers = await authGetHeaders();
-      final response = await http.get(
+      final response = await offline.get(
         Uri.parse('$BASE_URL/api/diary/labels'),
         headers: headers,
       );
@@ -736,7 +738,7 @@ class ApiService {
   }) async {
     try {
       final headers = await authJsonHeaders();
-      final response = await http.post(
+      final response = await offline.post(
         Uri.parse('$BASE_URL/api/diary/labels'),
         headers: headers,
         body: jsonEncode({'name': name, 'icon': icon}),
@@ -770,7 +772,7 @@ class ApiService {
   }) async {
     try {
       final headers = await authJsonHeaders();
-      final response = await http.put(
+      final response = await offline.put(
         Uri.parse('$BASE_URL/api/diary/labels/$id'),
         headers: headers,
         body: jsonEncode({
@@ -803,7 +805,7 @@ class ApiService {
   Future<Map<String, dynamic>> deleteDiaryLabel(int id) async {
     try {
       final headers = await authGetHeaders();
-      final response = await http.delete(
+      final response = await offline.delete(
         Uri.parse('$BASE_URL/api/diary/labels/$id'),
         headers: headers,
       );
@@ -823,12 +825,269 @@ class ApiService {
     }
   }
 
+  // ── Diary list items (reusable checklist catalog) ─────────────────────────
+
+  static const _listCatalogPrefsKey = 'diary_list_catalog_v1';
+  static const _listItemApiPaths = [
+    '/api/diary/list-items',
+    '/api/diary/list_items',
+  ];
+  bool _listCatalogLocal = false;
+
+  dynamic _safeJsonDecode(String body) {
+    final t = body.trim();
+    if (t.isEmpty) return <String, dynamic>{};
+    try {
+      return jsonDecode(t);
+    } catch (_) {
+      return t;
+    }
+  }
+
+  bool _isMissingHttpRoute(int statusCode, dynamic decoded, String body) {
+    if (statusCode == 404 || statusCode == 405) return true;
+    final text = (decoded is String ? decoded : body).toLowerCase();
+    return text.contains('cannot get') ||
+        text.contains('cannot post') ||
+        text.contains('cannot put') ||
+        text.contains('cannot patch') ||
+        text.contains('cannot delete');
+  }
+
+  Future<http.Response> _diaryListItemHttp({
+    required String method,
+    int? id,
+    String? body,
+  }) async {
+    final headers =
+        body == null ? await authGetHeaders() : await authJsonHeaders();
+    http.Response? last;
+    for (final base in _listItemApiPaths) {
+      final uri = Uri.parse(
+        id == null ? '$BASE_URL$base' : '$BASE_URL$base/$id',
+      );
+      final response = switch (method) {
+        'POST' => await offline.post(uri, headers: headers, body: body),
+        'PUT' => await offline.put(uri, headers: headers, body: body),
+        'DELETE' => await offline.delete(uri, headers: headers),
+        _ => await offline.get(uri, headers: headers),
+      };
+      last = response;
+      final decoded = _safeJsonDecode(response.body);
+      if (!_isMissingHttpRoute(response.statusCode, decoded, response.body)) {
+        return response;
+      }
+    }
+    return last!;
+  }
+
+  Future<List<Map<String, dynamic>>> _loadLocalListCatalog() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_listCatalogPrefsKey);
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return [];
+      return decoded
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> _saveLocalListCatalog(List<Map<String, dynamic>> items) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_listCatalogPrefsKey, jsonEncode(items));
+  }
+
+  Map<String, dynamic> _localCatalogOk(List<Map<String, dynamic>> items,
+      {String message = 'List items saved'}) {
+    _listCatalogLocal = true;
+    return {'success': true, 'data': items, 'message': message};
+  }
+
+  Future<Map<String, dynamic>> fetchDiaryListItems() async {
+    if (_listCatalogLocal) {
+      return _localCatalogOk(await _loadLocalListCatalog());
+    }
+    try {
+      final response = await _diaryListItemHttp(method: 'GET');
+      final decoded = _safeJsonDecode(response.body);
+      if (response.statusCode == 200 && decoded is! String) {
+        _listCatalogLocal = false;
+        return {
+          'success': true,
+          'data': _mapListFromBody(response.body),
+        };
+      }
+      if (_isMissingHttpRoute(response.statusCode, decoded, response.body)) {
+        return _localCatalogOk(await _loadLocalListCatalog());
+      }
+      return {
+        'success': false,
+        'statusCode': response.statusCode,
+        'message': _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to load list items'),
+        'data': <Map<String, dynamic>>[],
+      };
+    } catch (e) {
+      return _localCatalogOk(await _loadLocalListCatalog());
+    }
+  }
+
+  Future<Map<String, dynamic>> createDiaryListItem({
+    required String name,
+    String icon = 'check',
+  }) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return {'success': false, 'message': 'name is required'};
+    }
+    Future<Map<String, dynamic>> saveLocal() async {
+      final items = await _loadLocalListCatalog();
+      final row = <String, dynamic>{
+        'id': -DateTime.now().millisecondsSinceEpoch,
+        'name': trimmed,
+        'icon': icon,
+      };
+      items.add(row);
+      await _saveLocalListCatalog(items);
+      return {
+        ..._localCatalogOk(items, message: 'List item created'),
+        'data': row,
+      };
+    }
+
+    if (_listCatalogLocal) return saveLocal();
+    try {
+      final response = await _diaryListItemHttp(
+        method: 'POST',
+        body: jsonEncode({'name': trimmed, 'icon': icon}),
+      );
+      final decoded = _safeJsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _listCatalogLocal = false;
+        return {
+          'success': true,
+          'data': decoded is Map ? (decoded['data'] ?? decoded) : decoded,
+          'message': decoded is Map
+              ? (decoded['message'] ?? 'List item created')
+              : 'List item created',
+        };
+      }
+      if (_isMissingHttpRoute(response.statusCode, decoded, response.body)) {
+        return saveLocal();
+      }
+      return {
+        'success': false,
+        'statusCode': response.statusCode,
+        'message': _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to create list item'),
+      };
+    } catch (e) {
+      return saveLocal();
+    }
+  }
+
+  Future<Map<String, dynamic>> updateDiaryListItem(
+    int id, {
+    required String name,
+    String? icon,
+  }) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return {'success': false, 'message': 'name is required'};
+    }
+    Future<Map<String, dynamic>> saveLocal() async {
+      final items = await _loadLocalListCatalog();
+      final idx = items.indexWhere((e) => int.tryParse('${e['id']}') == id);
+      if (idx < 0) {
+        return {'success': false, 'message': 'List item not found'};
+      }
+      items[idx] = {
+        ...items[idx],
+        'name': trimmed,
+        if (icon != null && icon.isNotEmpty) 'icon': icon,
+      };
+      await _saveLocalListCatalog(items);
+      return {
+        ..._localCatalogOk(items, message: 'List item updated'),
+        'data': items[idx],
+      };
+    }
+
+    if (_listCatalogLocal || id < 0) return saveLocal();
+    try {
+      final response = await _diaryListItemHttp(
+        method: 'PUT',
+        id: id,
+        body: jsonEncode({
+          'name': trimmed,
+          if (icon != null && icon.isNotEmpty) 'icon': icon,
+        }),
+      );
+      final decoded = _safeJsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          'success': true,
+          'data': decoded is Map ? (decoded['data'] ?? decoded) : decoded,
+          'message': decoded is Map
+              ? (decoded['message'] ?? 'List item updated')
+              : 'List item updated',
+        };
+      }
+      if (_isMissingHttpRoute(response.statusCode, decoded, response.body)) {
+        return saveLocal();
+      }
+      return {
+        'success': false,
+        'statusCode': response.statusCode,
+        'message': _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to update list item'),
+      };
+    } catch (e) {
+      return saveLocal();
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteDiaryListItem(int id) async {
+    Future<Map<String, dynamic>> saveLocal() async {
+      final items = await _loadLocalListCatalog();
+      items.removeWhere((e) => int.tryParse('${e['id']}') == id);
+      await _saveLocalListCatalog(items);
+      return _localCatalogOk(items, message: 'List item deleted');
+    }
+
+    if (_listCatalogLocal || id < 0) return saveLocal();
+    try {
+      final response = await _diaryListItemHttp(method: 'DELETE', id: id);
+      final decoded = _safeJsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return {'success': true, 'message': 'List item deleted'};
+      }
+      if (_isMissingHttpRoute(response.statusCode, decoded, response.body)) {
+        return saveLocal();
+      }
+      return {
+        'success': false,
+        'statusCode': response.statusCode,
+        'message': _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to delete list item'),
+      };
+    } catch (e) {
+      return saveLocal();
+    }
+  }
+
   // ── Diary entries ─────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> fetchDiaryEntries({
     String? from,
     String? to,
     String? q,
+    String? kind,
     int? labelId,
     int page = 1,
     int limit = 50,
@@ -842,10 +1101,11 @@ class ApiService {
           if (from != null && from.isNotEmpty) 'from': from,
           if (to != null && to.isNotEmpty) 'to': to,
           if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+          if (kind != null && kind.isNotEmpty) 'kind': kind,
           if (labelId != null) 'label_id': labelId.toString(),
         },
       );
-      final response = await http.get(uri, headers: headers);
+      final response = await offline.get(uri, headers: headers);
       final decoded =
           response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
       if (response.statusCode == 200) {
@@ -876,7 +1136,7 @@ class ApiService {
   Future<Map<String, dynamic>> createDiaryEntry(Map<String, dynamic> data) async {
     try {
       final headers = await authJsonHeaders();
-      final response = await http.post(
+      final response = await offline.post(
         Uri.parse('$BASE_URL/api/diary/entries'),
         headers: headers,
         body: jsonEncode(data),
@@ -909,7 +1169,7 @@ class ApiService {
   ) async {
     try {
       final headers = await authJsonHeaders();
-      final response = await http.put(
+      final response = await offline.put(
         Uri.parse('$BASE_URL/api/diary/entries/$id'),
         headers: headers,
         body: jsonEncode(data),
@@ -939,7 +1199,7 @@ class ApiService {
   Future<Map<String, dynamic>> deleteDiaryEntry(int id) async {
     try {
       final headers = await authGetHeaders();
-      final response = await http.delete(
+      final response = await offline.delete(
         Uri.parse('$BASE_URL/api/diary/entries/$id'),
         headers: headers,
       );
@@ -976,7 +1236,7 @@ class ApiService {
         if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
       },
     );
-    final response = await http.get(uri, headers: headers);
+    final response = await offline.get(uri, headers: headers);
     if (response.statusCode != 200) {
       throw Exception('Failed to load future plans (${response.statusCode})');
     }
@@ -985,7 +1245,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> fetchFuturePlan(int id) async {
     final headers = await authGetHeaders();
-    final response = await http.get(
+    final response = await offline.get(
       Uri.parse('$BASE_URL/api/future_plans/$id'),
       headers: headers,
     );
@@ -999,7 +1259,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> createFuturePlan(Map<String, dynamic> data) async {
     final headers = await authJsonHeaders();
-    final response = await http.post(
+    final response = await offline.post(
       Uri.parse('$BASE_URL/api/future_plans'),
       headers: headers,
       body: jsonEncode(data),
@@ -1023,7 +1283,7 @@ class ApiService {
     Map<String, dynamic> data,
   ) async {
     final headers = await authJsonHeaders();
-    final response = await http.put(
+    final response = await offline.put(
       Uri.parse('$BASE_URL/api/future_plans/$id'),
       headers: headers,
       body: jsonEncode(data),
@@ -1044,7 +1304,7 @@ class ApiService {
 
   Future<void> deleteFuturePlan(int id) async {
     final headers = await authGetHeaders();
-    final response = await http.delete(
+    final response = await offline.delete(
       Uri.parse('$BASE_URL/api/future_plans/$id'),
       headers: headers,
     );
@@ -1062,7 +1322,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> createLaborWork(Map<String, dynamic> data) async {
     final headers = await authJsonHeaders();
-    final response = await http.post(
+    final response = await offline.post(
       Uri.parse('$BASE_URL/api/labor_works'),
       headers: headers,
       body: jsonEncode(data),
@@ -1090,7 +1350,7 @@ class ApiService {
     List<Map<String, dynamic>> rows,
   ) async {
     final headers = await authJsonHeaders();
-    final response = await http.post(
+    final response = await offline.post(
       Uri.parse('$BASE_URL/api/labor_works/batch'),
       headers: headers,
       body: jsonEncode(rows),
@@ -1135,7 +1395,7 @@ class ApiService {
         if (to != null && to.isNotEmpty) 'to': to,
       },
     );
-    final response = await http.get(uri, headers: headers);
+    final response = await offline.get(uri, headers: headers);
     if (response.statusCode != 200) {
       throw Exception('Failed to load labor works (${response.statusCode})');
     }
@@ -1149,7 +1409,7 @@ class ApiService {
     Map<String, dynamic> data,
   ) async {
     final headers = await authJsonHeaders();
-    final response = await http.put(
+    final response = await offline.put(
       Uri.parse('$BASE_URL/api/labor_works/$id'),
       headers: headers,
       body: jsonEncode(data),
@@ -1170,7 +1430,7 @@ class ApiService {
 
   Future<void> deleteLaborWork(int id) async {
     final headers = await authGetHeaders();
-    final response = await http.delete(
+    final response = await offline.delete(
       Uri.parse('$BASE_URL/api/labor_works/$id'),
       headers: headers,
     );
@@ -1197,7 +1457,7 @@ class ApiService {
         if (to != null && to.isNotEmpty) 'to': to,
       },
     );
-    final response = await http.get(uri, headers: headers);
+    final response = await offline.get(uri, headers: headers);
     if (response.statusCode != 200) {
       throw Exception(
           'Failed to load labor work reports (${response.statusCode})');
@@ -1206,6 +1466,89 @@ class ApiService {
     if (decoded is Map) return Map<String, dynamic>.from(decoded);
     throw Exception('Invalid labor work report response');
   }
+
+  // ── Labor share confirmations (farmer → labourer reverse entry) ───────────
+
+  Future<int> fetchLaborSharePendingCount() async {
+    final headers = await authGetHeaders();
+    final response = await offline.get(
+      Uri.parse('$BASE_URL/api/labor_shares/pending_count'),
+      headers: headers,
+    );
+    if (response.statusCode != 200) return 0;
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map) {
+      final v = decoded['pending'];
+      if (v is int) return v;
+      return int.tryParse('$v') ?? 0;
+    }
+    return 0;
+  }
+
+  Future<List<Map<String, dynamic>>> fetchLaborShares({
+    String status = 'pending',
+  }) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/labor_shares').replace(
+      queryParameters: {
+        if (status.isNotEmpty) 'status': status,
+      },
+    );
+    final response = await offline.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load confirmations (${response.statusCode})');
+    }
+    return _mapListFromBody(response.body);
+  }
+
+  Future<Map<String, dynamic>> acceptLaborShare(int id) async {
+    final headers = await authJsonHeaders();
+    final response = await offline.post(
+      Uri.parse('$BASE_URL/api/labor_shares/$id/accept'),
+      headers: headers,
+    );
+    final decoded =
+        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return {
+        'success': true,
+        'data': decoded is Map ? decoded : <String, dynamic>{},
+        'message': decoded is Map
+            ? (decoded['message'] ?? 'Entry confirmed')
+            : 'Entry confirmed',
+      };
+    }
+    return {
+      'success': false,
+      'message': _apiErrorMessage(decoded, response.statusCode,
+          fallback: 'Failed to confirm entry'),
+    };
+  }
+
+  Future<Map<String, dynamic>> rejectLaborShare(int id) async {
+    final headers = await authJsonHeaders();
+    final response = await offline.post(
+      Uri.parse('$BASE_URL/api/labor_shares/$id/reject'),
+      headers: headers,
+    );
+    final decoded =
+        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return {
+        'success': true,
+        'data': decoded is Map ? decoded : <String, dynamic>{},
+        'message': decoded is Map
+            ? (decoded['message'] ?? 'Entry rejected')
+            : 'Entry rejected',
+      };
+    }
+    return {
+      'success': false,
+      'message': _apiErrorMessage(decoded, response.statusCode,
+          fallback: 'Failed to reject entry'),
+    };
+  }
+
 
   List<Map<String, dynamic>> _mapListFromBody(String body) {
     final decoded = jsonDecode(body);
@@ -1231,7 +1574,7 @@ class ApiService {
     String menu = '',
   }) async {
     final headers = await authJsonHeaders();
-    final response = await http.post(
+    final response = await offline.post(
       Uri.parse('$BASE_URL/api/feedbacks'),
       headers: headers,
       body: jsonEncode({
@@ -1263,7 +1606,7 @@ class ApiService {
         'limit': limit.toString(),
       },
     );
-    final response = await http.get(uri, headers: headers);
+    final response = await offline.get(uri, headers: headers);
     if (response.statusCode != 200) {
       throw Exception('Failed to load feedback (${response.statusCode})');
     }
@@ -1282,7 +1625,7 @@ class ApiService {
         'limit': limit.toString(),
       },
     );
-    final response = await http.get(uri, headers: headers);
+    final response = await offline.get(uri, headers: headers);
     if (response.statusCode != 200) {
       throw Exception('Failed to load feedback (${response.statusCode})');
     }
@@ -1292,7 +1635,7 @@ class ApiService {
   /// GET /api/app_contents
   Future<List<Map<String, dynamic>>> fetchAppContents() async {
     final headers = await authGetHeaders();
-    final response = await http.get(
+    final response = await offline.get(
       Uri.parse('$BASE_URL/api/app_contents'),
       headers: headers,
     );
@@ -1328,7 +1671,7 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> fetchOrganizations() async {
     final headers = await authGetHeaders();
-    final response = await http.get(
+    final response = await offline.get(
       Uri.parse('$BASE_URL/api/organizations'),
       headers: headers,
     );
@@ -1342,7 +1685,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> createOrganization(String name) async {
     final headers = await authJsonHeaders();
-    final response = await http.post(
+    final response = await offline.post(
       Uri.parse('$BASE_URL/api/organizations'),
       headers: headers,
       body: jsonEncode({'name': name}),
@@ -1356,7 +1699,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> updateOrganization(int id, String name) async {
     final headers = await authJsonHeaders();
-    final response = await http.put(
+    final response = await offline.put(
       Uri.parse('$BASE_URL/api/organizations/$id'),
       headers: headers,
       body: jsonEncode({'name': name}),
@@ -1370,7 +1713,7 @@ class ApiService {
 
   Future<bool> deleteOrganization(int id) async {
     final headers = await authGetHeaders();
-    final response = await http.delete(
+    final response = await offline.delete(
       Uri.parse('$BASE_URL/api/organizations/$id'),
       headers: headers,
     );
@@ -1381,7 +1724,7 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> fetchOrgLedgers() async {
     final headers = await authGetHeaders();
-    final response = await http.get(
+    final response = await offline.get(
       Uri.parse('$BASE_URL/api/org_ledgers'),
       headers: headers,
     );
@@ -1395,7 +1738,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> createOrgLedger(String name) async {
     final headers = await authJsonHeaders();
-    final response = await http.post(
+    final response = await offline.post(
       Uri.parse('$BASE_URL/api/org_ledgers'),
       headers: headers,
       body: jsonEncode({'name': name}),
@@ -1409,7 +1752,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> updateOrgLedger(int id, String name) async {
     final headers = await authJsonHeaders();
-    final response = await http.put(
+    final response = await offline.put(
       Uri.parse('$BASE_URL/api/org_ledgers/$id'),
       headers: headers,
       body: jsonEncode({'name': name}),
@@ -1423,7 +1766,7 @@ class ApiService {
 
   Future<bool> deleteOrgLedger(int id) async {
     final headers = await authGetHeaders();
-    final response = await http.delete(
+    final response = await offline.delete(
       Uri.parse('$BASE_URL/api/org_ledgers/$id'),
       headers: headers,
     );
@@ -1439,7 +1782,7 @@ class ApiService {
         if (organizationId != null) 'organization_id': organizationId.toString(),
       },
     );
-    final response = await http.get(uri, headers: headers);
+    final response = await offline.get(uri, headers: headers);
     if (response.statusCode != 200) {
       throw Exception('Failed to load summary (${response.statusCode})');
     }
@@ -1462,7 +1805,7 @@ class ApiService {
         if (to != null && to.isNotEmpty) 'to': to,
       },
     );
-    final response = await http.get(uri, headers: headers);
+    final response = await offline.get(uri, headers: headers);
     if (response.statusCode != 200) {
       throw Exception('Failed to load reports (${response.statusCode})');
     }
@@ -1491,7 +1834,7 @@ class ApiService {
         if (to != null && to.isNotEmpty) 'to': to,
       },
     );
-    final response = await http.get(uri, headers: headers);
+    final response = await offline.get(uri, headers: headers);
     if (response.statusCode != 200) {
       throw Exception('Failed to load transactions (${response.statusCode})');
     }
@@ -1501,7 +1844,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> createOrgTransaction(Map<String, dynamic> body) async {
     final headers = await authJsonHeaders();
-    final response = await http.post(
+    final response = await offline.post(
       Uri.parse('$BASE_URL/api/org_transactions'),
       headers: headers,
       body: jsonEncode(body),
@@ -1515,7 +1858,7 @@ class ApiService {
 
   Future<bool> deleteOrgTransaction(int id) async {
     final headers = await authGetHeaders();
-    final response = await http.delete(
+    final response = await offline.delete(
       Uri.parse('$BASE_URL/api/org_transactions/$id'),
       headers: headers,
     );
@@ -1537,7 +1880,7 @@ class ApiService {
         'limit': limit.toString(),
       },
     );
-    final response = await http.get(uri, headers: headers);
+    final response = await offline.get(uri, headers: headers);
     if (response.statusCode != 200) {
       throw Exception('Failed to load RTC list (${response.statusCode})');
     }
@@ -1559,7 +1902,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> createLandRtc(Map<String, dynamic> body) async {
     final headers = await authJsonHeaders();
-    final response = await http.post(
+    final response = await offline.post(
       Uri.parse('$BASE_URL/api/land_rtcs'),
       headers: headers,
       body: jsonEncode(body),
@@ -1575,7 +1918,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> updateLandRtc(int id, Map<String, dynamic> body) async {
     final headers = await authJsonHeaders();
-    final response = await http.put(
+    final response = await offline.put(
       Uri.parse('$BASE_URL/api/land_rtcs/$id'),
       headers: headers,
       body: jsonEncode(body),
@@ -1591,7 +1934,7 @@ class ApiService {
 
   Future<bool> deleteLandRtc(int id) async {
     final headers = await authGetHeaders();
-    final response = await http.delete(
+    final response = await offline.delete(
       Uri.parse('$BASE_URL/api/land_rtcs/$id'),
       headers: headers,
     );
@@ -1632,5 +1975,474 @@ class ApiService {
     throw Exception(
       _apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to upload document'),
     );
+  }
+
+  // ── Dairy (milk ledger) ───────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> fetchDairySummary({
+    String? from,
+    String? to,
+    String? kind,
+    String? q,
+  }) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/dairy/summary').replace(
+      queryParameters: {
+        if (from != null && from.isNotEmpty) 'from': from,
+        if (to != null && to.isNotEmpty) 'to': to,
+        if (kind != null && kind.isNotEmpty) 'kind': kind,
+        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+      },
+    );
+    final response = await offline.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load dairy summary (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    return {};
+  }
+
+  Future<List<Map<String, dynamic>>> fetchDairyEntries({
+    String? from,
+    String? to,
+    String? kind,
+    String? q,
+  }) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/dairy/entries').replace(
+      queryParameters: {
+        if (from != null && from.isNotEmpty) 'from': from,
+        if (to != null && to.isNotEmpty) 'to': to,
+        if (kind != null && kind.isNotEmpty) 'kind': kind,
+        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+      },
+    );
+    final response = await offline.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load dairy entries (${response.statusCode})');
+    }
+    return _mapListFromBody(response.body);
+  }
+
+  Future<Map<String, dynamic>> createDairyEntry(Map<String, dynamic> data) async {
+    return _postDairyJson('$BASE_URL/api/dairy/entries', data, 'Failed to save dairy entry');
+  }
+
+  Future<Map<String, dynamic>> updateDairyEntry(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    return _putDairyJson('$BASE_URL/api/dairy/entries/$id', data, 'Failed to update dairy entry');
+  }
+
+  Future<void> deleteDairyEntry(int id) async {
+    final headers = await authGetHeaders();
+    final response = await offline.delete(
+      Uri.parse('$BASE_URL/api/dairy/entries/$id'),
+      headers: headers,
+    );
+    if (response.statusCode == 200 || response.statusCode == 204) return;
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to delete dairy entry'),
+    );
+  }
+
+  Future<Map<String, dynamic>> fetchOwnerDairySummary({
+    String? from,
+    String? to,
+    int? customerId,
+    String? q,
+  }) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/dairy/owner/summary').replace(
+      queryParameters: {
+        if (from != null && from.isNotEmpty) 'from': from,
+        if (to != null && to.isNotEmpty) 'to': to,
+        if (customerId != null && customerId > 0) 'customer_id': customerId.toString(),
+        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+      },
+    );
+    final response = await offline.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load dairy summary (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    return {};
+  }
+
+  Future<List<Map<String, dynamic>>> fetchDairyCustomers({String? q}) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/dairy/owner/customers').replace(
+      queryParameters: {
+        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+      },
+    );
+    final response = await offline.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load customers (${response.statusCode})');
+    }
+    return _mapListFromBody(response.body);
+  }
+
+  Future<Map<String, dynamic>> createDairyCustomer(Map<String, dynamic> data) async {
+    return _postDairyJson(
+      '$BASE_URL/api/dairy/owner/customers',
+      data,
+      'Failed to save customer',
+    );
+  }
+
+  Future<Map<String, dynamic>> updateDairyCustomer(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    return _putDairyJson(
+      '$BASE_URL/api/dairy/owner/customers/$id',
+      data,
+      'Failed to update customer',
+    );
+  }
+
+  Future<void> deleteDairyCustomer(int id) async {
+    final headers = await authGetHeaders();
+    final response = await offline.delete(
+      Uri.parse('$BASE_URL/api/dairy/owner/customers/$id'),
+      headers: headers,
+    );
+    if (response.statusCode == 200 || response.statusCode == 204) return;
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to delete customer'),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> fetchOwnerDairyEntries({
+    String? from,
+    String? to,
+    String? kind,
+    int? customerId,
+    String? q,
+  }) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/dairy/owner/entries').replace(
+      queryParameters: {
+        if (from != null && from.isNotEmpty) 'from': from,
+        if (to != null && to.isNotEmpty) 'to': to,
+        if (kind != null && kind.isNotEmpty) 'kind': kind,
+        if (customerId != null && customerId > 0) 'customer_id': customerId.toString(),
+        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+      },
+    );
+    final response = await offline.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load dairy entries (${response.statusCode})');
+    }
+    return _mapListFromBody(response.body);
+  }
+
+  Future<Map<String, dynamic>> createOwnerDairyEntry(Map<String, dynamic> data) async {
+    return _postDairyJson(
+      '$BASE_URL/api/dairy/owner/entries',
+      data,
+      'Failed to save milk entry',
+    );
+  }
+
+  Future<Map<String, dynamic>> updateOwnerDairyEntry(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    return _putDairyJson(
+      '$BASE_URL/api/dairy/owner/entries/$id',
+      data,
+      'Failed to update milk entry',
+    );
+  }
+
+  Future<void> deleteOwnerDairyEntry(int id) async {
+    final headers = await authGetHeaders();
+    final response = await offline.delete(
+      Uri.parse('$BASE_URL/api/dairy/owner/entries/$id'),
+      headers: headers,
+    );
+    if (response.statusCode == 200 || response.statusCode == 204) return;
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to delete milk entry'),
+    );
+  }
+
+  Future<Map<String, dynamic>> _postDairyJson(
+    String url,
+    Map<String, dynamic> data,
+    String fallback,
+  ) async {
+    final headers = await authJsonHeaders();
+    final response = await offline.post(
+      Uri.parse(url),
+      headers: headers,
+      body: jsonEncode(data),
+    );
+    final decoded =
+        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return {'success': true};
+    }
+    throw Exception(_apiErrorMessage(decoded, response.statusCode, fallback: fallback));
+  }
+
+  Future<Map<String, dynamic>> _putDairyJson(
+    String url,
+    Map<String, dynamic> data,
+    String fallback,
+  ) async {
+    final headers = await authJsonHeaders();
+    final response = await offline.put(
+      Uri.parse(url),
+      headers: headers,
+      body: jsonEncode(data),
+    );
+    final decoded =
+        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return {'success': true};
+    }
+    throw Exception(_apiErrorMessage(decoded, response.statusCode, fallback: fallback));
+  }
+
+  // ── Personal documents (folders + multi-image papers) ─────────────────────
+
+  Future<Map<String, dynamic>> browseDocuments({int? folderId, String? q}) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/documents/browse').replace(
+      queryParameters: {
+        if (folderId != null && folderId > 0) 'folder_id': '$folderId',
+        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+      },
+    );
+    final response = await offline.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception(
+        _apiErrorMessage(
+          response.body.isNotEmpty ? jsonDecode(response.body) : {},
+          response.statusCode,
+          fallback: 'Failed to load documents',
+        ),
+      );
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    return {'folders': [], 'documents': []};
+  }
+
+  Future<Map<String, dynamic>> createDocumentFolder(String name) async {
+    return _postDairyJson(
+      '$BASE_URL/api/documents/folders',
+      {'name': name},
+      'Failed to create folder',
+    );
+  }
+
+  Future<Map<String, dynamic>> updateDocumentFolder(int id, String name) async {
+    return _putDairyJson(
+      '$BASE_URL/api/documents/folders/$id',
+      {'name': name},
+      'Failed to rename folder',
+    );
+  }
+
+  Future<void> deleteDocumentFolder(int id) async {
+    final headers = await authGetHeaders();
+    final response = await offline.delete(
+      Uri.parse('$BASE_URL/api/documents/folders/$id'),
+      headers: headers,
+    );
+    if (response.statusCode == 200 || response.statusCode == 204) return;
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to delete folder'),
+    );
+  }
+
+  Future<Map<String, dynamic>> getUserDocument(int id) async {
+    final headers = await authGetHeaders();
+    final response = await offline.get(
+      Uri.parse('$BASE_URL/api/documents/$id'),
+      headers: headers,
+    );
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    if (response.statusCode == 200 && decoded is Map) {
+      return Map<String, dynamic>.from(decoded);
+    }
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to load document'),
+    );
+  }
+
+  Future<Map<String, dynamic>> createUserDocument(Map<String, dynamic> body) async {
+    return _postDairyJson(
+      '$BASE_URL/api/documents',
+      body,
+      'Failed to save document',
+    );
+  }
+
+  Future<Map<String, dynamic>> updateUserDocument(
+    int id,
+    Map<String, dynamic> body,
+  ) async {
+    return _putDairyJson(
+      '$BASE_URL/api/documents/$id',
+      body,
+      'Failed to update document',
+    );
+  }
+
+  Future<void> deleteUserDocument(int id) async {
+    final headers = await authGetHeaders();
+    final response = await offline.delete(
+      Uri.parse('$BASE_URL/api/documents/$id'),
+      headers: headers,
+    );
+    if (response.statusCode == 200 || response.statusCode == 204) return;
+    final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to delete document'),
+    );
+  }
+
+  /// Multipart fields "file" (repeatable). Returns uploaded `/uploads/documents/...` paths.
+  Future<List<String>> uploadDocumentImages({
+    required List<String> filePaths,
+    List<String?>? filenames,
+  }) async {
+    if (filePaths.isEmpty) return [];
+    final token = await getAuthToken();
+    final all = <String>[];
+    const batch = 12;
+    for (var i = 0; i < filePaths.length; i += batch) {
+      final end = i + batch > filePaths.length ? filePaths.length : i + batch;
+      final uri = Uri.parse('$BASE_URL/api/documents/upload');
+      final req = http.MultipartRequest('POST', uri);
+      mergeTenantHeaders(req.headers);
+      if (token != null && token.isNotEmpty) {
+        req.headers['Authorization'] = 'Bearer $token';
+      }
+      for (var j = i; j < end; j++) {
+        final path = filePaths[j];
+        var name = (filenames != null && j < filenames.length) ? filenames[j] : null;
+        name ??= path.split(Platform.pathSeparator).last;
+        req.files.add(
+          await http.MultipartFile.fromPath('file', path, filename: name),
+        );
+      }
+      final streamed = await req.send();
+      final response = await http.Response.fromStream(streamed);
+      final decoded = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception(
+          _apiErrorMessage(decoded, response.statusCode, fallback: 'Failed to upload images'),
+        );
+      }
+      if (decoded is Map && decoded['urls'] is List) {
+        for (final u in decoded['urls'] as List) {
+          final s = u?.toString() ?? '';
+          if (s.isNotEmpty) all.add(s);
+        }
+      } else if (decoded is Map && decoded['url'] != null) {
+        all.add(decoded['url'].toString());
+      }
+    }
+    return all;
+  }
+
+  // ── Event manage (birthdays, renewals) ────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> fetchManagedEvents({String? q}) async {
+    final headers = await authGetHeaders();
+    final uri = Uri.parse('$BASE_URL/api/events').replace(
+      queryParameters: {
+        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+      },
+    );
+    final response = await offline.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception(
+        _apiErrorMessage(
+          response.body.isNotEmpty ? jsonDecode(response.body) : null,
+          response.statusCode,
+          fallback: 'Failed to load events',
+        ),
+      );
+    }
+    return _mapListFromBody(response.body);
+  }
+
+  Future<Map<String, dynamic>> createManagedEvent(
+    Map<String, dynamic> data,
+  ) async {
+    final headers = await authJsonHeaders();
+    final response = await offline.post(
+      Uri.parse('$BASE_URL/api/events'),
+      headers: headers,
+      body: jsonEncode(data),
+    );
+    final decoded =
+        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded['data'] ?? decoded);
+      }
+      return {};
+    }
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode,
+          fallback: 'Failed to create event'),
+    );
+  }
+
+  Future<Map<String, dynamic>> updateManagedEvent(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    final headers = await authJsonHeaders();
+    final response = await offline.put(
+      Uri.parse('$BASE_URL/api/events/$id'),
+      headers: headers,
+      body: jsonEncode(data),
+    );
+    final decoded =
+        response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded['data'] ?? decoded);
+      }
+      return {};
+    }
+    throw Exception(
+      _apiErrorMessage(decoded, response.statusCode,
+          fallback: 'Failed to update event'),
+    );
+  }
+
+  Future<void> deleteManagedEvent(int id) async {
+    final headers = await authGetHeaders();
+    final response = await offline.delete(
+      Uri.parse('$BASE_URL/api/events/$id'),
+      headers: headers,
+    );
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      final decoded =
+          response.body.isNotEmpty ? jsonDecode(response.body) : null;
+      throw Exception(
+        _apiErrorMessage(decoded, response.statusCode,
+            fallback: 'Failed to delete event'),
+      );
+    }
   }
 }

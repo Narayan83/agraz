@@ -14,6 +14,8 @@ import 'theme_controller.dart';
 import 'reset_password_page.dart';
 import 'app_theme.dart';
 import 'l10n/locale_controller.dart';
+import 'offline_sync.dart';
+import 'event_alarms.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +33,8 @@ Future<void> main() async {
   setupAgrazHttpOverrides();
   await ThemeController.instance.load();
   await LocaleController.instance.load();
+  await OfflineSync.instance.start();
+  await EventAlarms.instance.init();
   runApp(const MyApp());
 }
 

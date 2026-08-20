@@ -9,6 +9,91 @@ import 'feedback_fab.dart';
 import 'l10n/app_l10n.dart';
 import 'login.dart';
 
+final _inrDisplay = NumberFormat.currency(
+  locale: 'en_IN',
+  symbol: '₹',
+  decimalDigits: 0,
+);
+final _inrDisplayPaise = NumberFormat.currency(
+  locale: 'en_IN',
+  symbol: '₹',
+  decimalDigits: 2,
+);
+
+String formatInr(num value) {
+  final n = value.toDouble();
+  if (n == n.roundToDouble()) return _inrDisplay.format(n);
+  return _inrDisplayPaise.format(n);
+}
+
+double parseInr(String text) {
+  return double.tryParse(text.replaceAll(',', '').trim()) ?? 0.0;
+}
+
+String inrInputText(dynamic value) {
+  if (value == null) return '';
+  final n = value is num ? value.toDouble() : double.tryParse('$value');
+  if (n == null || n == 0) return '';
+  return IndianRupeeInputFormatter.formatNumber(n);
+}
+
+/// Indian grouping: 12,34,56,789 (last 3 digits, then pairs).
+class IndianRupeeInputFormatter extends TextInputFormatter {
+  const IndianRupeeInputFormatter();
+
+  static String formatIntDigits(String digits) {
+    if (digits.isEmpty) return '';
+    digits = digits.replaceFirst(RegExp(r'^0+(?=\d)'), '');
+    if (digits.length <= 3) return digits;
+    final last3 = digits.substring(digits.length - 3);
+    var rest = digits.substring(0, digits.length - 3);
+    final groups = <String>[];
+    while (rest.length > 2) {
+      groups.insert(0, rest.substring(rest.length - 2));
+      rest = rest.substring(0, rest.length - 2);
+    }
+    if (rest.isNotEmpty) groups.insert(0, rest);
+    return [...groups, last3].join(',');
+  }
+
+  static String formatNumber(num value) {
+    final n = value.toDouble();
+    if (n == n.roundToDouble()) {
+      return formatIntDigits(n.round().abs().toString());
+    }
+    final raw = n.abs().toStringAsFixed(2);
+    final parts = raw.split('.');
+    return '${formatIntDigits(parts[0])}.${parts[1]}';
+  }
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.isEmpty) return newValue;
+
+    final raw = newValue.text.replaceAll(',', '');
+    if (!RegExp(r'^\d*\.?\d{0,2}$').hasMatch(raw)) return oldValue;
+
+    String formatted;
+    if (raw.endsWith('.')) {
+      final intPart = raw.substring(0, raw.length - 1);
+      formatted = '${formatIntDigits(intPart.isEmpty ? '0' : intPart)}.';
+    } else if (raw.contains('.')) {
+      final parts = raw.split('.');
+      formatted = '${formatIntDigits(parts[0])}.${parts[1]}';
+    } else {
+      formatted = formatIntDigits(raw);
+    }
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
 const List<String> kFuturePlanStatuses = [
   'planned',
   'in_progress',
@@ -105,8 +190,7 @@ class _FuturePlansPageState extends State<FuturePlansPage> {
       final lines = _lines
           .map((l) => {
                 'description': l.desc.text.trim(),
-                'estimate_cost':
-                    double.tryParse(l.cost.text.trim()) ?? 0.0,
+                'estimate_cost': parseInr(l.cost.text),
               })
           .toList();
       await _api.createFuturePlan({
@@ -306,14 +390,13 @@ class _FuturePlansPageState extends State<FuturePlansPage> {
                                 controller: line.cost,
                                 label: tr('Estimate cost'),
                                 icon: Icons.currency_rupee_rounded,
+                                hint: '0,00,00,000',
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
                                   decimal: true,
                                 ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'[0-9.]'),
-                                  ),
+                                inputFormatters: const [
+                                  IndianRupeeInputFormatter(),
                                 ],
                               ),
                             ],
@@ -494,7 +577,7 @@ class _FuturePlansHistoryPageState extends State<FuturePlansHistoryPage> {
                                       const SizedBox(height: 6),
                                       Text(
                                         '${tr('Lines')}: ${p['line_count'] ?? lines.length}'
-                                        ' · ${tr('Estimate')}: ${estimate.toStringAsFixed(2)}',
+                                        ' · ${tr('Estimate')}: ${formatInr(estimate)}',
                                         style: AppText.bodyStrong,
                                       ),
                                     ],
@@ -541,9 +624,7 @@ class _PlanDetailDialogState extends State<_PlanDetailDialog> {
     _status = '${widget.plan['status'] ?? 'planned'}';
     if (!kFuturePlanStatuses.contains(_status)) _status = 'planned';
     final actual = widget.plan['actual_cost'];
-    _actualCtrl = TextEditingController(
-      text: actual == null ? '' : '$actual',
-    );
+    _actualCtrl = TextEditingController(text: inrInputText(actual));
     final end = widget.plan['end_date'];
     if (end != null) _endDate = DateTime.tryParse('$end');
     final rawLines = (widget.plan['lines'] as List? ?? []);
@@ -551,7 +632,7 @@ class _PlanDetailDialogState extends State<_PlanDetailDialog> {
       final m = Map<String, dynamic>.from(e as Map);
       final c = _PlanLineCtrls();
       c.desc.text = '${m['description'] ?? ''}';
-      c.cost.text = '${m['estimate_cost'] ?? ''}';
+      c.cost.text = inrInputText(m['estimate_cost']);
       return c;
     }).toList();
     if (_lines.isEmpty) _lines = [_PlanLineCtrls()];
@@ -577,7 +658,8 @@ class _PlanDetailDialogState extends State<_PlanDetailDialog> {
     if (id == null) return;
     setState(() => _saving = true);
     try {
-      final actual = double.tryParse(_actualCtrl.text.trim());
+      final actualRaw = _actualCtrl.text.trim();
+      final actual = actualRaw.isEmpty ? null : parseInr(actualRaw);
       await widget.api.updateFuturePlan(id, {
         'status': _status,
         if (_endDate != null) 'end_date': widget.dateFmt.format(_endDate!),
@@ -585,8 +667,7 @@ class _PlanDetailDialogState extends State<_PlanDetailDialog> {
         'lines': _lines
             .map((l) => {
                   'description': l.desc.text.trim(),
-                  'estimate_cost':
-                      double.tryParse(l.cost.text.trim()) ?? 0.0,
+                  'estimate_cost': parseInr(l.cost.text),
                 })
             .toList(),
       });
@@ -696,7 +777,12 @@ class _PlanDetailDialogState extends State<_PlanDetailDialog> {
                 controller: _actualCtrl,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(labelText: tr('Actual cost')),
+                inputFormatters: const [IndianRupeeInputFormatter()],
+                decoration: InputDecoration(
+                  labelText: tr('Actual cost'),
+                  prefixText: '₹ ',
+                  hintText: '0,00,00,000',
+                ),
               ),
               const SizedBox(height: 12),
               Text(tr('Lines'), style: AppText.label),
@@ -717,8 +803,11 @@ class _PlanDetailDialogState extends State<_PlanDetailDialog> {
                         controller: line.cost,
                         keyboardType:
                             const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: const [IndianRupeeInputFormatter()],
                         decoration: InputDecoration(
                           labelText: tr('Estimate cost'),
+                          prefixText: '₹ ',
+                          hintText: '0,00,00,000',
                         ),
                       ),
                     ],

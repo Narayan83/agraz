@@ -10,4 +10,5 @@ func LoadEnviromentVariables() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file; using process environment variables")
 	}
+	_ = godotenv.Overload(".env.local")
 }

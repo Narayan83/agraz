@@ -288,6 +288,10 @@ func deleteUserAndDeps(id uint, tid uint) error {
 		if err := tx.Where("parent_id = ? OR child_id = ?", id, id).Delete(&models.UserHierarchy{}).Error; err != nil {
 			return err
 		}
+		if err := tx.Model(&models.User{}).Where("parent_user_id = ? AND tenant_id = ?", id, tid).
+			Updates(map[string]interface{}{"active": false, "updated_at": time.Now()}).Error; err != nil {
+			return err
+		}
 
 		var cartIDs []uint
 		if err := tx.Model(&models.EcomCart{}).Where("user_id = ? AND tenant_id = ?", id, tid).Pluck("id", &cartIDs).Error; err != nil {

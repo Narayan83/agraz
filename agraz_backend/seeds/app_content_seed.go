@@ -26,6 +26,27 @@ func SeedAppContents() {
 			IsActive: true,
 		},
 		{
+			MenuKey:  "dairy",
+			Title:    "Dairy",
+			Body:     "Track milk given to a dairy and milk you bought. Receivable is money the dairy still owes you. Entries recorded by a dairy owner against your mobile number appear here automatically.",
+			Locale:   "en",
+			IsActive: true,
+		},
+		{
+			MenuKey:  "dairy_owner",
+			Title:    "Dairy Owner",
+			Body:     "Record customers and daily milk collection. When a customer uses the same mobile number in the AgRaz app, the milk you enter shows on their Dairy page — they do not re-enter it.",
+			Locale:   "en",
+			IsActive: true,
+		},
+		{
+			MenuKey:  "documents",
+			Title:    "Documents",
+			Body:     "Keep personal papers such as Aadhaar and PAN. Create a folder for each family member, then add documents with photos. You can also upload a document without a folder.",
+			Locale:   "en",
+			IsActive: true,
+		},
+		{
 			MenuKey:  "feedback",
 			Title:    "Feedback",
 			Body:     "Share suggestions or issues. You can view your own feedback and all community feedback. Verified items are marked by admin.",
@@ -62,6 +83,8 @@ func SeedToolsMenus() {
 			{MenuName: "Entry Analytics", URL: "/entry-analytics", Icon: "Activity", SortOrder: 2, IsActive: true, MenuType: "main"},
 			{MenuName: "Organizations", URL: "/organizations", Icon: "Building2", SortOrder: 3, IsActive: true, MenuType: "main"},
 			{MenuName: "App Contents", URL: "/app-contents", Icon: "FileText", SortOrder: 4, IsActive: true, MenuType: "main"},
+			{MenuName: "Dairy", URL: "/dairy", Icon: "Milk", SortOrder: 5, IsActive: true, MenuType: "main"},
+			{MenuName: "Documents", URL: "/documents", Icon: "FolderOpen", SortOrder: 6, IsActive: true, MenuType: "main"},
 		}},
 	}
 
@@ -74,24 +97,29 @@ func SeedToolsMenus() {
 				fmt.Printf("Seeded Menu: %s\n", m.MenuName)
 			}
 		} else {
-			// Ensure Organizations child exists under Tools
-			var orgMenu models.Menu
-			if err := initializers.DB.Where("menu_name = ? AND url = ?", "Organizations", "/organizations").First(&orgMenu).Error; err != nil {
-				child := models.Menu{
-					MenuName: "Organizations",
-					URL:      "/organizations",
-					Icon:     "Building2",
-					SortOrder: 3,
-					IsActive: true,
-					MenuType: "main",
-					ParentID: &existing.ID,
-				}
-				if err := initializers.DB.Create(&child).Error; err != nil {
-					log.Printf("Failed to seed Organizations menu: %v", err)
-				} else {
-					fmt.Println("Seeded Menu: Organizations")
-				}
-			}
+			ensureToolsChild(existing.ID, "Organizations", "/organizations", "Building2", 3)
+			ensureToolsChild(existing.ID, "Dairy", "/dairy", "Milk", 5)
+			ensureToolsChild(existing.ID, "Documents", "/documents", "FolderOpen", 6)
+		}
+	}
+}
+
+func ensureToolsChild(parentID uint, name, url, icon string, sort int) {
+	var existing models.Menu
+	if err := initializers.DB.Where("menu_name = ? AND url = ?", name, url).First(&existing).Error; err != nil {
+		child := models.Menu{
+			MenuName:  name,
+			URL:       url,
+			Icon:      icon,
+			SortOrder: sort,
+			IsActive:  true,
+			MenuType:  "main",
+			ParentID:  &parentID,
+		}
+		if err := initializers.DB.Create(&child).Error; err != nil {
+			log.Printf("Failed to seed %s menu: %v", name, err)
+		} else {
+			fmt.Printf("Seeded Menu: %s\n", name)
 		}
 	}
 }

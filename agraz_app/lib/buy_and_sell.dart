@@ -336,7 +336,7 @@ class ItemDetailPage extends StatelessWidget {
                     children: [
                       const Icon(Icons.category),
                       SizedBox(width: 8),
-                      Text('Category: ${item.category}'),
+                      Text('${tr('Category')}: ${item.category}'),
                     ],
                   ),
                   SizedBox(height: 8),
@@ -344,7 +344,7 @@ class ItemDetailPage extends StatelessWidget {
                     children: [
                       const Icon(Icons.person),
                       SizedBox(width: 8),
-                      Text('Seller: ${item.seller}'),
+                      Text('${tr('Seller')}: ${item.seller}'),
                     ],
                   ),
                   SizedBox(height: 8),
@@ -352,7 +352,7 @@ class ItemDetailPage extends StatelessWidget {
                     children: [
                       const Icon(Icons.access_time),
                       SizedBox(width: 8),
-                      Text('Posted: ${item.date}'),
+                      Text('${tr('Posted')}: ${item.date}'),
                     ],
                   ),
                   SizedBox(height: 24),

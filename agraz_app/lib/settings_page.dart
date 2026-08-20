@@ -6,10 +6,12 @@ import 'package:http/http.dart' as http;
 import 'auth_token.dart';
 import 'config.dart';
 import 'app_theme.dart';
+import 'family_members_page.dart';
 import 'l10n/app_l10n.dart';
 import 'l10n/locale_controller.dart';
 import 'reset_password_page.dart';
 import 'theme_controller.dart';
+import 'event_alarms.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -19,6 +21,31 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  bool _canManageFamily = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAccount();
+  }
+
+  Future<void> _loadAccount() async {
+    try {
+      final headers = await authGetHeaders();
+      final res = await http.get(
+        Uri.parse('${normalizedBaseUrl()}/api/me'),
+        headers: headers,
+      );
+      if (!mounted || res.statusCode < 200 || res.statusCode >= 300) return;
+      final data = jsonDecode(res.body);
+      if (data is Map) {
+        final isSub = data['is_sub_user'] == true;
+        setState(() {
+          _canManageFamily = !isSub;
+        });
+      }
+    } catch (_) {}
+  }
   Future<void> _changePassword() async {
     final currentCtrl = TextEditingController();
     final newCtrl = TextEditingController();
@@ -161,6 +188,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _logout() async {
+    await EventAlarms.instance.cancelAll();
     await clearAuthToken();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -231,6 +259,22 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               const Divider(),
               _SectionHeader(tr('Account')),
+              if (_canManageFamily)
+                ListTile(
+                  leading: const Icon(Icons.family_restroom),
+                  title: Text(tr('Family members')),
+                  subtitle: Text(
+                    tr('Add logins for family. Their entries save to this account.'),
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const FamilyMembersPage(),
+                      ),
+                    );
+                  },
+                ),
               ListTile(
                 leading: const Icon(Icons.lock_outline),
                 title: Text(tr('Change password')),
@@ -240,7 +284,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ListTile(
                 leading: const Icon(Icons.password_outlined),
                 title: Text(tr('Reset password')),
-                subtitle: Text(tr('Reset using email and phone')),
+                subtitle: Text(tr('Reset using the code sent to your email')),
                 onTap: () {
                   Navigator.push(
                     context,

@@ -36,6 +36,26 @@ export const login = async (email, password) => {
   return response.data;
 };
 
+export const forgotPassword = async (email) => {
+  const response = await api.post('/forgot-password', { email });
+  return response.data;
+};
+
+export const verifyResetCode = async (email, code) => {
+  const response = await api.post('/verify-reset-code', { email, code });
+  return response.data;
+};
+
+export const resetPasswordWithCode = async (email, code, newPassword, confirmPassword) => {
+  const response = await api.post('/reset-password', {
+    email,
+    code,
+    new_password: newPassword,
+    confirm_password: confirmPassword,
+  });
+  return response.data;
+};
+
 export const getTenantConfig = async () => {
   const response = await api.get('/tenant/config');
   return response.data;
@@ -162,6 +182,12 @@ export const updateServiceRegistration = async (id, data) => {
 
 export const deleteServiceRegistration = async (id) => {
   const response = await api.delete(`/service-registrations/${id}`);
+  return response.data;
+};
+
+/** Public service registration (same endpoint as the AgRaz app). No login required. */
+export const registerBusinessPublic = async (payload) => {
+  const response = await api.post('/register-business', payload);
   return response.data;
 };
 
@@ -623,5 +649,62 @@ export const uploadAdminLandRtcDocument = async (file) => {
   const response = await api.post('/admin/land_rtcs/upload', fd);
   return response.data;
 };
+
+// Admin dairy (milk ledger for dairy owners)
+export const getAdminDairySummary = async (params = {}) =>
+  (await api.get('/admin/dairy/summary', { params })).data;
+export const getAdminDairyCustomers = async (params = {}) =>
+  (await api.get('/admin/dairy/customers', { params })).data;
+export const createAdminDairyCustomer = async (data) =>
+  (await api.post('/admin/dairy/customers', data)).data;
+export const updateAdminDairyCustomer = async (id, data) =>
+  (await api.put(`/admin/dairy/customers/${id}`, data)).data;
+export const deleteAdminDairyCustomer = async (id, params = {}) =>
+  (await api.delete(`/admin/dairy/customers/${id}`, { params })).data;
+export const getAdminDairyEntries = async (params = {}) =>
+  (await api.get('/admin/dairy/entries', { params })).data;
+export const createAdminDairyEntry = async (data) =>
+  (await api.post('/admin/dairy/entries', data)).data;
+export const updateAdminDairyEntry = async (id, data) =>
+  (await api.put(`/admin/dairy/entries/${id}`, data)).data;
+export const deleteAdminDairyEntry = async (id, params = {}) =>
+  (await api.delete(`/admin/dairy/entries/${id}`, { params })).data;
+
+// Admin personal documents (folders + multi-image papers)
+export const getAdminDocumentsBrowse = async (params = {}) =>
+  (await api.get('/admin/documents/browse', { params })).data;
+export const createAdminDocumentFolder = async (data) =>
+  (await api.post('/admin/documents/folders', data)).data;
+export const updateAdminDocumentFolder = async (id, data) =>
+  (await api.put(`/admin/documents/folders/${id}`, data)).data;
+export const deleteAdminDocumentFolder = async (id, params = {}) =>
+  (await api.delete(`/admin/documents/folders/${id}`, { params })).data;
+export const getAdminUserDocument = async (id, params = {}) =>
+  (await api.get(`/admin/documents/${id}`, { params })).data;
+export const createAdminUserDocument = async (data) =>
+  (await api.post('/admin/documents', data)).data;
+export const updateAdminUserDocument = async (id, data) =>
+  (await api.put(`/admin/documents/${id}`, data)).data;
+export const deleteAdminUserDocument = async (id, params = {}) =>
+  (await api.delete(`/admin/documents/${id}`, { params })).data;
+export const uploadAdminDocumentImages = async (files) => {
+  const fd = new FormData();
+  const list = Array.isArray(files) ? files : [files];
+  for (const f of list) {
+    if (f) fd.append('file', f);
+  }
+  const response = await api.post('/admin/documents/upload', fd);
+  return response.data;
+};
+
+// Admin event manage (birthdays, insurance renewals)
+export const getAdminEvents = async (params = {}) =>
+  (await api.get('/admin/events', { params })).data;
+export const createAdminEvent = async (data) =>
+  (await api.post('/admin/events', data)).data;
+export const updateAdminEvent = async (id, data) =>
+  (await api.put(`/admin/events/${id}`, data)).data;
+export const deleteAdminEvent = async (id, params = {}) =>
+  (await api.delete(`/admin/events/${id}`, { params })).data;
 
 export default api;

@@ -103,6 +103,49 @@
   color: var(--primary);
 }
 
+.login-forgot-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.login-forgot-link,
+.login-back-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login-forgot-link:hover,
+.login-back-link:hover {
+  text-decoration: underline;
+}
+
+.login-back-link {
+  width: 100%;
+  margin-top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.login-info {
+  background-color: #ECFDF5;
+  color: #047857;
+  padding: 0.875rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+  border: 1px solid #D1FAE5;
+}
+
 .login-submit {
   width: 100%;
   padding: 1rem;
@@ -116,7 +159,7 @@
   justify-content: center;
   gap: 0.75rem;
   transition: var(--transition);
-  margin-top: 2rem;
+  margin-top: 1.25rem;
   box-shadow: 0 6px 20px rgb(37 99 235 / 0.2);
 }
 
@@ -157,6 +200,16 @@
 
 .login-footer b {
   color: var(--primary);
+}
+
+.login-footer a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.login-footer a:hover {
+  text-decoration: underline;
 }
 
 .spinner {

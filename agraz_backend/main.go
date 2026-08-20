@@ -24,6 +24,7 @@ func init() {
 	_ = initializers.DB.AutoMigrate(
 		&models.Tenant{},
 		&models.User{},
+		&models.PasswordResetCode{},
 		&models.UserRoleMapping{},
 		&models.ServiceRegistration{},
 		&models.Vendor{},
@@ -31,10 +32,14 @@ func init() {
 		&models.LaborRate{},
 		&models.LaborExtra{},
 		&models.DiaryLabel{},
+		&models.DiaryListItem{},
 		&models.DiaryEntry{},
+		&models.DairyCustomer{},
+		&models.DairyEntry{},
 		&models.FuturePlan{},
 		&models.FuturePlanLine{},
 		&models.LaborWorkEntry{},
+		&models.LaborShare{},
 		&models.IncomeExpense{},
 		&models.Organization{},
 		&models.OrgLedger{},
@@ -63,6 +68,9 @@ func init() {
 		&models.MarketLot{},
 		&models.MarketQuantity{},
 		&models.LandRtc{},
+		&models.DocumentFolder{},
+		&models.UserDocument{},
+		&models.ManagedEvent{},
 		&models.WeatherReport{},
 		&models.WeatherDaily{},
 	)
@@ -90,6 +98,7 @@ func main() {
 	handler.SetLaborDB(initializers.DB)
 	handler.SetLaborRateDB(initializers.DB)
 	handler.SetDiaryDB(initializers.DB)
+	handler.SetDairyDB(initializers.DB)
 	handler.SetFuturePlanDB(initializers.DB)
 	handler.SetLaborWorkDB(initializers.DB)
 	handler.SetServiceRegistrationDB(initializers.DB)
@@ -99,6 +108,8 @@ func main() {
 	handler.SetGovDB(initializers.DB)
 	handler.SetMarketDB(initializers.DB)
 	handler.SetLandRtcDB(initializers.DB)
+	handler.SetDocumentDB(initializers.DB)
+	handler.SetEventDB(initializers.DB)
 	handler.SetWeatherDB(initializers.DB)
 	handler.StartWeatherScheduler()
 
@@ -125,7 +136,12 @@ func main() {
 
 	// Agraz / Flutter mobile (public JSON API; same DB as admin)
 	api.Post("/mobile/register", handler.MobileRegisterUser)
-	api.Post("/mobile/reset-password", handler.MobileResetPassword)
+	api.Post("/forgot-password", handler.ForgotPassword)
+	api.Post("/verify-reset-code", handler.VerifyResetCode)
+	api.Post("/reset-password", handler.ResetPasswordWithCode)
+	api.Post("/mobile/forgot-password", handler.ForgotPassword)
+	api.Post("/mobile/verify-reset-code", handler.VerifyResetCode)
+	api.Post("/mobile/reset-password", handler.ResetPasswordWithCode)
 	api.Get("/mobile/users/by-phone/:phone", handler.GetUserByMobilePublic)
 	api.Post("/register-business", handler.RegisterBusinessPublic)
 	api.Get("/services", handler.ListApprovedServicesPublic)
@@ -164,6 +180,7 @@ func main() {
 
 	// Use Middleware
 	api.Use(middleware.Protected())
+	api.Use(middleware.FamilyScope())
 
 	// Authenticated Routes
 	api.Get("/me", handler.GetMe)
@@ -171,6 +188,12 @@ func main() {
 	api.Put("/me/password", handler.ChangeMyPassword)
 	api.Get("/my-menus", handler.GetCurrentUserMenuTree)
 	api.Get("/dashboard/stats", handler.GetDashboardStats)
+
+	api.Get("/family/features", handler.ListAppFeatures)
+	api.Get("/family/members", handler.ListFamilyMembers)
+	api.Post("/family/members", handler.CreateFamilyMember)
+	api.Put("/family/members/:id", handler.UpdateFamilyMember)
+	api.Delete("/family/members/:id", handler.DeleteFamilyMember)
 
 	// Income & expense (per logged-in user)
 	api.Get("/income_expense/summary", handler.GetIncomeExpenseSummaryPublic)
@@ -221,15 +244,39 @@ func main() {
 	api.Get("/labor_rates", handler.GetLaborRates)
 	api.Put("/labor_rates", handler.UpsertLaborRates)
 
-	// Diary
+	// Notes & lists
 	api.Get("/diary/labels", handler.ListDiaryLabels)
 	api.Post("/diary/labels", handler.CreateDiaryLabel)
 	api.Put("/diary/labels/:id", handler.UpdateDiaryLabel)
 	api.Delete("/diary/labels/:id", handler.DeleteDiaryLabel)
+	api.Get("/diary/list-items", handler.ListDiaryListItems)
+	api.Post("/diary/list-items", handler.CreateDiaryListItem)
+	api.Put("/diary/list-items/:id", handler.UpdateDiaryListItem)
+	api.Delete("/diary/list-items/:id", handler.DeleteDiaryListItem)
+	api.Get("/diary/list_items", handler.ListDiaryListItems)
+	api.Post("/diary/list_items", handler.CreateDiaryListItem)
+	api.Put("/diary/list_items/:id", handler.UpdateDiaryListItem)
+	api.Delete("/diary/list_items/:id", handler.DeleteDiaryListItem)
 	api.Get("/diary/entries", handler.ListDiaryEntries)
 	api.Post("/diary/entries", handler.CreateDiaryEntry)
 	api.Put("/diary/entries/:id", handler.UpdateDiaryEntry)
 	api.Delete("/diary/entries/:id", handler.DeleteDiaryEntry)
+
+	// Dairy (milk ledger). Farmer page auto-includes dairy-owner entries by mobile.
+	api.Get("/dairy/summary", handler.GetDairySummary)
+	api.Get("/dairy/entries", handler.ListDairyEntries)
+	api.Post("/dairy/entries", handler.CreateDairyEntry)
+	api.Put("/dairy/entries/:id", handler.UpdateDairyEntry)
+	api.Delete("/dairy/entries/:id", handler.DeleteDairyEntry)
+	api.Get("/dairy/owner/customers", handler.ListDairyCustomers)
+	api.Post("/dairy/owner/customers", handler.CreateDairyCustomer)
+	api.Put("/dairy/owner/customers/:id", handler.UpdateDairyCustomer)
+	api.Delete("/dairy/owner/customers/:id", handler.DeleteDairyCustomer)
+	api.Get("/dairy/owner/summary", handler.GetOwnerDairySummary)
+	api.Get("/dairy/owner/entries", handler.ListOwnerDairyEntries)
+	api.Post("/dairy/owner/entries", handler.CreateOwnerDairyEntry)
+	api.Put("/dairy/owner/entries/:id", handler.UpdateOwnerDairyEntry)
+	api.Delete("/dairy/owner/entries/:id", handler.DeleteOwnerDairyEntry)
 
 	// Future plans
 	api.Get("/future_plans", handler.ListFuturePlans)
@@ -239,6 +286,12 @@ func main() {
 	api.Delete("/future_plans/:id", handler.DeleteFuturePlan)
 
 	// Labour self work-entry (receivable / receipt)
+	// Reverse labour confirmation (farmer → labourer)
+	api.Get("/labor_shares/pending_count", handler.CountPendingLaborShares)
+	api.Get("/labor_shares", handler.ListLaborShares)
+	api.Post("/labor_shares/:id/accept", handler.AcceptLaborShare)
+	api.Post("/labor_shares/:id/reject", handler.RejectLaborShare)
+
 	api.Get("/labor_works/reports", handler.GetLaborWorkReportsPublic)
 	api.Get("/labor_works", handler.GetLaborWorks)
 	api.Post("/labor_works/batch", handler.CreateLaborWorksBatch)
@@ -254,6 +307,23 @@ func main() {
 	api.Post("/land_rtcs", handler.CreateLandRtc)
 	api.Put("/land_rtcs/:id", handler.UpdateLandRtc)
 	api.Delete("/land_rtcs/:id", handler.DeleteLandRtc)
+
+	// Personal documents (Aadhaar, PAN, etc.) — folders + multi-image papers
+	api.Post("/documents/upload", handler.UploadDocumentImages)
+	api.Get("/documents/browse", handler.BrowseDocuments)
+	api.Post("/documents/folders", handler.CreateDocumentFolder)
+	api.Put("/documents/folders/:id", handler.UpdateDocumentFolder)
+	api.Delete("/documents/folders/:id", handler.DeleteDocumentFolder)
+	api.Get("/documents/:id", handler.GetUserDocument)
+	api.Post("/documents", handler.CreateUserDocument)
+	api.Put("/documents/:id", handler.UpdateUserDocument)
+	api.Delete("/documents/:id", handler.DeleteUserDocument)
+
+	// Event manage (birthdays, insurance renewals, etc.)
+	api.Get("/events", handler.ListEvents)
+	api.Post("/events", handler.CreateEvent)
+	api.Put("/events/:id", handler.UpdateEvent)
+	api.Delete("/events/:id", handler.DeleteEvent)
 
 	// Users
 	api.Get("/vendor-users", handler.GetVendorUsers)
@@ -450,6 +520,31 @@ func main() {
 	api.Post("/admin/land_rtcs", handler.AdminCreateLandRtc)
 	api.Put("/admin/land_rtcs/:id", handler.AdminUpdateLandRtc)
 	api.Delete("/admin/land_rtcs/:id", handler.AdminDeleteLandRtc)
+
+	api.Post("/admin/documents/upload", handler.AdminUploadDocumentImages)
+	api.Get("/admin/documents/browse", handler.AdminBrowseDocuments)
+	api.Post("/admin/documents/folders", handler.AdminCreateDocumentFolder)
+	api.Put("/admin/documents/folders/:id", handler.AdminUpdateDocumentFolder)
+	api.Delete("/admin/documents/folders/:id", handler.AdminDeleteDocumentFolder)
+	api.Get("/admin/documents/:id", handler.AdminGetUserDocument)
+	api.Post("/admin/documents", handler.AdminCreateUserDocument)
+	api.Put("/admin/documents/:id", handler.AdminUpdateUserDocument)
+	api.Delete("/admin/documents/:id", handler.AdminDeleteUserDocument)
+
+	api.Get("/admin/dairy/summary", handler.AdminGetDairySummary)
+	api.Get("/admin/dairy/customers", handler.AdminListDairyCustomers)
+	api.Post("/admin/dairy/customers", handler.AdminCreateDairyCustomer)
+	api.Put("/admin/dairy/customers/:id", handler.AdminUpdateDairyCustomer)
+	api.Delete("/admin/dairy/customers/:id", handler.AdminDeleteDairyCustomer)
+	api.Get("/admin/dairy/entries", handler.AdminListDairyEntries)
+	api.Post("/admin/dairy/entries", handler.AdminCreateDairyEntry)
+	api.Put("/admin/dairy/entries/:id", handler.AdminUpdateDairyEntry)
+	api.Delete("/admin/dairy/entries/:id", handler.AdminDeleteDairyEntry)
+
+	api.Get("/admin/events", handler.AdminListEvents)
+	api.Post("/admin/events", handler.AdminCreateEvent)
+	api.Put("/admin/events/:id", handler.AdminUpdateEvent)
+	api.Delete("/admin/events/:id", handler.AdminDeleteEvent)
 
 	api.Post("/admin/weather/refresh", handler.AdminRefreshWeather)
 

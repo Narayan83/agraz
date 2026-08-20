@@ -57,6 +57,23 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "User is inactive"})
 	}
 
+	if user.ParentUserID != nil && *user.ParentUserID > 0 {
+		var parent models.User
+		if err := userDB.Where("id = ? AND tenant_id = ?", *user.ParentUserID, tid).First(&parent).Error; err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Main account is no longer available"})
+		}
+		if !parent.Approved {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"message":  "You are in cooling period. Please wait for approval.",
+				"code":     "cooling_period",
+				"approved": false,
+			})
+		}
+		if !parent.Active {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Main account is inactive"})
+		}
+	}
+
 	// Create JWT Token
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
@@ -74,7 +91,7 @@ func Login(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 		"token": t,
-		"user":  userVendorPayload(user),
+		"user":  accountSessionPayload(user),
 	})
 }
 
@@ -125,6 +142,12 @@ func UpdateMe(c *fiber.Ctx) error {
 	if !ok {
 		return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
 	}
+	if isSubUser(c) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error":   "Only the main account holder can update account details",
+			"message": "Only the main account holder can update account details",
+		})
+	}
 	type bodyIn struct {
 		Firstname    *string `json:"firstname"`
 		Lastname     *string `json:"lastname"`
@@ -169,72 +192,5 @@ func UpdateMe(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to update profile"})
 	}
 	userDB.Where("id = ? AND tenant_id = ?", uid, tid).First(&user)
-	return c.JSON(userVendorPayload(user))
-}
-
-// MobileResetPassword handles POST /api/mobile/reset-password.
-// Verifies email + registered phone, then sets a new password (no email SMTP required).
-func MobileResetPassword(c *fiber.Ctx) error {
-	type bodyIn struct {
-		Email           string `json:"email"`
-		Phone           string `json:"phone"`
-		NewPassword     string `json:"new_password"`
-		ConfirmPassword string `json:"confirm_password"`
-	}
-	var body bodyIn
-	if err := c.BodyParser(&body); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
-	}
-	email := strings.TrimSpace(body.Email)
-	phoneDigits := strings.Map(func(r rune) rune {
-		if r >= '0' && r <= '9' {
-			return r
-		}
-		return -1
-	}, strings.TrimSpace(body.Phone))
-	if email == "" || phoneDigits == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "email and phone are required"})
-	}
-	if body.NewPassword == "" || len(body.NewPassword) < 6 {
-		return c.Status(400).JSON(fiber.Map{"error": "New password must be at least 6 characters"})
-	}
-	if body.ConfirmPassword != "" && body.ConfirmPassword != body.NewPassword {
-		return c.Status(400).JSON(fiber.Map{"error": "passwords do not match"})
-	}
-	tid := tenantIDFromCtx(c)
-	var user models.User
-	if err := userDB.Where("email = ? AND tenant_id = ?", email, tid).First(&user).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "No account found with that email"})
-	}
-	stored := ""
-	if user.MobileNumber != nil {
-		stored = strings.Map(func(r rune) rune {
-			if r >= '0' && r <= '9' {
-				return r
-			}
-			return -1
-		}, *user.MobileNumber)
-	}
-	if stored == "" || stored != phoneDigits {
-		// Also allow match on last 10 digits (country-code variance)
-		ok := false
-		if len(stored) >= 10 && len(phoneDigits) >= 10 {
-			ok = stored[len(stored)-10:] == phoneDigits[len(phoneDigits)-10:]
-		}
-		if !ok {
-			return c.Status(400).JSON(fiber.Map{"error": "Phone number does not match our records"})
-		}
-	}
-	hashed, err := hashPassword(body.NewPassword)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Password encryption failed"})
-	}
-	if err := userDB.Model(&user).Updates(map[string]interface{}{
-		"password":       hashed,
-		"plain_password": body.NewPassword,
-		"updated_at":     time.Now(),
-	}).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Failed to reset password"})
-	}
-	return c.JSON(fiber.Map{"message": "Password reset successfully. You can sign in now."})
+	return c.JSON(accountSessionPayload(user))
 }

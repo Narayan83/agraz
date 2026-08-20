@@ -2,12 +2,50 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:excel/excel.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
+
+pw.ThemeData? _cachedPdfTheme;
+List<pw.Font>? _cachedPdfFallback;
+
+Future<pw.ThemeData> _labourPdfTheme() async {
+  if (_cachedPdfTheme != null) return _cachedPdfTheme!;
+  final latin = pw.Font.ttf(
+    await rootBundle.load('assets/fonts/NotoSans-Regular.ttf'),
+  );
+  final latinBold = pw.Font.ttf(
+    await rootBundle.load('assets/fonts/NotoSans-Bold.ttf'),
+  );
+  final kannada = pw.Font.ttf(
+    await rootBundle.load('assets/fonts/NotoSansKannada-Regular.ttf'),
+  );
+  final kannadaBold = pw.Font.ttf(
+    await rootBundle.load('assets/fonts/NotoSansKannada-Bold.ttf'),
+  );
+  _cachedPdfFallback = [kannada, kannadaBold];
+  _cachedPdfTheme = pw.ThemeData.withFont(
+    base: latin,
+    bold: latinBold,
+    fontFallback: _cachedPdfFallback,
+  );
+  return _cachedPdfTheme!;
+}
+
+pw.TextStyle _pdfText({
+  double size = 10,
+  bool bold = false,
+}) {
+  return pw.TextStyle(
+    fontSize: size,
+    fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+    fontFallback: _cachedPdfFallback ?? const [],
+  );
+}
 
 double _num(dynamic v) {
   if (v == null) return 0;
@@ -96,34 +134,35 @@ Future<Uint8List> buildLabourStatementPdf({
   double? totalReceivable,
   required List<Map<String, dynamic>> entries,
 }) async {
-  final doc = pw.Document();
+  final theme = await _labourPdfTheme();
+  final doc = pw.Document(theme: theme);
   final dateFmt = DateFormat('dd/MM/yyyy');
   doc.addPage(
     pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
       margin: const pw.EdgeInsets.all(32),
+      theme: theme,
       build: (ctx) => [
-        pw.Text(title,
-            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+        pw.Text(title, style: _pdfText(size: 18, bold: true)),
         if (subtitle != null && subtitle.isNotEmpty) ...[
           pw.SizedBox(height: 4),
-          pw.Text(subtitle, style: const pw.TextStyle(fontSize: 11)),
+          pw.Text(subtitle, style: _pdfText(size: 11)),
         ],
         pw.SizedBox(height: 8),
         pw.Text('Generated: ${dateFmt.format(DateTime.now())}',
-            style: const pw.TextStyle(fontSize: 10)),
+            style: _pdfText(size: 10)),
         if (totalPayable != null || totalReceivable != null) ...[
           pw.SizedBox(height: 10),
           pw.Row(children: [
             if (totalPayable != null)
               pw.Expanded(
                 child: pw.Text('Total Payable: ${_money(totalPayable)}',
-                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                    style: _pdfText(bold: true)),
               ),
             if (totalReceivable != null)
               pw.Expanded(
                 child: pw.Text('Total Receivable: ${_money(totalReceivable)}',
-                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                    style: _pdfText(bold: true)),
               ),
           ]),
         ],
@@ -141,8 +180,8 @@ Future<Uint8List> buildLabourStatementPdf({
               _money(wage * hours),
             ];
           }).toList(),
-          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-          cellStyle: const pw.TextStyle(fontSize: 8),
+          headerStyle: _pdfText(size: 9, bold: true),
+          cellStyle: _pdfText(size: 8),
           headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
           cellAlignment: pw.Alignment.centerLeft,
         ),

@@ -1064,7 +1064,7 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('All-time', style: TextStyle(fontWeight: FontWeight.w700)),
+                Text(tr('All-time'), style: TextStyle(fontWeight: FontWeight.w700)),
                 SizedBox(height: 8),
                 _kv('Total cost', _money(allSum['total_cost'])),
                 _kv('Total days/hrs', _hours(allSum['total_hours'])),
@@ -1075,7 +1075,7 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
           ),
           if (byCat.isNotEmpty) ...[
             SizedBox(height: 14),
-            Text('Category this month', style: AppText.h3),
+            Text(tr('Category this month'), style: AppText.h3),
             SizedBox(height: 8),
             ...byCat.map((c) {
               final pct = _num(c['pct']).clamp(0, 100).toDouble();
@@ -1126,7 +1126,7 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
           ],
           if (byShift.isNotEmpty) ...[
             SizedBox(height: 8),
-            Text('Shift this month', style: AppText.h3),
+            Text(tr('Shift this month'), style: AppText.h3),
             SizedBox(height: 8),
             ...byShift.map(
               (s) => Padding(
@@ -1150,7 +1150,7 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
           ],
           if (_rates.isNotEmpty) ...[
             SizedBox(height: 14),
-            Text('Saved rates', style: AppText.h3),
+            Text(tr('Saved rates'), style: AppText.h3),
             SizedBox(height: 8),
             AppCard(
               child: Column(
@@ -1185,9 +1185,9 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
         children: [
-          Text('Monthly schedule', style: AppText.h3),
+          Text(tr('Monthly schedule'), style: AppText.h3),
           SizedBox(height: 4),
-          Text('Cost & days by month for this labourer', style: AppText.caption),
+          Text(tr('Cost & days by month for this labourer'), style: AppText.caption),
           SizedBox(height: 12),
           if (monthly.isEmpty)
             AppCard(child: Text(tr('No monthly data')))
@@ -1246,7 +1246,7 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
             style: AppText.h3,
           ),
           SizedBox(height: 4),
-          Text('Week-wise work for selected month', style: AppText.caption),
+          Text(tr('Week-wise work for selected month'), style: AppText.caption),
           SizedBox(height: 12),
           if (weekly.isEmpty)
             AppCard(child: Text(tr('No weekly data')))

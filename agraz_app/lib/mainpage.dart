@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'profile_page.dart';
 import 'settings_page.dart';
 import 'about_page.dart';
@@ -8,6 +10,8 @@ import 'manage_organization.dart';
 import 'services.dart';
 import 'labour.dart';
 import 'diary.dart';
+import 'dairy.dart';
+import 'dairy_owner.dart';
 import 'future_plans.dart';
 import 'labour_work.dart';
 import 'marke_report.dart';
@@ -16,7 +20,11 @@ import 'farmer_education.dart';
 import 'government_facilities.dart';
 import 'weather_report.dart';
 import 'rtc_entry.dart';
+import 'documents.dart';
+import 'event_manage.dart';
+import 'event_alarms.dart';
 import 'auth_token.dart';
+import 'config.dart';
 import 'login.dart';
 import 'welcome_screen.dart';
 import 'app_theme.dart';
@@ -25,6 +33,13 @@ import 'feedback_page.dart';
 import 'l10n/app_l10n.dart';
 import 'l10n/locale_controller.dart';
 import 'app_update.dart';
+import 'api_service.dart';
+import 'account_session.dart';
+import 'family_members_page.dart';
+import 'offline_sync.dart';
+
+const _prefsUserCreatedAt = 'agraz_user_created_at';
+const _freeYearDays = 365;
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -49,6 +64,9 @@ class _ServiceFeature {
 
 class _MainPageState extends State<MainPage> {
   bool _isLoggedIn = false;
+  int? _freeDaysRemaining;
+  int _pendingLaborShares = 0;
+  AccountSession _session = AccountSession.guest;
 
   final List<String> _sliderImages = [
     'assets/images/areca.jpg',
@@ -78,8 +96,10 @@ class _MainPageState extends State<MainPage> {
         );
       }
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) promptInAppUpdateIfNeeded(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final updating = await promptInAppUpdateIfNeeded(context);
+      if (updating && mounted) await _refreshAuthState();
     });
   }
 
@@ -94,11 +114,104 @@ class _MainPageState extends State<MainPage> {
     final token = await getAuthToken();
     if (!mounted) return;
     setState(() => _isLoggedIn = token != null);
+    if (token != null) {
+      await _loadFreeDaysRemaining();
+      await _loadPendingLaborShares();
+      EventAlarms.instance.syncFromApi();
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefsUserCreatedAt);
+      if (mounted) {
+        setState(() {
+          _freeDaysRemaining = null;
+          _pendingLaborShares = 0;
+          _session = AccountSession.guest;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadFreeDaysRemaining() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString(_prefsUserCreatedAt);
+    if (cached != null && cached.isNotEmpty) {
+      final remaining = _remainingFreeDaysFrom(cached);
+      if (remaining != null && mounted) {
+        setState(() => _freeDaysRemaining = remaining);
+      }
+    }
+    try {
+      final headers = await authGetHeaders();
+      final res = await OfflineSync.instance.get(
+        Uri.parse('${normalizedBaseUrl()}/api/me'),
+        headers: headers,
+      );
+      if (!mounted) return;
+      if (res.statusCode < 200 || res.statusCode >= 300) return;
+      final data = jsonDecode(res.body);
+      if (data is! Map) return;
+      final session = AccountSession.fromJson(Map<String, dynamic>.from(data));
+      final raw = data['created_at']?.toString();
+      if (raw != null && raw.isNotEmpty) {
+        await prefs.setString(_prefsUserCreatedAt, raw);
+      }
+      final remaining = (raw != null && raw.isNotEmpty)
+          ? _remainingFreeDaysFrom(raw)
+          : _freeDaysRemaining;
+      if (mounted) {
+        setState(() {
+          _session = session;
+          if (remaining != null) _freeDaysRemaining = remaining;
+        });
+      }
+    } catch (_) {
+      // Keep cached remaining days when offline.
+    }
+  }
+
+  Future<void> _loadPendingLaborShares() async {
+    try {
+      final n = await ApiService().fetchLaborSharePendingCount();
+      if (mounted) setState(() => _pendingLaborShares = n);
+    } catch (_) {
+      if (mounted) setState(() => _pendingLaborShares = 0);
+    }
+  }
+
+  int? _remainingFreeDaysFrom(String rawCreatedAt) {
+    try {
+      final registered = DateTime.parse(rawCreatedAt).toLocal();
+      final start = DateTime(registered.year, registered.month, registered.day);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      return (_freeYearDays - today.difference(start).inDays).clamp(0, _freeYearDays);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _featureEnabled(String key) {
+    if (!_isLoggedIn || !_session.isSubUser) return true;
+    return _session.allows(key);
+  }
+
+  void _showFeatureDisabled() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(tr('This option is disabled for your account'))),
+    );
   }
 
   /// Opens [page] without requiring login (modules remain visible to guests).
-  Future<void> _openModule(Widget page, {bool closeDrawer = false}) async {
+  Future<void> _openModule(
+    Widget page, {
+    bool closeDrawer = false,
+    String? feature,
+  }) async {
     if (closeDrawer) Navigator.pop(context);
+    if (feature != null && !_featureEnabled(feature)) {
+      _showFeatureDisabled();
+      return;
+    }
     if (!mounted) return;
     await Navigator.push(
       context,
@@ -108,8 +221,16 @@ class _MainPageState extends State<MainPage> {
   }
 
   /// Opens [page] if logged in; otherwise shows login, then opens [page] on success.
-  Future<void> _openProtected(Widget page, {bool closeDrawer = false}) async {
+  Future<void> _openProtected(
+    Widget page, {
+    bool closeDrawer = false,
+    String? feature,
+  }) async {
     if (closeDrawer) Navigator.pop(context);
+    if (feature != null && !_featureEnabled(feature)) {
+      _showFeatureDisabled();
+      return;
+    }
 
     final token = await getAuthToken();
     if (token != null) {
@@ -118,6 +239,7 @@ class _MainPageState extends State<MainPage> {
         context,
         MaterialPageRoute(builder: (context) => page),
       );
+      if (mounted) await _refreshAuthState();
       return;
     }
 
@@ -129,6 +251,10 @@ class _MainPageState extends State<MainPage> {
     if (loggedIn == true && mounted) {
       await _refreshAuthState();
       if (!mounted) return;
+      if (feature != null && !_featureEnabled(feature)) {
+        _showFeatureDisabled();
+        return;
+      }
       await Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => page),
@@ -178,11 +304,15 @@ class _MainPageState extends State<MainPage> {
                 );
               },
             ),
-            IconButton(
-              icon: const Icon(Icons.settings_rounded),
-              tooltip: tr('Settings'),
-              onPressed: () => _openProtected(const SettingsPage()),
-            ),
+            if (_featureEnabled(AppFeatureCatalog.settings))
+              IconButton(
+                icon: const Icon(Icons.settings_rounded),
+                tooltip: tr('Settings'),
+                onPressed: () => _openProtected(
+                  const SettingsPage(),
+                  feature: AppFeatureCatalog.settings,
+                ),
+              ),
           ],
         ),
       ),
@@ -199,7 +329,18 @@ class _MainPageState extends State<MainPage> {
           children: [
             // --- Hero Section (Image Slider) ---
             _buildHero(),
+            _buildFreeVersionNote(),
+            if (_isLoggedIn && _session.isSubUser) _buildFamilyAccountBanner(),
             _buildQuickShortcuts(),
+            if (_isLoggedIn)
+              ListenableBuilder(
+                listenable: OfflineSync.instance,
+                builder: (context, _) => _buildOfflineSyncBanner(),
+              ),
+            if (_isLoggedIn &&
+                _pendingLaborShares > 0 &&
+                _featureEnabled(AppFeatureCatalog.labourWork))
+              _buildLaborShareBanner(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
@@ -286,142 +427,239 @@ class _MainPageState extends State<MainPage> {
                     () => Navigator.pop(context),
                     active: true,
                   ),
-                  _drawerTile(
-                    Icons.account_balance_wallet_rounded,
-                    tr('Income & Expense'),
-                    AppColors.income,
-                    () => _openModule(
-                      const IncomeExpensePage(),
-                      closeDrawer: true,
+                  if (_featureEnabled(AppFeatureCatalog.incomeExpense))
+                    _drawerTile(
+                      Icons.account_balance_wallet_rounded,
+                      tr('Income & Expense'),
+                      AppColors.income,
+                      () => _openProtected(
+                        const IncomeExpensePage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.incomeExpense,
+                      ),
                     ),
-                  ),
-                  _drawerTile(
-                    Icons.business_rounded,
-                    tr('Manage Organization'),
-                    AppColors.primaryLight,
-                    () => _openModule(
-                      const ManageOrganizationPage(),
-                      closeDrawer: true,
+                  if (_featureEnabled(AppFeatureCatalog.organization))
+                    _drawerTile(
+                      Icons.business_rounded,
+                      tr('Manage Organization'),
+                      AppColors.primaryLight,
+                      () => _openModule(
+                        const ManageOrganizationPage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.organization,
+                      ),
                     ),
-                  ),
-                  _drawerTile(
-                    Icons.engineering_rounded,
-                    tr('Labour Management'),
-                    AppColors.warning,
-                    () => _openModule(
-                      const LaborManagementPage(),
-                      closeDrawer: true,
+                  if (_featureEnabled(AppFeatureCatalog.labour))
+                    _drawerTile(
+                      Icons.engineering_rounded,
+                      tr('Labour Management'),
+                      AppColors.warning,
+                      () => _openProtected(
+                        const LaborManagementPage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.labour,
+                      ),
                     ),
-                  ),
-                  _drawerTile(
-                    Icons.handshake_rounded,
-                    tr('Labour Work Entry'),
-                    AppColors.primaryLight,
-                    () => _openProtected(
-                      const LabourWorkPage(),
-                      closeDrawer: true,
+                  if (_featureEnabled(AppFeatureCatalog.labourWork))
+                    _drawerTile(
+                      Icons.handshake_rounded,
+                      tr('Labour Work Entry'),
+                      AppColors.primaryLight,
+                      () => _openProtected(
+                        const LabourWorkPage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.labourWork,
+                      ),
                     ),
-                  ),
-                  _drawerTile(
-                    Icons.menu_book_outlined,
-                    tr('Diary'),
-                    AppColors.accent,
-                    () => _openProtected(const DiaryPage(), closeDrawer: true),
-                  ),
-                  _drawerTile(
-                    Icons.flag_outlined,
-                    tr('Future Plans'),
-                    AppColors.info,
-                    () => _openProtected(
-                      const FuturePlansPage(),
-                      closeDrawer: true,
+                  if (_featureEnabled(AppFeatureCatalog.dairy))
+                    _drawerTile(
+                      Icons.water_drop_rounded,
+                      tr('Dairy'),
+                      AppColors.info,
+                      () => _openProtected(
+                        const DairyPage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.dairy,
+                      ),
                     ),
-                  ),
-                  _drawerTile(
-                    Icons.trending_up_rounded,
-                    tr('Market Reports'),
-                    AppColors.info,
-                    () => _openModule(
-                      const RatesComparisonPage(),
-                      closeDrawer: true,
+                  if (_featureEnabled(AppFeatureCatalog.dairyOwner))
+                    _drawerTile(
+                      Icons.local_drink_rounded,
+                      tr('Dairy Owner'),
+                      AppColors.primaryLight,
+                      () => _openProtected(
+                        const DairyOwnerPage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.dairyOwner,
+                      ),
                     ),
-                  ),
-                  _drawerTile(
-                    Icons.cloud_outlined,
-                    tr('Weather Report'),
-                    AppColors.info,
-                    () => _openModule(
-                      const WeatherReportPage(),
-                      closeDrawer: true,
+                  if (_featureEnabled(AppFeatureCatalog.notes))
+                    _drawerTile(
+                      Icons.sticky_note_2_outlined,
+                      tr('Notes'),
+                      AppColors.accent,
+                      () => _openProtected(
+                        const DiaryPage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.notes,
+                      ),
                     ),
-                  ),
-                  _drawerTile(
-                    Icons.miscellaneous_services_rounded,
-                    tr('General Services'),
-                    AppColors.expense,
-                    () => _openModule(
-                      const ServiceListingPage(),
-                      closeDrawer: true,
+                  if (_featureEnabled(AppFeatureCatalog.futurePlans))
+                    _drawerTile(
+                      Icons.flag_outlined,
+                      tr('Future Plans'),
+                      AppColors.info,
+                      () => _openProtected(
+                        const FuturePlansPage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.futurePlans,
+                      ),
                     ),
-                  ),
-                  _drawerTile(
-                    Icons.store_rounded,
-                    tr('Buy & Sell'),
-                    AppColors.primaryLight,
-                    () => _openModule(const BuySellApp(), closeDrawer: true),
-                  ),
-                  _drawerTile(
-                    Icons.menu_book_rounded,
-                    tr('Farmer Education'),
-                    AppColors.accent,
-                    () => _openModule(
-                      const FarmerEducationPage(),
-                      closeDrawer: true,
+                  if (_featureEnabled(AppFeatureCatalog.market))
+                    _drawerTile(
+                      Icons.trending_up_rounded,
+                      tr('Market Reports'),
+                      AppColors.info,
+                      () => _openModule(
+                        const RatesComparisonPage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.market,
+                      ),
                     ),
-                  ),
-                  _drawerTile(
-                    Icons.account_balance_rounded,
-                    tr('Government Facilities'),
-                    AppColors.info,
-                    () => _openModule(
-                      const GovernmentFacilitiesPage(),
-                      closeDrawer: true,
+                  if (_featureEnabled(AppFeatureCatalog.weather))
+                    _drawerTile(
+                      Icons.cloud_outlined,
+                      tr('Weather Report'),
+                      AppColors.info,
+                      () => _openModule(
+                        const WeatherReportPage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.weather,
+                      ),
                     ),
-                  ),
-                  _drawerTile(
-                    Icons.map_outlined,
-                    tr('RTC Entry'),
-                    AppColors.primaryDark,
-                    () => _openProtected(
-                      const RtcEntryPage(),
-                      closeDrawer: true,
+                  if (_featureEnabled(AppFeatureCatalog.services))
+                    _drawerTile(
+                      Icons.miscellaneous_services_rounded,
+                      tr('General Services'),
+                      AppColors.expense,
+                      () => _openModule(
+                        const ServiceListingPage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.services,
+                      ),
                     ),
-                  ),
-                  _drawerTile(
-                    Icons.feedback_outlined,
-                    tr('Feedback'),
-                    AppColors.accent,
-                    () => _openModule(
-                      const FeedbackPage(initialMenu: 'home'),
-                      closeDrawer: true,
+                  if (_featureEnabled(AppFeatureCatalog.buySell))
+                    _drawerTile(
+                      Icons.store_rounded,
+                      tr('Buy & Sell'),
+                      AppColors.primaryLight,
+                      () => _openModule(
+                        const BuySellApp(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.buySell,
+                      ),
                     ),
-                  ),
+                  if (_featureEnabled(AppFeatureCatalog.farmerEducation))
+                    _drawerTile(
+                      Icons.menu_book_rounded,
+                      tr('Farmer Education'),
+                      AppColors.accent,
+                      () => _openModule(
+                        const FarmerEducationPage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.farmerEducation,
+                      ),
+                    ),
+                  if (_featureEnabled(AppFeatureCatalog.government))
+                    _drawerTile(
+                      Icons.account_balance_rounded,
+                      tr('Government Facilities'),
+                      AppColors.info,
+                      () => _openModule(
+                        const GovernmentFacilitiesPage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.government,
+                      ),
+                    ),
+                  if (_featureEnabled(AppFeatureCatalog.rtc))
+                    _drawerTile(
+                      Icons.map_outlined,
+                      tr('RTC Entry'),
+                      AppColors.primaryDark,
+                      () => _openProtected(
+                        const RtcEntryPage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.rtc,
+                      ),
+                    ),
+                  if (_featureEnabled(AppFeatureCatalog.documents))
+                    _drawerTile(
+                      Icons.folder_rounded,
+                      tr('Documents'),
+                      AppColors.accent,
+                      () => _openProtected(
+                        const DocumentsPage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.documents,
+                      ),
+                    ),
+                  if (_featureEnabled(AppFeatureCatalog.eventManage))
+                    _drawerTile(
+                      Icons.event_available_rounded,
+                      tr('Event Manage'),
+                      AppColors.warning,
+                      () => _openProtected(
+                        const EventManagePage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.eventManage,
+                      ),
+                    ),
+                  if (_featureEnabled(AppFeatureCatalog.feedback))
+                    _drawerTile(
+                      Icons.feedback_outlined,
+                      tr('Feedback'),
+                      AppColors.accent,
+                      () => _openModule(
+                        const FeedbackPage(initialMenu: 'home'),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.feedback,
+                      ),
+                    ),
                   _drawerSectionLabel(tr('ACCOUNT')),
-                  _drawerTile(
-                    Icons.person_rounded,
-                    tr('Profile'),
-                    AppColors.info,
-                    () => _openProtected(const ProfilePage(), closeDrawer: true),
-                  ),
-                  _drawerTile(
-                    Icons.settings_rounded,
-                    tr('Settings'),
-                    AppColors.textSecondary,
-                    () => _openProtected(
-                      const SettingsPage(),
-                      closeDrawer: true,
+                  if (_featureEnabled(AppFeatureCatalog.profile))
+                    _drawerTile(
+                      Icons.person_rounded,
+                      tr('Profile'),
+                      AppColors.info,
+                      () => _openProtected(
+                        const ProfilePage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.profile,
+                      ),
                     ),
-                  ),
+                  if (_isLoggedIn &&
+                      _session.canManageFamily &&
+                      !_session.isSubUser)
+                    _drawerTile(
+                      Icons.family_restroom,
+                      tr('Family members'),
+                      AppColors.primary,
+                      () => _openProtected(
+                        const FamilyMembersPage(),
+                        closeDrawer: true,
+                      ),
+                    ),
+                  if (_featureEnabled(AppFeatureCatalog.settings))
+                    _drawerTile(
+                      Icons.settings_rounded,
+                      tr('Settings'),
+                      AppColors.textSecondary,
+                      () => _openProtected(
+                        const SettingsPage(),
+                        closeDrawer: true,
+                        feature: AppFeatureCatalog.settings,
+                      ),
+                    ),
                   _drawerTile(
                     Icons.groups_rounded,
                     tr('About Team'),
@@ -723,93 +961,338 @@ class _MainPageState extends State<MainPage> {
   /*  Home sections                                                     */
   /* ------------------------------------------------------------------ */
 
+  Widget _buildFreeVersionNote() {
+    if (!_isLoggedIn || _freeDaysRemaining == null) {
+      return const SizedBox.shrink();
+    }
+    final days = _freeDaysRemaining!;
+    final label = days == 1
+        ? trf('Enjoy free version for {0} day', [days])
+        : trf('Enjoy free version for {0} days', [days]);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+      child: Center(
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.red,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFamilyAccountBanner() {
+    final member = _session.memberName ?? tr('Family member');
+    final account = _session.accountName.isEmpty
+        ? tr('main account')
+        : _session.accountName;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+      child: Material(
+        color: AppColors.primarySoft,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              const Icon(Icons.family_restroom, color: AppColors.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  trf('Signed in as {0}. You are using {1}\'s account.', [
+                    member,
+                    account,
+                  ]),
+                  style: AppText.bodyStrong,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOfflineSyncBanner() {
+    final sync = OfflineSync.instance;
+    if (sync.pendingCount <= 0 && !sync.isSyncing) {
+      return const SizedBox.shrink();
+    }
+    final label = sync.isSyncing
+        ? tr('Syncing saved changes…')
+        : !sync.isOnline
+            ? tr('Offline. Changes will sync automatically.')
+            : sync.pendingCount == 1
+                ? tr('1 change waiting to sync')
+                : trf('{0} changes waiting to sync', [sync.pendingCount]);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+      child: Material(
+        color: AppColors.infoSoft,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => OfflineSync.instance.sync(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Icon(
+                  sync.isSyncing
+                      ? Icons.sync_rounded
+                      : sync.isOnline
+                          ? Icons.cloud_upload_rounded
+                          : Icons.cloud_off_rounded,
+                  color: AppColors.info,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(label, style: AppText.bodyStrong),
+                ),
+                if (sync.isSyncing)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  const Icon(Icons.sync_rounded, color: AppColors.info),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLaborShareBanner() {
+    final label = _pendingLaborShares == 1
+        ? tr('1 work entry waiting for confirmation')
+        : trf('{0} work entries waiting for confirmation', [_pendingLaborShares]);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+      child: Material(
+        color: AppColors.accentSoft,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => _openProtected(
+            const LabourWorkPage(initialTab: 2),
+            feature: AppFeatureCatalog.labourWork,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.mark_email_unread_rounded, color: AppColors.accent),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(label, style: AppText.bodyStrong),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.accent),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildQuickShortcuts() {
-    final items = <({IconData icon, String label, Color color, VoidCallback open})>[
+    final items = <({
+      IconData icon,
+      String label,
+      Color color,
+      String feature,
+      VoidCallback open,
+    })>[
       (
         icon: Icons.account_balance_wallet_rounded,
         label: tr('Income & Expense'),
         color: AppColors.income,
-        open: () => _openModule(const IncomeExpensePage()),
+        feature: AppFeatureCatalog.incomeExpense,
+        open: () => _openProtected(
+          const IncomeExpensePage(),
+          feature: AppFeatureCatalog.incomeExpense,
+        ),
       ),
       (
         icon: Icons.business_rounded,
         label: tr('Organizations'),
         color: AppColors.primaryLight,
-        open: () => _openModule(const ManageOrganizationPage()),
+        feature: AppFeatureCatalog.organization,
+        open: () => _openModule(
+          const ManageOrganizationPage(),
+          feature: AppFeatureCatalog.organization,
+        ),
       ),
       (
         icon: Icons.engineering_rounded,
         label: tr('Labour'),
         color: AppColors.warning,
-        open: () => _openModule(const LaborManagementPage()),
+        feature: AppFeatureCatalog.labour,
+        open: () => _openProtected(
+          const LaborManagementPage(),
+          feature: AppFeatureCatalog.labour,
+        ),
       ),
       (
         icon: Icons.handshake_rounded,
         label: tr('Work Entry'),
         color: AppColors.primaryLight,
-        open: () => _openProtected(const LabourWorkPage()),
+        feature: AppFeatureCatalog.labourWork,
+        open: () => _openProtected(
+          const LabourWorkPage(),
+          feature: AppFeatureCatalog.labourWork,
+        ),
       ),
       (
-        icon: Icons.menu_book_outlined,
-        label: tr('Diary'),
+        icon: Icons.water_drop_rounded,
+        label: tr('Dairy'),
+        color: AppColors.info,
+        feature: AppFeatureCatalog.dairy,
+        open: () => _openProtected(
+          const DairyPage(),
+          feature: AppFeatureCatalog.dairy,
+        ),
+      ),
+      (
+        icon: Icons.local_drink_rounded,
+        label: tr('Dairy Owner'),
+        color: AppColors.primaryLight,
+        feature: AppFeatureCatalog.dairyOwner,
+        open: () => _openProtected(
+          const DairyOwnerPage(),
+          feature: AppFeatureCatalog.dairyOwner,
+        ),
+      ),
+      (
+        icon: Icons.sticky_note_2_outlined,
+        label: tr('Notes'),
         color: AppColors.accent,
-        open: () => _openProtected(const DiaryPage()),
+        feature: AppFeatureCatalog.notes,
+        open: () => _openProtected(
+          const DiaryPage(),
+          feature: AppFeatureCatalog.notes,
+        ),
       ),
       (
         icon: Icons.flag_outlined,
         label: tr('Plans'),
         color: AppColors.info,
-        open: () => _openProtected(const FuturePlansPage()),
+        feature: AppFeatureCatalog.futurePlans,
+        open: () => _openProtected(
+          const FuturePlansPage(),
+          feature: AppFeatureCatalog.futurePlans,
+        ),
       ),
       (
         icon: Icons.trending_up_rounded,
         label: tr('Market'),
         color: AppColors.info,
-        open: () => _openModule(const RatesComparisonPage()),
+        feature: AppFeatureCatalog.market,
+        open: () => _openModule(
+          const RatesComparisonPage(),
+          feature: AppFeatureCatalog.market,
+        ),
       ),
       (
         icon: Icons.cloud_outlined,
         label: tr('Weather'),
         color: AppColors.info,
-        open: () => _openModule(const WeatherReportPage()),
+        feature: AppFeatureCatalog.weather,
+        open: () => _openModule(
+          const WeatherReportPage(),
+          feature: AppFeatureCatalog.weather,
+        ),
       ),
       (
         icon: Icons.miscellaneous_services_rounded,
         label: tr('Services'),
         color: AppColors.expense,
-        open: () => _openModule(const ServiceListingPage()),
+        feature: AppFeatureCatalog.services,
+        open: () => _openModule(
+          const ServiceListingPage(),
+          feature: AppFeatureCatalog.services,
+        ),
       ),
       (
         icon: Icons.store_rounded,
         label: tr('Buy & Sell'),
         color: AppColors.primaryLight,
-        open: () => _openModule(const BuySellApp()),
+        feature: AppFeatureCatalog.buySell,
+        open: () => _openModule(
+          const BuySellApp(),
+          feature: AppFeatureCatalog.buySell,
+        ),
       ),
       (
         icon: Icons.menu_book_rounded,
         label: tr('Education'),
         color: AppColors.accent,
-        open: () => _openModule(const FarmerEducationPage()),
+        feature: AppFeatureCatalog.farmerEducation,
+        open: () => _openModule(
+          const FarmerEducationPage(),
+          feature: AppFeatureCatalog.farmerEducation,
+        ),
       ),
       (
         icon: Icons.account_balance_rounded,
         label: tr('Govt'),
         color: AppColors.info,
-        open: () => _openModule(const GovernmentFacilitiesPage()),
+        feature: AppFeatureCatalog.government,
+        open: () => _openModule(
+          const GovernmentFacilitiesPage(),
+          feature: AppFeatureCatalog.government,
+        ),
       ),
       (
         icon: Icons.map_outlined,
         label: tr('RTC'),
         color: AppColors.primaryDark,
-        open: () => _openProtected(const RtcEntryPage()),
+        feature: AppFeatureCatalog.rtc,
+        open: () => _openProtected(
+          const RtcEntryPage(),
+          feature: AppFeatureCatalog.rtc,
+        ),
+      ),
+      (
+        icon: Icons.folder_rounded,
+        label: tr('Documents'),
+        color: AppColors.accent,
+        feature: AppFeatureCatalog.documents,
+        open: () => _openProtected(
+          const DocumentsPage(),
+          feature: AppFeatureCatalog.documents,
+        ),
+      ),
+      (
+        icon: Icons.event_available_rounded,
+        label: tr('Events'),
+        color: AppColors.warning,
+        feature: AppFeatureCatalog.eventManage,
+        open: () => _openProtected(
+          const EventManagePage(),
+          feature: AppFeatureCatalog.eventManage,
+        ),
       ),
       (
         icon: Icons.feedback_outlined,
         label: tr('Feedback'),
         color: AppColors.primary,
-        open: () => _openModule(const FeedbackPage(initialMenu: 'home')),
+        feature: AppFeatureCatalog.feedback,
+        open: () => _openModule(
+          const FeedbackPage(initialMenu: 'home'),
+          feature: AppFeatureCatalog.feedback,
+        ),
       ),
-    ];
+    ].where((e) => _featureEnabled(e.feature)).toList();
+
+    if (items.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
@@ -1088,74 +1571,237 @@ class _MainPageState extends State<MainPage> {
   Widget _buildServicesGrid() {
     final services = [
       _ServiceFeature(
-        icon: Icons.assignment_rounded,
-        title: tr('Track Expenses'),
-        description:
-            'Stay in control of your farm spending with easy logging of crop-wise, daily, and seasonal expenses.',
+        icon: Icons.account_balance_wallet_rounded,
+        title: tr('Income & Expense'),
+        description: tr(
+          'Log crop-wise income and spending, and see monthly reports so you always know the farm balance.',
+        ),
         details: [
-          'Record expenses by crop and season',
-          'Categorize spending automatically',
-          'Generate monthly expense reports',
-          'Set budget alerts and notifications',
+          tr('Record income and expense by crop and season'),
+          tr('Categorize daily and seasonal spending'),
+          tr('Generate monthly reports'),
+          tr('Keep a clear running balance'),
+        ],
+      ),
+      _ServiceFeature(
+        icon: Icons.business_rounded,
+        title: tr('Manage Organization'),
+        description: tr(
+          'Organize farms, groups, and agribusiness units with shared records in one place.',
+        ),
+        details: [
+          tr('Create and manage farm organizations'),
+          tr('Keep contacts and unit details together'),
+          tr('Share organization reports with your team'),
+          tr('Switch between farm units easily'),
+        ],
+      ),
+      _ServiceFeature(
+        icon: Icons.engineering_rounded,
+        title: tr('Labour Management'),
+        description: tr(
+          'Maintain labour names, rates, categories, and payments with daily and seasonal summaries.',
+        ),
+        details: [
+          tr('Save labour names, gender, shift, and category'),
+          tr('Set and update rates quickly'),
+          tr('Track rent, food, and bonus costs'),
+          tr('Export labour summaries for payroll'),
+        ],
+      ),
+      _ServiceFeature(
+        icon: Icons.handshake_rounded,
+        title: tr('Labour Work Entry'),
+        description: tr(
+          'Enter daily work and share it with family members so they can confirm what was done.',
+        ),
+        details: [
+          tr('Record work by date, shift, and category'),
+          tr('Share entries with family for confirmation'),
+          tr('See pending work waiting for approval'),
+          tr('Keep a complete work history'),
+        ],
+      ),
+      _ServiceFeature(
+        icon: Icons.water_drop_rounded,
+        title: tr('Dairy'),
+        description: tr(
+          'For farmers: record milk given or bought, morning and evening shifts, and payments receivable.',
+        ),
+        details: [
+          tr('Log milk given and milk bought in liters'),
+          tr('Capture morning and evening shifts'),
+          tr('Record payments received and made'),
+          tr('See receivable totals automatically'),
+        ],
+      ),
+      _ServiceFeature(
+        icon: Icons.local_drink_rounded,
+        title: tr('Dairy Owner'),
+        description: tr(
+          'For dairy owners: manage customers, milk collection, sales, and amounts payable.',
+        ),
+        details: [
+          tr('Save customer name, mobile, village, and default rate'),
+          tr('Record milk collected and milk sold'),
+          tr('Track paid and received amounts'),
+          tr('View owner summary of liters and payable'),
+        ],
+      ),
+      _ServiceFeature(
+        icon: Icons.sticky_note_2_outlined,
+        title: tr('Notes'),
+        description: tr(
+          'Keep farm notes, checklists, and reminders so nothing important is forgotten.',
+        ),
+        details: [
+          tr('Create lists and checklists'),
+          tr('Mark tasks done as you work'),
+          tr('Use icons for money, work, food, and more'),
+          tr('Find notes quickly when you need them'),
+        ],
+      ),
+      _ServiceFeature(
+        icon: Icons.flag_outlined,
+        title: tr('Future Plans'),
+        description: tr(
+          'Plan upcoming farm work and budgets so you can prepare money, labour, and materials in advance.',
+        ),
+        details: [
+          tr('List planned work with dates'),
+          tr('Attach estimated costs in rupees'),
+          tr('Track what is still pending'),
+          tr('Review plans before the season starts'),
         ],
       ),
       _ServiceFeature(
         icon: Icons.trending_up_rounded,
-        title: tr('Forecast & Predict'),
-        description:
-            'Get AI-powered predictions on crop yield and productivity based on historical patterns, weather, and inputs.',
+        title: tr('Market Reports'),
+        description: tr(
+          'Compare live APMC and market rates so you can sell at a better price.',
+        ),
         details: [
-          'AI-driven yield predictions',
-          'Weather pattern analysis',
-          'Historical data comparison',
-          'Real-time productivity tracking',
+          tr('See arrivals, traded quantity, and varieties'),
+          tr('Compare prices across markets and taluks'),
+          tr('Follow agents and APMC updates'),
+          tr('Spot better selling opportunities'),
         ],
       ),
       _ServiceFeature(
-        icon: Icons.shopping_basket_rounded,
+        icon: Icons.cloud_outlined,
+        title: tr('Weather Report'),
+        description: tr(
+          'Get local weather, a 7-day forecast, and farm advice for the week ahead.',
+        ),
+        details: [
+          tr('View temperature, rain chance, and wind'),
+          tr('Check a 7-day forecast'),
+          tr('Read farm advice for the next week'),
+          tr('Reports refresh automatically'),
+        ],
+      ),
+      _ServiceFeature(
+        icon: Icons.miscellaneous_services_rounded,
+        title: tr('General Services'),
+        description: tr(
+          'Find local agri services you need — from equipment to repair and farm support.',
+        ),
+        details: [
+          tr('Browse service categories near you'),
+          tr('Register your own service for farmers'),
+          tr('Reach trusted local providers'),
+          tr('Keep service contacts in the app'),
+        ],
+      ),
+      _ServiceFeature(
+        icon: Icons.store_rounded,
         title: tr('Buy & Sell'),
-        description:
-            'Trade seeds, fertilizers, pesticides, and harvested crops with trusted vendors and buyers right from your phone.',
+        description: tr(
+          'Trade seeds, fertilizers, pesticides, and harvested crops with trusted vendors and buyers.',
+        ),
         details: [
-          'Verified vendors and buyers',
-          'Secure payment gateway',
-          'Real-time market prices',
-          'Direct farm-to-market selling',
+          tr('List produce and agri inputs'),
+          tr('Connect with verified vendors and buyers'),
+          tr('Check market-linked prices'),
+          tr('Sell farm-to-market from your phone'),
         ],
       ),
       _ServiceFeature(
-        icon: Icons.attach_money_rounded,
-        title: tr('Price Optimization'),
-        description:
-            'Use smart tools to identify the best market prices and optimize your selling strategies.',
+        icon: Icons.menu_book_rounded,
+        title: tr('Farmer Education'),
+        description: tr(
+          'Learn better farming practices with practical guidance from agriculture experts.',
+        ),
         details: [
-          'Compare prices across markets',
-          'Price trend analysis',
-          'Smart selling recommendations',
-          'Minimum support price alerts',
+          tr('Read crop and farm education content'),
+          tr('Follow expert-backed practices'),
+          tr('Learn in English or Kannada'),
+          tr('Apply tips to your own farm'),
         ],
       ),
       _ServiceFeature(
         icon: Icons.account_balance_rounded,
-        title: tr('Banking & Finance'),
-        description:
-            'Get access to agricultural loans, credit tools, insurance services, and government schemes.',
+        title: tr('Government Facilities'),
+        description: tr(
+          'Discover agricultural loans, insurance, and government schemes that can support your farm.',
+        ),
         details: [
-          'Easy loan applications',
-          'Crop insurance management',
-          'Government scheme tracking',
-          'Credit score monitoring',
+          tr('Browse government schemes and facilities'),
+          tr('Find loan and insurance information'),
+          tr('Track schemes relevant to your farm'),
+          tr('Keep important facility details handy'),
         ],
       ),
       _ServiceFeature(
-        icon: Icons.dashboard_customize_rounded,
-        title: tr('Farm Analytics'),
-        description: 'See all your key data in one simple, visual dashboard.',
+        icon: Icons.map_outlined,
+        title: tr('RTC Entry'),
+        description: tr(
+          'Store land RTC records and survey details so farm land information stays with you.',
+        ),
         details: [
-          'Visual data representations',
-          'Customizable dashboard views',
-          'Real-time data updates',
-          'Export reports for analysis',
+          tr('Enter RTC and survey details'),
+          tr('Keep land records in one place'),
+          tr('Update entries when records change'),
+          tr('Refer back anytime you need them'),
+        ],
+      ),
+      _ServiceFeature(
+        icon: Icons.folder_rounded,
+        title: tr('Documents'),
+        description: tr(
+          'Keep personal papers such as Aadhaar and PAN. Create a folder for each family member and add photos.',
+        ),
+        details: [
+          tr('Create a folder for each family member'),
+          tr('Upload Aadhaar, PAN, and other papers'),
+          tr('Add multiple photos to a document'),
+          tr('Open a name to view the photos'),
+        ],
+      ),
+      _ServiceFeature(
+        icon: Icons.event_available_rounded,
+        title: tr('Event Manage'),
+        description: tr(
+          'Remember birthdays, insurance renewals, and other important dates with an alarm on your phone.',
+        ),
+        details: [
+          tr('Add event name, date, and notification time'),
+          tr('Repeat yearly, monthly, weekly, or daily'),
+          tr('Hear an alarm sound when the time comes'),
+          tr('Edit or delete reminders anytime'),
+        ],
+      ),
+      _ServiceFeature(
+        icon: Icons.family_restroom,
+        title: tr('Family Members'),
+        description: tr(
+          'Share one farm account with family. The main holder chooses which options each member can use.',
+        ),
+        details: [
+          tr('Add family login under the main account'),
+          tr('Their entries stay on the same farm records'),
+          tr('Turn options on or off per member'),
+          tr('Work together on labour, dairy, and expenses'),
         ],
       ),
     ];
@@ -1461,9 +2107,11 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<void> _performLogout() async {
+    await EventAlarms.instance.cancelAll();
     await clearAuthToken();
     if (!mounted) return;
-    setState(() => _isLoggedIn = false);
+    await _refreshAuthState();
+    if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(tr('Logged out successfully'))));
@@ -1490,40 +2138,40 @@ class _MainPageState extends State<MainPage> {
                     radius: 20,
                   ),
                   SizedBox(height: 14),
-                  Text('Help Center', style: AppText.h3),
+                  Text(tr('Help Center'), style: AppText.h3),
                   SizedBox(height: 4),
-                  Text('How can we help you?', style: AppText.small),
+                  Text(tr('How can we help you?'), style: AppText.small),
                   SizedBox(height: 18),
                   _buildHelpItem(
                     Icons.article_rounded,
-                    'Getting Started',
-                    'Learn how to use AgRaz',
+                    tr('Getting Started'),
+                    tr('Learn how to use AgRaz'),
                     AppColors.info,
                   ),
                   SizedBox(height: 8),
                   _buildHelpItem(
                     Icons.contact_support_rounded,
-                    'Contact Support',
-                    'Reach out to our team',
+                    tr('Contact Support'),
+                    tr('Reach out to our team'),
                     AppColors.warning,
                   ),
                   SizedBox(height: 8),
                   _buildHelpItem(
                     Icons.quiz_rounded,
-                    'FAQ',
-                    'Frequently asked questions',
+                    tr('FAQ'),
+                    tr('Frequently asked questions'),
                     AppColors.accent,
                   ),
                   SizedBox(height: 8),
                   _buildHelpItem(
                     Icons.feedback_rounded,
-                    'Send Feedback',
-                    'Help us improve',
+                    tr('Send Feedback'),
+                    tr('Help us improve'),
                     AppColors.primary,
                   ),
                   SizedBox(height: 18),
                   PrimaryButton(
-                    label: 'Close',
+                    label: tr('Close'),
                     icon: Icons.close_rounded,
                     onPressed: () => Navigator.pop(ctx),
                     height: 48,

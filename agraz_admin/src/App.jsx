@@ -20,7 +20,11 @@ import EntryAnalytics from "./pages/EntryAnalytics";
 import AppContentAdmin from "./pages/AppContentAdmin";
 import OrganizationsAdmin from "./pages/OrganizationsAdmin";
 import Login from "./pages/Login";
+import PublicServiceRegister from "./pages/PublicServiceRegister";
 import RtcEntryAdmin from "./pages/RtcEntryAdmin";
+import DairyAdmin from "./pages/DairyAdmin";
+import DocumentsAdmin from "./pages/DocumentsAdmin";
+import EventsAdmin from "./pages/EventsAdmin";
 import { logoutAndRedirect } from "./lib/authStorage";
 import "./App.css";
 
@@ -51,8 +55,9 @@ function App() {
   return (
     <Router basename={routerBasename && routerBasename !== "/" ? routerBasename : undefined}>
       <Routes>
-        {/* Public Routes */}
+        {/* Public Routes — no login */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register-service" element={<PublicServiceRegister />} />
         
         {/* Protected Routes */}
         <Route path="/" element={<Navigate to="/home" replace />} />
@@ -139,6 +144,18 @@ function App() {
 
         <Route path="/rtc-entry" element={
           <ProtectedRoute><RtcEntryAdmin /></ProtectedRoute>
+        } />
+
+        <Route path="/dairy" element={
+          <ProtectedRoute><DairyAdmin /></ProtectedRoute>
+        } />
+
+        <Route path="/documents" element={
+          <ProtectedRoute><DocumentsAdmin /></ProtectedRoute>
+        } />
+
+        <Route path="/events" element={
+          <ProtectedRoute><EventsAdmin /></ProtectedRoute>
         } />
         
         <Route path="/auditlogs" element={

@@ -28,6 +28,7 @@ import {
   uploadServiceProviderPhoto,
   uploadCustomServiceImage,
 } from "../api/api";
+import { Link } from "react-router-dom";
 import ServiceRegistrationMapPicker from "../components/ServiceRegistrationMapPicker";
 import "./ServiceRegistrations.css";
 
@@ -439,7 +440,10 @@ const ServiceRegistrations = () => {
           <ClipboardList className="header-icon" />
           <div>
             <h1>Service registrations</h1>
-            <p>Review, approve, edit, and manage service provider sign-ups</p>
+            <p>
+              Review, approve, edit, and manage service provider sign-ups. Public form (no login):{" "}
+              <Link to="/register-service">/register-service</Link>
+            </p>
           </div>
         </div>
       </div>

@@ -399,7 +399,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
-              Text('Loading market data…',
+              Text(tr('Loading market data…'),
                   style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
             ],
           ),
@@ -418,7 +418,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
           children: [
             const Icon(Icons.cloud_off_rounded, color: AppColors.expense, size: 34),
             SizedBox(height: 10),
-            Text('Could not load data',
+            Text(tr('Could not load data'),
                 style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -492,7 +492,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('REPORT DATE', style: AppText.caption),
+                  Text(tr('REPORT DATE'), style: AppText.caption),
                   SizedBox(height: 2),
                   Text(
                     DateFormat('EEEE, d MMM yyyy').format(_selectedDate),
@@ -758,10 +758,10 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: Row(
         children: [
-          Expanded(flex: 2, child: Text('VARIETY', style: style)),
-          Expanded(child: Text('MIN', textAlign: TextAlign.right, style: style)),
-          Expanded(child: Text('MAX', textAlign: TextAlign.right, style: style)),
-          Expanded(child: Text('AVG', textAlign: TextAlign.right, style: style)),
+          Expanded(flex: 2, child: Text(tr('VARIETY'), style: style)),
+          Expanded(child: Text(tr('MIN'), textAlign: TextAlign.right, style: style)),
+          Expanded(child: Text(tr('MAX'), textAlign: TextAlign.right, style: style)),
+          Expanded(child: Text(tr('AVG'), textAlign: TextAlign.right, style: style)),
         ],
       ),
     );

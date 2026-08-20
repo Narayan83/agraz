@@ -4,5 +4,6 @@ DEPLOY_SECRETS.local.md
 .vps_credentials
 DEPLOY_SECRETS.local
 *.local.env
+.env.local
 .DS_Store
 Thumbs.db

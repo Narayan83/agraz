@@ -67,6 +67,12 @@ cat > "$APP_DIR/.env" <<EOF
 PORT=8000
 DB_CONNECTION_STRING=host=127.0.0.1 user=$DB_USER password=$DB_PASS dbname=$DB_NAME port=5432 sslmode=disable
 JWT_SECRET=$JWT_SECRET
+SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+SMTP_PORT=${SMTP_PORT:-587}
+SMTP_USER=${SMTP_USER:-}
+SMTP_PASSWORD=${SMTP_PASSWORD:-}
+SMTP_FROM=${SMTP_FROM:-${SMTP_USER:-}}
+SMTP_FROM_NAME=${SMTP_FROM_NAME:-Agraz}
 EOF
 chmod 600 "$APP_DIR/.env"
 chown -R www-data:www-data "$APP_DIR/uploads"

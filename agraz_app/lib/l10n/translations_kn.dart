@@ -6,6 +6,11 @@ const Map<String, String> kKannadaTranslations = {
   'Close': 'ಮುಚ್ಚಿ',
   'Save': 'ಉಳಿಸಿ',
   'Update': 'ನವೀಕರಿಸಿ',
+  'Later': 'ನಂತರ',
+  'Update available': 'ನವೀಕರಣ ಲಭ್ಯವಿದೆ',
+  'A new version of AgRaz is available. Update now without opening Play Store? You will be logged out so new features work after login.':
+      'ಆಗ್ರಾಝ್‌ನ ಹೊಸ ಆವೃತ್ತಿ ಲಭ್ಯವಿದೆ. ಪ್ಲೇ ಸ್ಟೋರ್ ತೆರೆಯದೆ ಈಗ ನವೀಕರಿಸುವುದೇ? ಹೊಸ ಸೌಲಭ್ಯಗಳು ಕೆಲಸ ಮಾಡಲು ನೀವು ಲಾಗ್ ಔಟ್ ಆಗುತ್ತೀರಿ, ನಂತರ ಮತ್ತೆ ಲಾಗಿನ್ ಮಾಡಿ.',
+  'Could not open Play Store': 'ಪ್ಲೇ ಸ್ಟೋರ್ ತೆರೆಯಲಾಗಲಿಲ್ಲ',
   'Delete': 'ಅಳಿಸಿ',
   'Edit': 'ಸಂಪಾದಿಸಿ',
   'Retry': 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
@@ -154,6 +159,18 @@ const Map<String, String> kKannadaTranslations = {
   'Reset password': 'ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಿ',
   'Enter the email and phone number used at registration to set a new password.':
       'ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ಹೊಂದಿಸಲು ನೋಂದಣಿಯಲ್ಲಿ ಬಳಸಿದ ಇಮೇಲ್ ಮತ್ತು ಫೋನ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ.',
+  'Enter your account email. We will send a 6-digit code to reset your password.':
+      'ನಿಮ್ಮ ಖಾತೆ ಇಮೇಲ್ ನಮೂದಿಸಿ. ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಲು 6 ಅಂಕಿಯ ಕೋಡ್ ಕಳುಹಿಸುತ್ತೇವೆ.',
+  'Enter the 6-digit code we sent to your email.':
+      'ನಿಮ್ಮ ಇಮೇಲ್‌ಗೆ ಕಳುಹಿಸಿದ 6 ಅಂಕಿಯ ಕೋಡ್ ನಮೂದಿಸಿ.',
+  'Code verified. Set a new password for your account.':
+      'ಕೋಡ್ ಪರಿಶೀಲಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಖಾತೆಗೆ ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ಹೊಂದಿಸಿ.',
+  'Send code': 'ಕೋಡ್ ಕಳುಹಿಸಿ',
+  'Verify code': 'ಕೋಡ್ ಪರಿಶೀಲಿಸಿ',
+  'Resend code': 'ಕೋಡ್ ಮತ್ತೆ ಕಳುಹಿಸಿ',
+  'Verification code': 'ಪರಿಶೀಲನಾ ಕೋಡ್',
+  'Enter the 6-digit code': '6 ಅಂಕಿಯ ಕೋಡ್ ನಮೂದಿಸಿ',
+  'Request failed': 'ವಿನಂತಿ ವಿಫಲವಾಗಿದೆ',
   'Email is required': 'ಇಮೇಲ್ ಅಗತ್ಯವಿದೆ',
   'Enter a valid email': 'ಮಾನ್ಯ ಇಮೇಲ್ ನಮೂದಿಸಿ',
   'Phone number': 'ಫೋನ್ ಸಂಖ್ಯೆ',
@@ -162,19 +179,31 @@ const Map<String, String> kKannadaTranslations = {
   'Confirm password': 'ಪಾಸ್‌ವರ್ಡ್ ದೃಢೀಕರಿಸಿ',
 
   // Main / drawer
+  'Enjoy free version for {0} days': 'ಉಚಿತ ಆವೃತ್ತಿಯನ್ನು {0} ದಿನಗಳವರೆಗೆ ಆನಂದಿಸಿ',
+  'Enjoy free version for {0} day': 'ಉಚಿತ ಆವೃತ್ತಿಯನ್ನು {0} ದಿನದವರೆಗೆ ಆನಂದಿಸಿ',
   'About Team': 'ತಂಡದ ಬಗ್ಗೆ',
   'Settings': 'ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
   'Our Services for Farmers': 'ರೈತರಿಗಾಗಿ ನಮ್ಮ ಸೇವೆಗಳು',
   'Why Choose AgRaz?': 'ಆಗ್ರಾಝ್ ಏಕೆ ಆಯ್ಕೆಮಾಡಬೇಕು?',
   'AI-driven insights tailored to your farm': 'ನಿಮ್ಮ ಜಮೀನಿಗೆ ಅನುಗುಣವಾದ AI ಆಧಾರಿತ ಒಳನೋಟಗಳು',
   'Works offline & syncs automatically': 'ಆಫ್‌ಲೈನ್‌ನಲ್ಲಿ ಕೆಲಸ ಮಾಡುತ್ತದೆ ಮತ್ತು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಸಿಂಕ್ ಆಗುತ್ತದೆ',
+  'Saved on this device - will sync when online':
+      'ಈ ಸಾಧನದಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ — ಆನ್‌ಲೈನ್ ಆದಾಗ ಸಿಂಕ್ ಆಗುತ್ತದೆ',
+  '1 change waiting to sync': '1 ಬದಲಾವಣೆ ಸಿಂಕ್ ಆಗಲು ಕಾಯುತ್ತಿದೆ',
+  '{0} changes waiting to sync': '{0} ಬದಲಾವಣೆಗಳು ಸಿಂಕ್ ಆಗಲು ಕಾಯುತ್ತಿವೆ',
+  'Syncing saved changes…': 'ಉಳಿಸಿದ ಬದಲಾವಣೆಗಳನ್ನು ಸಿಂಕ್ ಮಾಡಲಾಗುತ್ತಿದೆ…',
+  'Offline. Changes will sync automatically.':
+      'ಆಫ್‌ಲೈನ್. ಬದಲಾವಣೆಗಳು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಸಿಂಕ್ ಆಗುತ್ತವೆ.',
   'Available in local languages': 'ಸ್ಥಳೀಯ ಭಾಷೆಗಳಲ್ಲಿ ಲಭ್ಯ',
   'Backed by agriculture experts': 'ಕೃಷಿ ತಜ್ಞರ ಬೆಂಬಲ',
   'Secure and farmer-first design': 'ಸುರಕ್ಷಿತ ಮತ್ತು ರೈತ-ಮೊದಲ ವಿನ್ಯಾಸ',
   'MENU': 'ಮೆನು',
   'Home': 'ಮುಖಪುಟ',
   'Income & Expense': 'ಆದಾಯ ಮತ್ತು ವೆಚ್ಚ',
+  'Manage Organization': 'ಸಂಸ್ಥೆ ನಿರ್ವಹಣೆ',
   'Labour Management': 'ಕೂಲಿ ನಿರ್ವಹಣೆ',
+  'Future Plans': 'ಭವಿಷ್ಯ ಯೋಜನೆಗಳು',
+  'Family Members': 'ಕುಟುಂಬ ಸದಸ್ಯರು',
   'Market Reports': 'ಮಾರುಕಟ್ಟೆ ವರದಿಗಳು',
   'Weather': 'ಹವಾಮಾನ',
   'Weather Report': 'ಹವಾಮಾನ ವರದಿ',
@@ -257,6 +286,139 @@ const Map<String, String> kKannadaTranslations = {
   'Customizable dashboard views': 'ಕಸ್ಟಮೈಸ್ ಮಾಡಬಹುದಾದ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ವೀಕ್ಷಣೆಗಳು',
   'Real-time data updates': 'ನೈಜ-ಸಮಯದ ಡೇಟಾ ನವೀಕರಣಗಳು',
   'Export reports for analysis': 'ವಿಶ್ಲೇಷಣೆಗಾಗಿ ವರದಿಗಳನ್ನು ರಫ್ತು ಮಾಡಿ',
+  'Log crop-wise income and spending, and see monthly reports so you always know the farm balance.':
+      'ಬೆಳೆವಾರು ಆದಾಯ ಮತ್ತು ಖರ್ಚು ದಾಖಲಿಸಿ, ಮಾಸಿಕ ವರದಿಗಳನ್ನು ನೋಡಿ — ಜಮೀನಿನ ಬಾಕಿ ಯಾವಾಗಲೂ ತಿಳಿದಿರುತ್ತದೆ.',
+  'Record income and expense by crop and season':
+      'ಬೆಳೆ ಮತ್ತು ಋತುವಿನ ಪ್ರಕಾರ ಆದಾಯ ಮತ್ತು ವೆಚ್ಚವನ್ನು ದಾಖಲಿಸಿ',
+  'Categorize daily and seasonal spending':
+      'ದೈನಂದಿನ ಮತ್ತು ಋತುವಾರು ಖರ್ಚನ್ನು ವರ್ಗೀಕರಿಸಿ',
+  'Generate monthly reports': 'ಮಾಸಿಕ ವರದಿಗಳನ್ನು ರಚಿಸಿ',
+  'Keep a clear running balance': 'ಸ್ಪಷ್ಟ ಚಾಲ್ತಿ ಬಾಕಿ ಇರಿಸಿ',
+  'Organize farms, groups, and agribusiness units with shared records in one place.':
+      'ಜಮೀನುಗಳು, ಗುಂಪುಗಳು ಮತ್ತು ಕೃಷಿ ಘಟಕಗಳನ್ನು ಹಂಚಿದ ದಾಖಲೆಗಳೊಂದಿಗೆ ಒಂದೇ ಸ್ಥಳದಲ್ಲಿ ಸಂಘಟಿಸಿ.',
+  'Create and manage farm organizations':
+      'ಕೃಷಿ ಸಂಸ್ಥೆಗಳನ್ನು ರಚಿಸಿ ಮತ್ತು ನಿರ್ವಹಿಸಿ',
+  'Keep contacts and unit details together':
+      'ಸಂಪರ್ಕಗಳು ಮತ್ತು ಘಟಕ ವಿವರಗಳನ್ನು ಒಟ್ಟಿಗೆ ಇರಿಸಿ',
+  'Share organization reports with your team':
+      'ಸಂಸ್ಥೆ ವರದಿಗಳನ್ನು ನಿಮ್ಮ ತಂಡದೊಂದಿಗೆ ಹಂಚಿಕೊಳ್ಳಿ',
+  'Switch between farm units easily': 'ಕೃಷಿ ಘಟಕಗಳ ನಡುವೆ ಸುಲಭವಾಗಿ ಬದಲಿಸಿ',
+  'Maintain labour names, rates, categories, and payments with daily and seasonal summaries.':
+      'ಕೂಲಿ ಹೆಸರು, ದರ, ವರ್ಗ ಮತ್ತು ಪಾವತಿಗಳನ್ನು ದೈನಂದಿನ ಮತ್ತು ಋತುವಾರು ಸಾರಾಂಶಗಳೊಂದಿಗೆ ನಿರ್ವಹಿಸಿ.',
+  'Save labour names, gender, shift, and category':
+      'ಕೂಲಿ ಹೆಸರು, ಲಿಂಗ, ಶಿಫ್ಟ್ ಮತ್ತು ವರ್ಗವನ್ನು ಉಳಿಸಿ',
+  'Set and update rates quickly': 'ದರಗಳನ್ನು ತ್ವರಿತವಾಗಿ ಹೊಂದಿಸಿ ಮತ್ತು ನವೀಕರಿಸಿ',
+  'Track rent, food, and bonus costs':
+      'ಬಾಡಿಗೆ, ಆಹಾರ ಮತ್ತು ಬೋನಸ್ ವೆಚ್ಚಗಳನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಿ',
+  'Export labour summaries for payroll':
+      'ವೇತನಕ್ಕಾಗಿ ಕೂಲಿ ಸಾರಾಂಶಗಳನ್ನು ರಫ್ತು ಮಾಡಿ',
+  'Enter daily work and share it with family members so they can confirm what was done.':
+      'ದೈನಂದಿನ ಕೆಲಸವನ್ನು ನಮೂದಿಸಿ ಮತ್ತು ಕುಟುಂಬ ಸದಸ್ಯರೊಂದಿಗೆ ಹಂಚಿ, ಅವರು ದೃಢೀಕರಿಸಲಿ.',
+  'Record work by date, shift, and category':
+      'ದಿನಾಂಕ, ಶಿಫ್ಟ್ ಮತ್ತು ವರ್ಗದ ಪ್ರಕಾರ ಕೆಲಸ ದಾಖಲಿಸಿ',
+  'Share entries with family for confirmation':
+      'ದೃಢೀಕರಣಕ್ಕಾಗಿ ನಮೂದುಗಳನ್ನು ಕುಟುಂಬದೊಂದಿಗೆ ಹಂಚಿ',
+  'See pending work waiting for approval':
+      'ಅನುಮೋದನೆಗಾಗಿ ಕಾಯುತ್ತಿರುವ ಕೆಲಸವನ್ನು ನೋಡಿ',
+  'Keep a complete work history': 'ಸಂಪೂರ್ಣ ಕೆಲಸದ ಇತಿಹಾಸವನ್ನು ಇರಿಸಿ',
+  'For farmers: record milk given or bought, morning and evening shifts, and payments receivable.':
+      'ರೈತರಿಗೆ: ಕೊಟ್ಟ ಅಥವಾ ಖರೀದಿಸಿದ ಹಾಲು, ಬೆಳಿಗ್ಗೆ ಮತ್ತು ಸಂಜೆ ಶಿಫ್ಟ್, ಮತ್ತು ಬಾಕಿ ಪಾವತಿಗಳನ್ನು ದಾಖಲಿಸಿ.',
+  'Log milk given and milk bought in liters':
+      'ಕೊಟ್ಟ ಮತ್ತು ಖರೀದಿಸಿದ ಹಾಲನ್ನು ಲೀಟರ್‌ನಲ್ಲಿ ದಾಖಲಿಸಿ',
+  'Capture morning and evening shifts': 'ಬೆಳಿಗ್ಗೆ ಮತ್ತು ಸಂಜೆ ಶಿಫ್ಟ್‌ಗಳನ್ನು ದಾಖಲಿಸಿ',
+  'Record payments received and made':
+      'ಸ್ವೀಕರಿಸಿದ ಮತ್ತು ನೀಡಿದ ಪಾವತಿಗಳನ್ನು ದಾಖಲಿಸಿ',
+  'See receivable totals automatically':
+      'ಬಾಕಿ ಮೊತ್ತಗಳನ್ನು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ನೋಡಿ',
+  'For dairy owners: manage customers, milk collection, sales, and amounts payable.':
+      'ಡೈರಿ ಮಾಲೀಕರಿಗೆ: ಗ್ರಾಹಕರು, ಹಾಲು ಸಂಗ್ರಹ, ಮಾರಾಟ ಮತ್ತು ಕೊಡಬೇಕಾದ ಮೊತ್ತವನ್ನು ನಿರ್ವಹಿಸಿ.',
+  'Save customer name, mobile, village, and default rate':
+      'ಗ್ರಾಹಕರ ಹೆಸರು, ಮೊಬೈಲ್, ಗ್ರಾಮ ಮತ್ತು ಡೀಫಾಲ್ಟ್ ದರವನ್ನು ಉಳಿಸಿ',
+  'Record milk collected and milk sold':
+      'ಸಂಗ್ರಹಿಸಿದ ಮತ್ತು ಮಾರಾಟವಾದ ಹಾಲನ್ನು ದಾಖಲಿಸಿ',
+  'Track paid and received amounts':
+      'ನೀಡಿದ ಮತ್ತು ಸ್ವೀಕರಿಸಿದ ಮೊತ್ತಗಳನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಿ',
+  'View owner summary of liters and payable':
+      'ಲೀಟರ್ ಮತ್ತು ಕೊಡಬೇಕಾದ ಮೊತ್ತದ ಮಾಲೀಕ ಸಾರಾಂಶವನ್ನು ನೋಡಿ',
+  'Keep farm notes, checklists, and reminders so nothing important is forgotten.':
+      'ಕೃಷಿ ಟಿಪ್ಪಣಿಗಳು, ಚೆಕ್‌ಲಿಸ್ಟ್‌ಗಳು ಮತ್ತು ಜ್ಞಾಪನೆಗಳನ್ನು ಇರಿಸಿ — ಮುಖ್ಯವಾದುದು ಮರೆಯಾಗದಂತೆ.',
+  'Create lists and checklists': 'ಪಟ್ಟಿಗಳು ಮತ್ತು ಚೆಕ್‌ಲಿಸ್ಟ್‌ಗಳನ್ನು ರಚಿಸಿ',
+  'Mark tasks done as you work': 'ಕೆಲಸ ಮಾಡುತ್ತಿದ್ದಂತೆ ಕಾರ್ಯಗಳನ್ನು ಮುಗಿದೆ ಎಂದು ಗುರುತಿಸಿ',
+  'Use icons for money, work, food, and more':
+      'ಹಣ, ಕೆಲಸ, ಆಹಾರ ಮತ್ತು ಇನ್ನಷ್ಟಕ್ಕೆ ಐಕಾನ್‌ಗಳನ್ನು ಬಳಸಿ',
+  'Find notes quickly when you need them':
+      'ಬೇಕಾದಾಗ ಟಿಪ್ಪಣಿಗಳನ್ನು ತ್ವರಿತವಾಗಿ ಹುಡುಕಿ',
+  'Plan upcoming farm work and budgets so you can prepare money, labour, and materials in advance.':
+      'ಮುಂದಿನ ಕೃಷಿ ಕೆಲಸ ಮತ್ತು ಬಜೆಟ್ ಯೋಜಿಸಿ — ಹಣ, ಕೂಲಿ ಮತ್ತು ಸಾಮಗ್ರಿಗಳನ್ನು ಮುಂಚಿತವಾಗಿ ಸಿದ್ಧಪಡಿಸಿ.',
+  'List planned work with dates': 'ದಿನಾಂಕಗಳೊಂದಿಗೆ ಯೋಜಿತ ಕೆಲಸವನ್ನು ಪಟ್ಟಿ ಮಾಡಿ',
+  'Attach estimated costs in rupees': 'ಅಂದಾಜು ವೆಚ್ಚವನ್ನು ರೂಪಾಯಿಯಲ್ಲಿ ಸೇರಿಸಿ',
+  'Track what is still pending': 'ಇನ್ನೂ ಬಾಕಿ ಇರುವುದನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಿ',
+  'Review plans before the season starts':
+      'ಋತು ಆರಂಭವಾಗುವ ಮೊದಲು ಯೋಜನೆಗಳನ್ನು ಪರಿಶೀಲಿಸಿ',
+  'Compare live APMC and market rates so you can sell at a better price.':
+      'ಲೈವ್ ಎಪಿಎಂಸಿ ಮತ್ತು ಮಾರುಕಟ್ಟೆ ದರಗಳನ್ನು ಹೋಲಿಸಿ — ಉತ್ತಮ ಬೆಲೆಗೆ ಮಾರಾಟ ಮಾಡಿ.',
+  'See arrivals, traded quantity, and varieties':
+      'ಆಗಮನ, ವ್ಯಾಪಾರ ಪ್ರಮಾಣ ಮತ್ತು ವೈವಿಧ್ಯಗಳನ್ನು ನೋಡಿ',
+  'Compare prices across markets and taluks':
+      'ಮಾರುಕಟ್ಟೆಗಳು ಮತ್ತು ತಾಲೂಕುಗಳಾದ್ಯಂತ ಬೆಲೆ ಹೋಲಿಸಿ',
+  'Follow agents and APMC updates': 'ಏಜೆಂಟ್ ಮತ್ತು ಎಪಿಎಂಸಿ ನವೀಕರಣಗಳನ್ನು ಅನುಸರಿಸಿ',
+  'Spot better selling opportunities': 'ಉತ್ತಮ ಮಾರಾಟ ಅವಕಾಶಗಳನ್ನು ಗುರುತಿಸಿ',
+  'Get local weather, a 7-day forecast, and farm advice for the week ahead.':
+      'ಸ್ಥಳೀಯ ಹವಾಮಾನ, 7 ದಿನದ ಮುನ್ಸೂಚನೆ ಮತ್ತು ಮುಂದಿನ ವಾರದ ಕೃಷಿ ಸಲಹೆ ಪಡೆಯಿರಿ.',
+  'View temperature, rain chance, and wind':
+      'ತಾಪಮಾನ, ಮಳೆ ಸಾಧ್ಯತೆ ಮತ್ತು ಗಾಳಿಯನ್ನು ನೋಡಿ',
+  'Check a 7-day forecast': '7 ದಿನದ ಮುನ್ಸೂಚನೆಯನ್ನು ಪರಿಶೀಲಿಸಿ',
+  'Read farm advice for the next week': 'ಮುಂದಿನ ವಾರದ ಕೃಷಿ ಸಲಹೆಯನ್ನು ಓದಿ',
+  'Reports refresh automatically': 'ವರದಿಗಳು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ನವೀಕರಿಸುತ್ತವೆ',
+  'Find local agri services you need — from equipment to repair and farm support.':
+      'ನಿಮಗೆ ಬೇಕಾದ ಸ್ಥಳೀಯ ಕೃಷಿ ಸೇವೆಗಳನ್ನು ಹುಡುಕಿ — ಉಪಕರಣ, ರಿಪೇರಿ ಮತ್ತು ಕೃಷಿ ಬೆಂಬಲ.',
+  'Browse service categories near you':
+      'ನಿಮ್ಮ ಸಮೀಪದ ಸೇವಾ ವರ್ಗಗಳನ್ನು ಬ್ರೌಸ್ ಮಾಡಿ',
+  'Register your own service for farmers':
+      'ರೈತರಿಗಾಗಿ ನಿಮ್ಮ ಸೇವೆಯನ್ನು ನೋಂದಾಯಿಸಿ',
+  'Reach trusted local providers': 'ನಂಬಲರ್ಹ ಸ್ಥಳೀಯ ಸೇವಾದಾರರನ್ನು ತಲುಪಿ',
+  'Keep service contacts in the app': 'ಸೇವಾ ಸಂಪರ್ಕಗಳನ್ನು ಆ್ಯಪ್‌ನಲ್ಲಿ ಇರಿಸಿ',
+  'Trade seeds, fertilizers, pesticides, and harvested crops with trusted vendors and buyers.':
+      'ನಂಬಲರ್ಹ ಮಾರಾಟಗಾರರು ಮತ್ತು ಖರೀದಿದಾರರೊಂದಿಗೆ ಬೀಜ, ಗೊಬ್ಬರ, ಕೀಟನಾಶಕ ಮತ್ತು ಕೊಯ್ಲು ಬೆಳೆಗಳನ್ನು ವ್ಯಾಪಾರ ಮಾಡಿ.',
+  'List produce and agri inputs': 'ಉತ್ಪನ್ನ ಮತ್ತು ಕೃಷಿ ಒಳಹರಿವುಗಳನ್ನು ಪಟ್ಟಿ ಮಾಡಿ',
+  'Connect with verified vendors and buyers':
+      'ಪರಿಶೀಲಿತ ಮಾರಾಟಗಾರರು ಮತ್ತು ಖರೀದಿದಾರರೊಂದಿಗೆ ಸಂಪರ್ಕಿಸಿ',
+  'Check market-linked prices': 'ಮಾರುಕಟ್ಟೆ ಸಂಬಂಧಿತ ಬೆಲೆಗಳನ್ನು ಪರಿಶೀಲಿಸಿ',
+  'Sell farm-to-market from your phone':
+      'ನಿಮ್ಮ ಫೋನ್‌ನಿಂದ ಜಮೀನಿನಿಂದ ಮಾರುಕಟ್ಟೆಗೆ ಮಾರಾಟ ಮಾಡಿ',
+  'Learn better farming practices with practical guidance from agriculture experts.':
+      'ಕೃಷಿ ತಜ್ಞರ ಪ್ರಾಯೋಗಿಕ ಮಾರ್ಗದರ್ಶನದೊಂದಿಗೆ ಉತ್ತಮ ಕೃಷಿ ಪದ್ಧತಿಗಳನ್ನು ಕಲಿಯಿರಿ.',
+  'Read crop and farm education content':
+      'ಬೆಳೆ ಮತ್ತು ಕೃಷಿ ಶಿಕ್ಷಣ ವಿಷಯವನ್ನು ಓದಿ',
+  'Follow expert-backed practices': 'ತಜ್ಞರ ಬೆಂಬಲಿತ ಪದ್ಧತಿಗಳನ್ನು ಅನುಸರಿಸಿ',
+  'Learn in English or Kannada': 'ಇಂಗ್ಲಿಷ್ ಅಥವಾ ಕನ್ನಡದಲ್ಲಿ ಕಲಿಯಿರಿ',
+  'Apply tips to your own farm': 'ಸಲಹೆಗಳನ್ನು ನಿಮ್ಮ ಜಮೀನಿಗೆ ಅನ್ವಯಿಸಿ',
+  'Discover agricultural loans, insurance, and government schemes that can support your farm.':
+      'ನಿಮ್ಮ ಜಮೀನಿಗೆ ಬೆಂಬಲ ನೀಡುವ ಕೃಷಿ ಸಾಲ, ವಿಮೆ ಮತ್ತು ಸರ್ಕಾರಿ ಯೋಜನೆಗಳನ್ನು ಕಂಡುಕೊಳ್ಳಿ.',
+  'Browse government schemes and facilities':
+      'ಸರ್ಕಾರಿ ಯೋಜನೆಗಳು ಮತ್ತು ಸೌಲಭ್ಯಗಳನ್ನು ಬ್ರೌಸ್ ಮಾಡಿ',
+  'Find loan and insurance information': 'ಸಾಲ ಮತ್ತು ವಿಮೆ ಮಾಹಿತಿಯನ್ನು ಹುಡುಕಿ',
+  'Track schemes relevant to your farm':
+      'ನಿಮ್ಮ ಜಮೀನಿಗೆ ಸಂಬಂಧಿಸಿದ ಯೋಜನೆಗಳನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಿ',
+  'Keep important facility details handy':
+      'ಮುಖ್ಯ ಸೌಲಭ್ಯ ವಿವರಗಳನ್ನು ಸಿದ್ಧವಾಗಿರಿಸಿ',
+  'Store land RTC records and survey details so farm land information stays with you.':
+      'ಭೂಮಿ ಆರ್‌ಟಿಸಿ ದಾಖಲೆಗಳು ಮತ್ತು ಸರ್ವೆ ವಿವರಗಳನ್ನು ಇರಿಸಿ — ಜಮೀನು ಮಾಹಿತಿ ನಿಮ್ಮ ಬಳಿ ಇರಲಿ.',
+  'Enter RTC and survey details': 'ಆರ್‌ಟಿಸಿ ಮತ್ತು ಸರ್ವೆ ವಿವರಗಳನ್ನು ನಮೂದಿಸಿ',
+  'Keep land records in one place': 'ಭೂಮಿ ದಾಖಲೆಗಳನ್ನು ಒಂದೇ ಸ್ಥಳದಲ್ಲಿ ಇರಿಸಿ',
+  'Update entries when records change':
+      'ದಾಖಲೆಗಳು ಬದಲಾದಾಗ ನಮೂದುಗಳನ್ನು ನವೀಕರಿಸಿ',
+  'Refer back anytime you need them': 'ಬೇಕಾದಾಗಲೂ ಮರಳಿ ನೋಡಿ',
+  'Share one farm account with family. The main holder chooses which options each member can use.':
+      'ಒಂದು ಕೃಷಿ ಖಾತೆಯನ್ನು ಕುಟುಂಬದೊಂದಿಗೆ ಹಂಚಿ. ಮುಖ್ಯ ಖಾತೆದಾರರು ಪ್ರತಿ ಸದಸ್ಯ ಯಾವ ಆಯ್ಕೆಗಳನ್ನು ಬಳಸಬಹುದು ಎಂದು ಆಯ್ಕೆ ಮಾಡುತ್ತಾರೆ.',
+  'Add family login under the main account':
+      'ಮುಖ್ಯ ಖಾತೆಯ ಅಡಿಯಲ್ಲಿ ಕುಟುಂಬ ಲಾಗಿನ್ ಸೇರಿಸಿ',
+  'Their entries stay on the same farm records':
+      'ಅವರ ನಮೂದುಗಳು ಅದೇ ಕೃಷಿ ದಾಖಲೆಗಳಲ್ಲಿ ಉಳಿಯುತ್ತವೆ',
+  'Turn options on or off per member':
+      'ಪ್ರತಿ ಸದಸ್ಯರಿಗೆ ಆಯ್ಕೆಗಳನ್ನು ಆನ್ ಅಥವಾ ಆಫ್ ಮಾಡಿ',
+  'Work together on labour, dairy, and expenses':
+      'ಕೂಲಿ, ಡೈರಿ ಮತ್ತು ವೆಚ್ಚಗಳಲ್ಲಿ ಒಟ್ಟಾಗಿ ಕೆಲಸ ಮಾಡಿ',
   'Learn more': 'ಇನ್ನಷ್ಟು ತಿಳಿಯಿರಿ',
   'Let AgRaz Work For You': 'ಆಗ್ರಾಝ್ ನಿಮಗಾಗಿ ಕೆಲಸ ಮಾಡಲಿ',
   'AgRaz empowers farmers with the right tools to:':
@@ -299,6 +461,8 @@ const Map<String, String> kKannadaTranslations = {
   'Account': 'ಖಾತೆ',
   'Update password while signed in': 'ಸೈನ್ ಇನ್ ಆಗಿರುವಾಗ ಪಾಸ್‌ವರ್ಡ್ ನವೀಕರಿಸಿ',
   'Reset using email and phone': 'ಇಮೇಲ್ ಮತ್ತು ಫೋನ್ ಬಳಸಿ ಮರುಹೊಂದಿಸಿ',
+  'Reset using the code sent to your email':
+      'ನಿಮ್ಮ ಇಮೇಲ್‌ಗೆ ಕಳುಹಿಸಿದ ಕೋಡ್ ಬಳಸಿ ಮರುಹೊಂದಿಸಿ',
   'Preferences': 'ಆದ್ಯತೆಗಳು',
   'App notifications': 'ಅಪ್ಲಿಕೇಶನ್ ಅಧಿಸೂಚನೆಗಳು',
   'Reminders and updates (local preference)': 'ಜ್ಞಾಪನೆಗಳು ಮತ್ತು ನವೀಕರಣಗಳು (ಸ್ಥಳೀಯ ಆದ್ಯತೆ)',
@@ -557,6 +721,45 @@ const Map<String, String> kKannadaTranslations = {
       'ಈ ಸಾಧನದಲ್ಲಿ ಧ್ವನಿ ಗುರುತಿಸುವಿಕೆ ಲಭ್ಯವಿಲ್ಲ',
   'Login required to save labour': 'ಕೂಲಿ ಉಳಿಸಲು ಲಾಗಿನ್ ಅಗತ್ಯವಿದೆ',
   '{0} labourers added successfully': '{0} ಕೂಲಿ ಕಾರ್ಮಿಕರನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಸೇರಿಸಲಾಗಿದೆ',
+  'Labour Work': 'ಕೂಲಿ ಕೆಲಸ',
+  'Labour Work Entry': 'ಕೂಲಿ ಕೆಲಸ ನಮೂದು',
+  'Receivable & receipts': 'ಬರಬೇಕಾದ ಮತ್ತು ಸ್ವೀಕೃತಿಗಳು',
+  'Work Entry': 'ಕೆಲಸ ನಮೂದು',
+  'Receipt': 'ಸ್ವೀಕೃತಿ',
+  'Receivable work': 'ಬರಬೇಕಾದ ಕೆಲಸ',
+  'Money received': 'ಹಣ ಸ್ವೀಕರಿಸಲಾಗಿದೆ',
+  'Receivable': 'ಬರಬೇಕಾದುದು',
+  'Received': 'ಸ್ವೀಕರಿಸಿದುದು',
+  'Rent': 'ಬಾಡಿಗೆ',
+  'Food': 'ಆಹಾರ',
+  'Bonus': 'ಬೋನಸ್',
+  'Reject': 'ತಿರಸ್ಕರಿಸಿ',
+  'Confirm this entry?': 'ಈ ನಮೂದನ್ನು ದೃಢೀಕರಿಸುವುದೇ?',
+  'Reject this entry?': 'ಈ ನಮೂದನ್ನು ತಿರಸ್ಕರಿಸುವುದೇ?',
+  '{0} recorded work for you on {1} for {2}. Confirm to save it as receivable in your Labour Work.':
+      '{0} ಅವರು {1} ರಂದು ನಿಮಗೆ {2} ಕೆಲಸ ದಾಖಲಿಸಿದ್ದಾರೆ. ನಿಮ್ಮ ಕೂಲಿ ಕೆಲಸದಲ್ಲಿ ಬರಬೇಕಾದುದಾಗಿ ಉಳಿಸಲು ದೃಢೀಕರಿಸಿ.',
+  '{0} recorded a payment of {1} to you on {2}. Confirm to save it as a receipt in your Labour Work.':
+      '{0} ಅವರು {2} ರಂದು ನಿಮಗೆ {1} ಪಾವತಿ ದಾಖಲಿಸಿದ್ದಾರೆ. ನಿಮ್ಮ ಕೂಲಿ ಕೆಲಸದಲ್ಲಿ ಸ್ವೀಕೃತಿಯಾಗಿ ಉಳಿಸಲು ದೃಢೀಕರಿಸಿ.',
+  'This will not be added to your books. The other person\'s entry stays as-is.':
+      'ಇದು ನಿಮ್ಮ ಖಾತೆಗೆ ಸೇರುವುದಿಲ್ಲ. ಇನ್ನೊಬ್ಬರ ನಮೂದು ಹಾಗೆಯೇ ಇರುತ್ತದೆ.',
+  'Added to your work entries': 'ನಿಮ್ಮ ಕೆಲಸ ನಮೂದುಗಳಿಗೆ ಸೇರಿಸಲಾಗಿದೆ',
+  'Added to your work entries as {0}': 'ನಿಮ್ಮ ಕೆಲಸ ನಮೂದುಗಳಿಗೆ {0} ಆಗಿ ಸೇರಿಸಲಾಗಿದೆ',
+  'Entry rejected': 'ನಮೂದು ತಿರಸ್ಕರಿಸಲಾಗಿದೆ',
+  'No entries waiting for confirmation': 'ದೃಢೀಕರಣಕ್ಕಾಗಿ ನಿರೀಕ್ಷಿಸುತ್ತಿರುವ ನಮೂದುಗಳಿಲ್ಲ',
+  'Recorded you as {0}': 'ನಿಮ್ಮನ್ನು {0} ಎಂದು ದಾಖಲಿಸಲಾಗಿದೆ',
+  '{0} work entries waiting for confirmation':
+      '{0} ಕೆಲಸ ನಮೂದುಗಳು ದೃಢೀಕರಣಕ್ಕಾಗಿ ಕಾಯುತ್ತಿವೆ',
+  '1 work entry waiting for confirmation':
+      '1 ಕೆಲಸ ನಮೂದು ದೃಢೀಕರಣಕ್ಕಾಗಿ ಕಾಯುತ್ತಿದೆ',
+  'Work Reports': 'ಕೆಲಸ ವರದಿಗಳು',
+  'Receivable · Received · Balance': 'ಬರಬೇಕಾದುದು · ಸ್ವೀಕೃತಿ · ಬಾಕಿ',
+  'No entries': 'ನಮೂದುಗಳಿಲ್ಲ',
+  'Delete this work entry?': 'ಈ ಕೆಲಸ ನಮೂದನ್ನು ಅಳಿಸುವುದೇ?',
+  'Delete Entry': 'ನಮೂದು ಅಳಿಸಿ',
+  'History / Reports': 'ಇತಿಹಾಸ / ವರದಿಗಳು',
+  'Rate must be greater than zero': 'ದರ ಶೂನ್ಯಕ್ಕಿಂತ ಹೆಚ್ಚಿರಬೇಕು',
+  'Days/hour must be greater than zero': 'ದಿನಗಳು/ಗಂಟೆ ಶೂನ್ಯಕ್ಕಿಂತ ಹೆಚ್ಚಿರಬೇಕು',
+  'night': 'ರಾತ್ರಿ',
 
   // Market
   'Min / Max / Avg': 'ಕನಿಷ್ಠ / ಗರಿಷ್ಠ / ಸರಾಸರಿ',
@@ -709,4 +912,502 @@ const Map<String, String> kKannadaTranslations = {
   '5. Data Retention and Deletion': '5. ಡೇಟಾ ಉಳಿಸುವಿಕೆ ಮತ್ತು ಅಳಿಸುವಿಕೆ',
   '6. Use of Third-Party Services': '6. ಮೂರನೇ ವ್ಯಕ್ತಿ ಸೇವೆಗಳ ಬಳಕೆ',
   '7. Your Rights as a User': '7. ಬಳಕೆದಾರರಾಗಿ ನಿಮ್ಮ ಹಕ್ಕುಗಳು',
+
+  // Notes & lists
+  'Note': 'ಟಿಪ್ಪಣಿ',
+  'List': 'ಪಟ್ಟಿ',
+  'Lists': 'ಪಟ್ಟಿಗಳು',
+  'Notes & lists': 'ಟಿಪ್ಪಣಿಗಳು ಮತ್ತು ಪಟ್ಟಿಗಳು',
+  'Like Google Keep': 'ಗೂಗಲ್ ಕೀಪ್ ರೀತಿ',
+  'New Note': 'ಹೊಸ ಟಿಪ್ಪಣಿ',
+  'New List': 'ಹೊಸ ಪಟ್ಟಿ',
+  'Save note': 'ಟಿಪ್ಪಣಿ ಉಳಿಸಿ',
+  'Save list': 'ಪಟ್ಟಿ ಉಳಿಸಿ',
+  'Note saved': 'ಟಿಪ್ಪಣಿ ಉಳಿಸಲಾಗಿದೆ',
+  'List saved': 'ಪಟ್ಟಿ ಉಳಿಸಲಾಗಿದೆ',
+  'Labels': 'ಲೇಬಲ್‌ಗಳು',
+  'Label': 'ಲೇಬಲ್',
+  'List items': 'ಪಟ್ಟಿ ಐಟಂಗಳು',
+  'List item': 'ಪಟ್ಟಿ ಐಟಂ',
+  'Manage Labels': 'ಲೇಬಲ್‌ಗಳನ್ನು ನಿರ್ವಹಿಸಿ',
+  'Manage List Items': 'ಪಟ್ಟಿ ಐಟಂಗಳನ್ನು ನಿರ್ವಹಿಸಿ',
+  'Delete Label': 'ಲೇಬಲ್ ಅಳಿಸಿ',
+  'Delete this label?': 'ಈ ಲೇಬಲ್ ಅಳಿಸುವುದೇ?',
+  'Delete List Item': 'ಪಟ್ಟಿ ಐಟಂ ಅಳಿಸಿ',
+  'Delete this list item?': 'ಈ ಪಟ್ಟಿ ಐಟಂ ಅಳಿಸುವುದೇ?',
+  'Delete this note?': 'ಈ ಟಿಪ್ಪಣಿ ಅಳಿಸುವುದೇ?',
+  'No labels yet — manage labels to add some':
+      'ಇನ್ನೂ ಲೇಬಲ್‌ಗಳಿಲ್ಲ — ಸೇರಿಸಲು ಲೇಬಲ್‌ಗಳನ್ನು ನಿರ್ವಹಿಸಿ',
+  'No list items yet — manage list items to add some':
+      'ಇನ್ನೂ ಪಟ್ಟಿ ಐಟಂಗಳಿಲ್ಲ — ಸೇರಿಸಲು ಪಟ್ಟಿ ಐಟಂಗಳನ್ನು ನಿರ್ವಹಿಸಿ',
+  'Text': 'ಪಠ್ಯ',
+  'Value': 'ಮೌಲ್ಯ',
+  'Add row': 'ಸಾಲು ಸೇರಿಸಿ',
+  'Add at least one list item': 'ಕನಿಷ್ಠ ಒಂದು ಪಟ್ಟಿ ಐಟಂ ಸೇರಿಸಿ',
+  'Content is required': 'ವಿಷಯ ಅಗತ್ಯವಿದೆ',
+  'Failed to save': 'ಉಳಿಸಲು ವಿಫಲವಾಗಿದೆ',
+  'Failed to load labels': 'ಲೇಬಲ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ',
+  'Failed to load notes': 'ಟಿಪ್ಪಣಿಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ',
+  'Failed to update': 'ನವೀಕರಿಸಲು ವಿಫಲವಾಗಿದೆ',
+  'Notes History': 'ಟಿಪ್ಪಣಿ ಇತಿಹಾಸ',
+  'Search notes & lists': 'ಟಿಪ್ಪಣಿಗಳು ಮತ್ತು ಪಟ್ಟಿಗಳನ್ನು ಹುಡುಕಿ',
+  'Edit Note': 'ಟಿಪ್ಪಣಿ ಸಂಪಾದಿಸಿ',
+  'Edit List': 'ಪಟ್ಟಿ ಸಂಪಾದಿಸಿ',
+  'Icon': 'ಐಕಾನ್',
+  'Num days': 'ದಿನಗಳ ಸಂಖ್ಯೆ',
+  'Days': 'ದಿನಗಳು',
+  'Family members': 'ಕುಟುಂಬ ಸದಸ್ಯರು',
+  'Add member': 'ಸದಸ್ಯರನ್ನು ಸೇರಿಸಿ',
+  'Add family member': 'ಕುಟುಂಬ ಸದಸ್ಯರನ್ನು ಸೇರಿಸಿ',
+  'Member': 'ಸದಸ್ಯ',
+  'No family members yet': 'ಇನ್ನೂ ಕುಟುಂಬ ಸದಸ್ಯರಿಲ್ಲ',
+  'Tap Add member to create a login for someone in your family.':
+      'ನಿಮ್ಮ ಕುಟುಂಬದ ಯಾರಿಗಾದರೂ ಲಾಗಿನ್ ರಚಿಸಲು ಸದಸ್ಯರನ್ನು ಸೇರಿಸಿ ಒತ್ತಿ.',
+  'Add family members so they can log in with their own email and password. Their entries are saved to this main account. Every option is available until you turn it off for a member.':
+      'ಕುಟುಂಬ ಸದಸ್ಯರು ತಮ್ಮ ಇಮೇಲ್ ಮತ್ತು ಪಾಸ್‌ವರ್ಡ್‌ನಿಂದ ಲಾಗಿನ್ ಆಗಬಹುದು. ಅವರ ನಮೂದುಗಳು ಈ ಮುಖ್ಯ ಖಾತೆಗೆ ಉಳಿಯುತ್ತವೆ. ನೀವು ಆಯ್ಕೆಯನ್ನು ಆಫ್ ಮಾಡುವವರೆಗೆ ಎಲ್ಲಾ ಆಯ್ಕೆಗಳು ಲಭ್ಯವಿರುತ್ತವೆ.',
+  '{0} of {1} members': '{0} / {1} ಸದಸ್ಯರು',
+  'All options enabled': 'ಎಲ್ಲಾ ಆಯ್ಕೆಗಳು ಸಕ್ರಿಯವಾಗಿವೆ',
+  '{0} options disabled': '{0} ಆಯ್ಕೆಗಳು ನಿಷ್ಕ್ರಿಯ',
+  'Access disabled': 'ಪ್ರವೇಶ ನಿಷ್ಕ್ರಿಯಗೊಂಡಿದೆ',
+  'Family member created. They can sign in now.':
+      'ಕುಟುಂಬ ಸದಸ್ಯರನ್ನು ರಚಿಸಲಾಗಿದೆ. ಅವರು ಈಗ ಲಾಗಿನ್ ಆಗಬಹುದು.',
+  'Failed to add member': 'ಸದಸ್ಯರನ್ನು ಸೇರಿಸಲು ವಿಫಲವಾಗಿದೆ',
+  'This person will log in with the email and password you set. They will see this account and their entries will appear here.':
+      'ಈ ವ್ಯಕ್ತಿ ನೀವು ನೀಡಿದ ಇಮೇಲ್ ಮತ್ತು ಪಾಸ್‌ವರ್ಡ್‌ನಿಂದ ಲಾಗಿನ್ ಆಗುತ್ತಾರೆ. ಅವರು ಈ ಖಾತೆಯನ್ನು ನೋಡುತ್ತಾರೆ ಮತ್ತು ಅವರ ನಮೂದುಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ.',
+  'Create login': 'ಲಾಗಿನ್ ರಚಿಸಿ',
+  'Allow login': 'ಲಾಗಿನ್ ಅನುಮತಿಸಿ',
+  'This member can sign in': 'ಈ ಸದಸ್ಯರು ಲಾಗಿನ್ ಆಗಬಹುದು',
+  'This member cannot sign in': 'ಈ ಸದಸ್ಯರು ಲಾಗಿನ್ ಆಗಲು ಸಾಧ್ಯವಿಲ್ಲ',
+  'Option access': 'ಆಯ್ಕೆ ಪ್ರವೇಶ',
+  'All options are on by default. Turn an option off to hide it for this member.':
+      'ಎಲ್ಲಾ ಆಯ್ಕೆಗಳು ಮೊದಲೇ ಆನ್ ಆಗಿವೆ. ಈ ಸದಸ್ಯರಿಗೆ ಮರೆಮಾಡಲು ಆಯ್ಕೆಯನ್ನು ಆಫ್ ಮಾಡಿ.',
+  'Set a new password': 'ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ಹೊಂದಿಸಿ',
+  'Please sign in to manage family members.':
+      'ಕುಟುಂಬ ಸದಸ್ಯರನ್ನು ನಿರ್ವಹಿಸಲು ಲಾಗಿನ್ ಆಗಿ.',
+  'Only the main account holder can manage family members':
+      'ಮುಖ್ಯ ಖಾತೆದಾರರು ಮಾತ್ರ ಕುಟುಂಬ ಸದಸ್ಯರನ್ನು ನಿರ್ವಹಿಸಬಹುದು',
+  'Could not load family members.': 'ಕುಟುಂಬ ಸದಸ್ಯರನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.',
+  'Could not load family members. Please try again.':
+      'ಕುಟುಂಬ ಸದಸ್ಯರನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+  'Maximum family members reached': 'ಗರಿಷ್ಠ ಕುಟುಂಬ ಸದಸ್ಯರ ಸಂಖ್ಯೆ ತಲುಪಿದೆ',
+  'Enter a valid phone number': 'ಮಾನ್ಯ ಫೋನ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ',
+  'This option is disabled for your account':
+      'ಈ ಆಯ್ಕೆ ನಿಮ್ಮ ಖಾತೆಗೆ ನಿಷ್ಕ್ರಿಯಗೊಂಡಿದೆ',
+  'Add logins for family. Their entries save to this account.':
+      'ಕುಟುಂಬಕ್ಕೆ ಲಾಗಿನ್ ಸೇರಿಸಿ. ಅವರ ನಮೂದುಗಳು ಈ ಖಾತೆಗೆ ಉಳಿಯುತ್ತವೆ.',
+  'Family account': 'ಕುಟುಂಬ ಖಾತೆ',
+  'family member': 'ಕುಟುಂಬ ಸದಸ್ಯ',
+  'main account': 'ಮುಖ್ಯ ಖಾತೆ',
+  'Signed in as {0}. You are using {1}\'s account.':
+      '{0} ಆಗಿ ಲಾಗಿನ್ ಆಗಿದ್ದೀರಿ. ನೀವು {1} ಅವರ ಖಾತೆಯನ್ನು ಬಳಸುತ್ತಿದ್ದೀರಿ.',
+  'You are signed in as {0}. Account details below belong to the main holder.':
+      'ನೀವು {0} ಆಗಿ ಲಾಗಿನ್ ಆಗಿದ್ದೀರಿ. ಕೆಳಗಿನ ಖಾತೆ ವಿವರಗಳು ಮುಖ್ಯ ಖಾತೆದಾರರವು.',
+  'Update password': 'ಪಾಸ್‌ವರ್ಡ್ ನವೀಕರಿಸಿ',
+
+  // Dairy
+  'Dairy': 'ಡೈರಿ',
+  'Dairy Owner': 'ಡೈರಿ ಮಾಲೀಕ',
+  'Milk given, bought and receivable': 'ಕೊಟ್ಟ ಹಾಲು, ಖರೀದಿ ಮತ್ತು ಬಾಕಿ',
+  'Record customer milk — it shows on their account':
+      'ಗ್ರಾಹಕರ ಹಾಲು ದಾಖಲಿಸಿ — ಅದು ಅವರ ಖಾತೆಯಲ್ಲಿ ಕಾಣುತ್ತದೆ',
+  'Milk given': 'ಕೊಟ್ಟ ಹಾಲು',
+  'Milk bought': 'ಖರೀದಿಸಿದ ಹಾಲು',
+  'Payment received': 'ಸ್ವೀಕರಿಸಿದ ಪಾವತಿ',
+  'Payment made': 'ನೀಡಿದ ಪಾವತಿ',
+  'Payable': 'ಕೊಡಬೇಕಾದುದು',
+  'Entry': 'ನಮೂದು',
+  'New dairy entry': 'ಹೊಸ ಡೈರಿ ನಮೂದು',
+  'Edit dairy entry': 'ಡೈರಿ ನಮೂದು ಸಂಪಾದಿಸಿ',
+  'Entries from your dairy appear on Account automatically':
+      'ನಿಮ್ಮ ಡೈರಿಯಿಂದ ನಮೂದುಗಳು ಖಾತೆಯಲ್ಲಿ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಕಾಣುತ್ತವೆ',
+  'Dairy / party name': 'ಡೈರಿ / ವ್ಯಕ್ತಿ ಹೆಸರು',
+  'Quantity (liters)': 'ಪ್ರಮಾಣ (ಲೀಟರ್)',
+  'Rate per liter': 'ಲೀಟರ್‌ಗೆ ದರ',
+  'Dairy entry saved': 'ಡೈರಿ ನಮೂದು ಉಳಿಸಲಾಗಿದೆ',
+  'Enter dairy / party name': 'ಡೈರಿ / ವ್ಯಕ್ತಿ ಹೆಸರು ನಮೂದಿಸಿ',
+  'Delete this dairy entry?': 'ಈ ಡೈರಿ ನಮೂದನ್ನು ಅಳಿಸುವುದೇ?',
+  'No dairy entries yet': 'ಡೈರಿ ನಮೂದುಗಳು ಇನ್ನೂ ಇಲ್ಲ',
+  'From dairy': 'ಡೈರಿಯಿಂದ',
+  'Milk collected': 'ಸಂಗ್ರಹಿಸಿದ ಹಾಲು',
+  'Milk sold': 'ಮಾರಾಟವಾದ ಹಾಲು',
+  'Paid to customer': 'ಗ್ರಾಹಕರಿಗೆ ಪಾವತಿ',
+  'Received from customer': 'ಗ್ರಾಹಕರಿಂದ ಸ್ವೀಕೃತಿ',
+  'Collect milk': 'ಹಾಲು ಸಂಗ್ರಹ',
+  'Customers': 'ಗ್ರಾಹಕರು',
+  'Pick a customer': 'ಗ್ರಾಹಕರನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+  'Milk entry': 'ಹಾಲು ನಮೂದು',
+  'Edit milk entry': 'ಹಾಲು ನಮೂದು ಸಂಪಾದಿಸಿ',
+  'Customer sees this on Dairy if the mobile matches their app login':
+      'ಮೊಬೈಲ್ ಹೊಂದಿಕೆಯಾದರೆ ಗ್ರಾಹಕರ ಡೈರಿ ಪುಟದಲ್ಲಿ ಇದು ಕಾಣುತ್ತದೆ',
+  'Customer name': 'ಗ್ರಾಹಕರ ಹೆಸರು',
+  'Enter customer name': 'ಗ್ರಾಹಕರ ಹೆಸರು ನಮೂದಿಸಿ',
+  'Saved. This will show on the customer Dairy page.':
+      'ಉಳಿಸಲಾಗಿದೆ. ಇದು ಗ್ರಾಹಕರ ಡೈರಿ ಪುಟದಲ್ಲಿ ಕಾಣುತ್ತದೆ.',
+  'Saved. Customer will see this once they use this mobile in the app.':
+      'ಉಳಿಸಲಾಗಿದೆ. ಗ್ರಾಹಕರು ಈ ಮೊಬೈಲ್‌ನಿಂದ ಆ್ಯಪ್ ಬಳಸಿದಾಗ ಇದು ಕಾಣುತ್ತದೆ.',
+  'Delete this milk entry?': 'ಈ ಹಾಲು ನಮೂದನ್ನು ಅಳಿಸುವುದೇ?',
+  'Payable to farmers': 'ರೈತರಿಗೆ ಕೊಡಬೇಕಾದುದು',
+  'Add customer': 'ಗ್ರಾಹಕರನ್ನು ಸೇರಿಸಿ',
+  'Edit customer': 'ಗ್ರಾಹಕರನ್ನು ಸಂಪಾದಿಸಿ',
+  'Default rate per liter': 'ಲೀಟರ್‌ಗೆ ಡೀಫಾಲ್ಟ್ ದರ',
+  'No customers yet': 'ಗ್ರಾಹಕರು ಇನ್ನೂ ಇಲ್ಲ',
+  'In app': 'ಆ್ಯಪ್‌ನಲ್ಲಿ',
+  'Collect': 'ಸಂಗ್ರಹಿಸಿ',
+
+  // Documents
+  'Documents': 'ದಾಖಲೆಗಳು',
+  'Folder': 'ಫೋಲ್ಡರ್',
+  'New folder': 'ಹೊಸ ಫೋಲ್ಡರ್',
+  'Rename folder': 'ಫೋಲ್ಡರ್ ಮರುಹೆಸರಿಸಿ',
+  'Folder name': 'ಫೋಲ್ಡರ್ ಹೆಸರು',
+  'Member name': 'ಸದಸ್ಯರ ಹೆಸರು',
+  'e.g. a family member name': 'ಉದಾ. ಕುಟುಂಬ ಸದಸ್ಯರ ಹೆಸರು',
+  'Upload document': 'ದಾಖಲೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ',
+  'Name plus photos of Aadhaar, PAN, etc.':
+      'ಆಧಾರ್, ಪ್ಯಾನ್ ಮುಂತಾದವುಗಳ ಹೆಸರು ಮತ್ತು ಫೋಟೋಗಳು',
+  'Edit document': 'ದಾಖಲೆ ಸಂಪಾದಿಸಿ',
+  'Document': 'ದಾಖಲೆ',
+  'Document name': 'ದಾಖಲೆಯ ಹೆಸರು',
+  'Document name is required': 'ದಾಖಲೆಯ ಹೆಸರು ಅಗತ್ಯವಿದೆ',
+  'Aadhaar, PAN, Driving licence…': 'ಆಧಾರ್, ಪ್ಯಾನ್, ಚಾಲನಾ ಪರವಾನಗಿ…',
+  'Photos': 'ಫೋಟೋಗಳು',
+  'Camera': 'ಕ್ಯಾಮೆರಾ',
+  'Gallery': 'ಗ್ಯಾಲರಿ',
+  'Add at least one photo': 'ಕನಿಷ್ಠ ಒಂದು ಫೋಟೋ ಸೇರಿಸಿ',
+  'No photos': 'ಫೋಟೋಗಳಿಲ್ಲ',
+  '1 photo': '1 ಫೋಟೋ',
+  '{0} photos': '{0} ಫೋಟೋಗಳು',
+  '1 document': '1 ದಾಖಲೆ',
+  '{0} documents': '{0} ದಾಖಲೆಗಳು',
+  'Rename': 'ಮರುಹೆಸರಿಸಿ',
+  'Delete folder?': 'ಫೋಲ್ಡರ್ ಅಳಿಸುವುದೇ?',
+  'Delete "{0}" and all documents inside? This cannot be undone.':
+      '"{0}" ಮತ್ತು ಒಳಗಿನ ಎಲ್ಲಾ ದಾಖಲೆಗಳನ್ನು ಅಳಿಸುವುದೇ? ಇದನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ.',
+  'Delete document?': 'ದಾಖಲೆ ಅಳಿಸುವುದೇ?',
+  'Delete "{0}" and its photos? This cannot be undone.':
+      '"{0}" ಮತ್ತು ಅದರ ಫೋಟೋಗಳನ್ನು ಅಳಿಸುವುದೇ? ಇದನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ.',
+  'No folders or documents yet': 'ಇನ್ನೂ ಫೋಲ್ಡರ್ ಅಥವಾ ದಾಖಲೆಗಳಿಲ್ಲ',
+  'No documents in this folder': 'ಈ ಫೋಲ್ಡರ್‌ನಲ್ಲಿ ದಾಖಲೆಗಳಿಲ್ಲ',
+  'Tap Add to create a folder or upload a document.':
+      'ಫೋಲ್ಡರ್ ರಚಿಸಲು ಅಥವಾ ದಾಖಲೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಲು ಸೇರಿಸಿ ಒತ್ತಿ.',
+  'Create a folder for each family member, then add papers such as Aadhaar and PAN with photos. You can also upload a document without a folder.':
+      'ಪ್ರತಿ ಕುಟುಂಬ ಸದಸ್ಯರಿಗೆ ಒಂದು ಫೋಲ್ಡರ್ ರಚಿಸಿ, ನಂತರ ಆಧಾರ್, ಪ್ಯಾನ್ ಮುಂತಾದ ದಾಖಲೆಗಳನ್ನು ಫೋಟೋಗಳೊಂದಿಗೆ ಸೇರಿಸಿ. ಫೋಲ್ಡರ್ ಇಲ್ಲದೆಯೂ ದಾಖಲೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಬಹುದು.',
+  'Keep personal papers such as Aadhaar and PAN. Create a folder for each family member and add photos.':
+      'ಆಧಾರ್, ಪ್ಯಾನ್ ಮುಂತಾದ ವೈಯಕ್ತಿಕ ದಾಖಲೆಗಳನ್ನು ಇರಿಸಿ. ಪ್ರತಿ ಕುಟುಂಬ ಸದಸ್ಯರಿಗೆ ಫೋಲ್ಡರ್ ರಚಿಸಿ ಫೋಟೋಗಳನ್ನು ಸೇರಿಸಿ.',
+  'Create a folder for each family member':
+      'ಪ್ರತಿ ಕುಟುಂಬ ಸದಸ್ಯರಿಗೆ ಫೋಲ್ಡರ್ ರಚಿಸಿ',
+  'Upload Aadhaar, PAN, and other papers':
+      'ಆಧಾರ್, ಪ್ಯಾನ್ ಮತ್ತು ಇತರ ದಾಖಲೆಗಳನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ',
+  'Add multiple photos to a document': 'ದಾಖಲೆಗೆ ಹಲವು ಫೋಟೋಗಳನ್ನು ಸೇರಿಸಿ',
+  'Open a name to view the photos': 'ಫೋಟೋಗಳನ್ನು ನೋಡಲು ಹೆಸರನ್ನು ತೆರೆಯಿರಿ',
+
+  // Event manage
+  'Event Manage': 'ಈವೆಂಟ್ ನಿರ್ವಹಣೆ',
+  'Events': 'ಈವೆಂಟ್‌ಗಳು',
+  'Add event': 'ಈವೆಂಟ್ ಸೇರಿಸಿ',
+  'Edit event': 'ಈವೆಂಟ್ ಸಂಪಾದಿಸಿ',
+  'Event name': 'ಈವೆಂಟ್ ಹೆಸರು',
+  'Event name is required': 'ಈವೆಂಟ್ ಹೆಸರು ಅಗತ್ಯವಿದೆ',
+  'e.g. Ravi birthday, LIC renewal': 'ಉದಾ. ರವಿ ಹುಟ್ಟುಹಬ್ಬ, ಎಲ್‌ಐಸಿ ನವೀಕರಣ',
+  'Occurring': 'ಪುನರಾವರ್ತನೆ',
+  'Yearly': 'ವಾರ್ಷಿಕ',
+  'Daily': 'ದೈನಂದಿನ',
+  'Notification time': 'ಅಧಿಸೂಚನೆ ಸಮಯ',
+  'Alarm': 'ಅಲಾರಂ',
+  'Delete event?': 'ಈವೆಂಟ್ ಅಳಿಸುವುದೇ?',
+  'this event': 'ಈ ಈವೆಂಟ್',
+  'No events yet': 'ಇನ್ನೂ ಈವೆಂಟ್‌ಗಳಿಲ್ಲ',
+  'Tap Add event to save a birthday or renewal reminder.':
+      'ಹುಟ್ಟುಹಬ್ಬ ಅಥವಾ ನವೀಕರಣ ಜ್ಞಾಪನೆ ಉಳಿಸಲು ಈವೆಂಟ್ ಸೇರಿಸಿ ಒತ್ತಿ.',
+  'Save birthdays, insurance renewals, and other reminders. The phone will ring an alarm at the notification time.':
+      'ಹುಟ್ಟುಹಬ್ಬ, ವಿಮೆ ನವೀಕರಣ ಮತ್ತು ಇತರ ಜ್ಞಾಪನೆಗಳನ್ನು ಉಳಿಸಿ. ಅಧಿಸೂಚನೆ ಸಮಯದಲ್ಲಿ ಫೋನ್ ಅಲಾರಂ ಶಬ್ದ ಮಾಡುತ್ತದೆ.',
+  'Alarm every day at the notification time.':
+      'ಪ್ರತಿ ದಿನ ಅಧಿಸೂಚನೆ ಸಮಯದಲ್ಲಿ ಅಲಾರಂ.',
+  'Alarm on the same weekday every week.':
+      'ಪ್ರತಿ ವಾರ ಅದೇ ವಾರದ ದಿನದಂದು ಅಲಾರಂ.',
+  'Alarm on the same date every month.':
+      'ಪ್ರತಿ ತಿಂಗಳು ಅದೇ ದಿನಾಂಕದಂದು ಅಲಾರಂ.',
+  'Alarm on this date every year. Use this for birthdays.':
+      'ಪ್ರತಿ ವರ್ಷ ಈ ದಿನಾಂಕದಂದು ಅಲಾರಂ. ಹುಟ್ಟುಹಬ್ಬಗಳಿಗೆ ಇದನ್ನು ಬಳಸಿ.',
+  'Next: {0}': 'ಮುಂದಿನ: {0}',
+  'Remember birthdays, insurance renewals, and other important dates with an alarm on your phone.':
+      'ಹುಟ್ಟುಹಬ್ಬ, ವಿಮೆ ನವೀಕರಣ ಮತ್ತು ಇತರ ಮುಖ್ಯ ದಿನಾಂಕಗಳನ್ನು ಫೋನ್ ಅಲಾರಂನೊಂದಿಗೆ ನೆನಪಿಡಿ.',
+  'Add event name, date, and notification time':
+      'ಈವೆಂಟ್ ಹೆಸರು, ದಿನಾಂಕ ಮತ್ತು ಅಧಿಸೂಚನೆ ಸಮಯ ಸೇರಿಸಿ',
+  'Repeat yearly, monthly, weekly, or daily':
+      'ವಾರ್ಷಿಕ, ಮಾಸಿಕ, ವಾರದ ಅಥವಾ ದೈನಂದಿನ ಪುನರಾವರ್ತನೆ',
+  'Hear an alarm sound when the time comes':
+      'ಸಮಯ ಬಂದಾಗ ಅಲಾರಂ ಶಬ್ದ ಕೇಳಿ',
+  'Edit or delete reminders anytime':
+      'ಯಾವಾಗ ಬೇಕಾದರೂ ಜ್ಞಾಪನೆಗಳನ್ನು ಸಂಪಾದಿಸಿ ಅಥವಾ ಅಳಿಸಿ',
+
+  // Home grid short labels (later-added options)
+  'Organizations': 'ಸಂಸ್ಥೆಗಳು',
+  'Labour': 'ಕೂಲಿ',
+  'Plans': 'ಯೋಜನೆಗಳು',
+  'Market': 'ಮಾರುಕಟ್ಟೆ',
+  'Services': 'ಸೇವೆಗಳು',
+  'Education': 'ಶಿಕ್ಷಣ',
+  'Govt': 'ಸರ್ಕಾರ',
+  'Feedback': 'ಪ್ರತಿಕ್ರಿಯೆ',
+  'Family member': 'ಕುಟುಂಬ ಸದಸ್ಯ',
+  'Please select {0}': '{0} ಆಯ್ಕೆಮಾಡಿ',
+  'Page {0} of {1}': 'ಪುಟ {0} / {1}',
+  'Search': 'ಹುಡುಕಿ',
+  'Saved': 'ಉಳಿಸಲಾಗಿದೆ',
+  'Cash': 'ನಗದು',
+  'Transfer': 'ವರ್ಗಾವಣೆ',
+  'Remove': 'ತೆಗೆದುಹಾಕಿ',
+  'New': 'ಹೊಸದು',
+  'State': 'ರಾಜ್ಯ',
+  'Hobli': 'ಹೋಬಳಿ',
+  'Month': 'ತಿಂಗಳು',
+  'Year': 'ವರ್ಷ',
+  'Optional': 'ಐಚ್ಛಿಕ',
+  'Status': 'ಸ್ಥಿತಿ',
+  'Details': 'ವಿವರಗಳು',
+  'Mode': 'ವಿಧಾನ',
+  'Party': 'ವ್ಯಕ್ತಿ',
+  'Total': 'ಒಟ್ಟು',
+  'Back': 'ಹಿಂದೆ',
+  'Bar': 'ಬಾರ್',
+  'Pie': 'ಪೈ',
+  'Chart': 'ನಕ್ಷೆ',
+  'Change': 'ಬದಲಾಯಿಸಿ',
+  'System': 'ಸಿಸ್ಟಮ್',
+  'Wage': 'ಕೂಲಿ ದರ',
+  'Tally': 'ಟ್ಯಾಲಿ',
+  'Message': 'ಸಂದೇಶ',
+  'Subject': 'ವಿಷಯ',
+  'Verified': 'ಪರಿಶೀಲಿತ',
+  'VARIETY': 'ವೈವಿಧ್ಯ',
+  'MIN': 'ಕನಿಷ್ಠ',
+  'MAX': 'ಗರಿಷ್ಠ',
+  'AVG': 'ಸರಾಸರಿ',
+
+  // Future plans
+  'Actual cost': 'ನಿಜವಾದ ವೆಚ್ಚ',
+  'Add line': 'ಸಾಲು ಸೇರಿಸಿ',
+  'Create plan': 'ಯೋಜನೆ ರಚಿಸಿ',
+  'Delete Plan': 'ಯೋಜನೆ ಅಳಿಸಿ',
+  'Delete this plan?': 'ಈ ಯೋಜನೆಯನ್ನು ಅಳಿಸುವುದೇ?',
+  'End date': 'ಅಂತ್ಯ ದಿನಾಂಕ',
+  'Entry date': 'ನಮೂದು ದಿನಾಂಕ',
+  'Entry details & line estimates': 'ನಮೂದು ವಿವರಗಳು ಮತ್ತು ಸಾಲು ಅಂದಾಜುಗಳು',
+  'Estimate': 'ಅಂದಾಜು',
+  'Estimate cost': 'ಅಂದಾಜು ವೆಚ್ಚ',
+  'Line': 'ಸಾಲು',
+  'Lines': 'ಸಾಲುಗಳು',
+  'New Plan': 'ಹೊಸ ಯೋಜನೆ',
+  'No plans': 'ಯೋಜನೆಗಳಿಲ್ಲ',
+  'Number of lines': 'ಸಾಲುಗಳ ಸಂಖ್ಯೆ',
+  'Plan': 'ಯೋಜನೆ',
+  'Plan created': 'ಯೋಜನೆ ರಚಿಸಲಾಗಿದೆ',
+  'Plan name': 'ಯೋಜನೆಯ ಹೆಸರು',
+  'Plan name is required': 'ಯೋಜನೆಯ ಹೆಸರು ಅಗತ್ಯವಿದೆ',
+  'Plan updated': 'ಯೋಜನೆ ನವೀಕರಿಸಲಾಗಿದೆ',
+  'Plan work & estimates': 'ಕೆಲಸ ಮತ್ತು ಅಂದಾಜುಗಳನ್ನು ಯೋಜಿಸಿ',
+  'Plans History': 'ಯೋಜನೆ ಇತಿಹಾಸ',
+  'Tap a plan to update': 'ನವೀಕರಿಸಲು ಯೋಜನೆಯನ್ನು ಟ್ಯಾಪ್ ಮಾಡಿ',
+
+  // Labour extras
+  'All categories': 'ಎಲ್ಲಾ ವರ್ಗಗಳು',
+  'Enter tally description': 'ಟ್ಯಾಲಿ ವಿವರಣೆ ನಮೂದಿಸಿ',
+  'Enter valid amount': 'ಮಾನ್ಯ ಮೊತ್ತ ನಮೂದಿಸಿ',
+  'Export Excel': 'ಎಕ್ಸೆಲ್ ರಫ್ತು',
+  'Failed to save opening balance': 'ಆರಂಭಿಕ ಬಾಕಿ ಉಳಿಸಲು ವಿಫಲವಾಗಿದೆ',
+  'Failed to save payment': 'ಪಾವತಿ ಉಳಿಸಲು ವಿಫಲವಾಗಿದೆ',
+  'Failed to save tally': 'ಟ್ಯಾಲಿ ಉಳಿಸಲು ವಿಫಲವಾಗಿದೆ',
+  'Labour History Statement': 'ಕೂಲಿ ಇತಿಹಾಸ ಹೇಳಿಕೆ',
+  'Labour Statement': 'ಕೂಲಿ ಹೇಳಿಕೆ',
+  'Mark Tally': 'ಟ್ಯಾಲಿ ಗುರುತಿಸಿ',
+  'Opening amount': 'ಆರಂಭಿಕ ಮೊತ್ತ',
+  'Opening balance saved': 'ಆರಂಭಿಕ ಬಾಕಿ ಉಳಿಸಲಾಗಿದೆ',
+  'Others (Rent / Food / Bonus)': 'ಇತರೆ (ಬಾಡಿಗೆ / ಆಹಾರ / ಬೋನಸ್)',
+  'Pay against labour balance': 'ಕೂಲಿ ಬಾಕಿಗೆ ಪಾವತಿ',
+  'Payment details': 'ಪಾವತಿ ವಿವರಗಳು',
+  'Payment saved': 'ಪಾವತಿ ಉಳಿಸಲಾಗಿದೆ',
+  'Positive = payable opening': 'ಧನಾತ್ಮಕ = ಕೊಡಬೇಕಾದ ಆರಂಭ',
+  'Record agreement note — no amount': 'ಒಪ್ಪಂದ ಟಿಪ್ಪಣಿ ದಾಖಲಿಸಿ — ಮೊತ್ತವಿಲ್ಲ',
+  'Rent / Food / Bonus': 'ಬಾಡಿಗೆ / ಆಹಾರ / ಬೋನಸ್',
+  'Save Payment': 'ಪಾವತಿ ಉಳಿಸಿ',
+  'Save Tally': 'ಟ್ಯಾಲಿ ಉಳಿಸಿ',
+  'Statement PDF': 'ಹೇಳಿಕೆ PDF',
+  'Tally marked': 'ಟ್ಯಾಲಿ ಗುರುತಿಸಲಾಗಿದೆ',
+  'This cannot be undone.': 'ಇದನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ.',
+  'Total Payable': 'ಒಟ್ಟು ಕೊಡಬೇಕಾದುದು',
+  'Total Receivable': 'ಒಟ್ಟು ಬರಬೇಕಾದುದು',
+  'Update Labour Rate': 'ಕೂಲಿ ದರ ನವೀಕರಿಸಿ',
+  'Category "{0}" added': 'ವರ್ಗ "{0}" ಸೇರಿಸಲಾಗಿದೆ',
+
+  // Update labour rate
+  'Bulk rate by date range': 'ದಿನಾಂಕ ವ್ಯಾಪ್ತಿಯಲ್ಲಿ ದರ',
+  'Bulk update payable rates by date range':
+      'ದಿನಾಂಕ ವ್ಯಾಪ್ತಿಯಲ್ಲಿ ಕೊಡಬೇಕಾದ ದರಗಳನ್ನು ನವೀಕರಿಸಿ',
+  'Name or mobile': 'ಹೆಸರು ಅಥವಾ ಮೊಬೈಲ್',
+  'New rate': 'ಹೊಸ ದರ',
+  'Search labour': 'ಕೂಲಿ ಹುಡುಕಿ',
+  'Search labourer & set new rate': 'ಕೂಲಿಯವರನ್ನು ಹುಡುಕಿ ಹೊಸ ದರ ಹೊಂದಿಸಿ',
+  'Select a labourer': 'ಕೂಲಿಯವರನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+  'To date must be on or after from date':
+      'ಅಂತ್ಯ ದಿನಾಂಕ ಪ್ರಾರಂಭ ದಿನಾಂಕದ ನಂತರ ಅಥವಾ ಅದೇ ದಿನವಾಗಿರಬೇಕು',
+  'Update rates': 'ದರಗಳನ್ನು ನವೀಕರಿಸಿ',
+  'Updated count': 'ನವೀಕರಿಸಿದ ಸಂಖ್ಯೆ',
+
+  // Organization
+  'Add Ledger': 'ಲೆಡ್ಜರ್ ಸೇರಿಸಿ',
+  'Add Organization': 'ಸಂಸ್ಥೆ ಸೇರಿಸಿ',
+  'Add another organization first': 'ಮೊದಲು ಇನ್ನೊಂದು ಸಂಸ್ಥೆ ಸೇರಿಸಿ',
+  'All ledgers': 'ಎಲ್ಲಾ ಲೆಡ್ಜರ್‌ಗಳು',
+  'All organizations': 'ಎಲ್ಲಾ ಸಂಸ್ಥೆಗಳು',
+  'Balances, trends & filters': 'ಬಾಕಿ, ಪ್ರವೃತ್ತಿಗಳು ಮತ್ತು ಫಿಲ್ಟರ್‌ಗಳು',
+  'Credit goes to destination Saving Bank':
+      'ಕ್ರೆಡಿಟ್ ಗಮ್ಯಸ್ಥಾನದ ಸೇವಿಂಗ್ ಬ್ಯಾಂಕ್‌ಗೆ ಹೋಗುತ್ತದೆ',
+  'Delete Ledger': 'ಲೆಡ್ಜರ್ ಅಳಿಸಿ',
+  'Delete Organization': 'ಸಂಸ್ಥೆ ಅಳಿಸಿ',
+  'Delete this transaction?': 'ಈ ವಹಿವಾಟು ಅಳಿಸುವುದೇ?',
+  'Delete "{0}"?': '"{0}" ಅಳಿಸುವುದೇ?',
+  'Delete "{0}"? This cannot be undone.':
+      '"{0}" ಅಳಿಸುವುದೇ? ಇದನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ.',
+  'Edit Ledger': 'ಲೆಡ್ಜರ್ ಸಂಪಾದಿಸಿ',
+  'Edit Organization': 'ಸಂಸ್ಥೆ ಸಂಪಾದಿಸಿ',
+  'From date': 'ಪ್ರಾರಂಭ ದಿನಾಂಕ',
+  'Ledger': 'ಲೆಡ್ಜರ್',
+  'Ledger-wise': 'ಲೆಡ್ಜರ್‌ವಾರು',
+  'Ledgers': 'ಲೆಡ್ಜರ್‌ಗಳು',
+  'Ledgers / Accounts': 'ಲೆಡ್ಜರ್‌ಗಳು / ಖಾತೆಗಳು',
+  'No balance to chart': 'ನಕ್ಷೆಗೆ ಬಾಕಿ ಇಲ್ಲ',
+  'Org books & ledgers': 'ಸಂಸ್ಥೆ ಪುಸ್ತಕಗಳು ಮತ್ತು ಲೆಡ್ಜರ್‌ಗಳು',
+  'Org-wise': 'ಸಂಸ್ಥೆವಾರು',
+  'Organization': 'ಸಂಸ್ಥೆ',
+  'Organization Reports': 'ಸಂಸ್ಥೆ ವರದಿಗಳು',
+  'Recent Entries': 'ಇತ್ತೀಚಿನ ನಮೂದುಗಳು',
+  'Save Transaction': 'ವಹಿವಾಟು ಉಳಿಸಿ',
+  'Select destination organization': 'ಗಮ್ಯಸ್ಥಾನ ಸಂಸ್ಥೆ ಆಯ್ಕೆಮಾಡಿ',
+  'Select ledger': 'ಲೆಡ್ಜರ್ ಆಯ್ಕೆಮಾಡಿ',
+  'Select organization': 'ಸಂಸ್ಥೆ ಆಯ್ಕೆಮಾಡಿ',
+  'Shared across all organizations': 'ಎಲ್ಲಾ ಸಂಸ್ಥೆಗಳಲ್ಲಿ ಹಂಚಲಾಗಿದೆ',
+  'To date': 'ಅಂತ್ಯ ದಿನಾಂಕ',
+  'Transaction Mode': 'ವಹಿವಾಟು ವಿಧಾನ',
+  'Transfer to organization': 'ಸಂಸ್ಥೆಗೆ ವರ್ಗಾವಣೆ',
+
+  // Income / expense extras
+  'All-time income & expense': 'ಒಟ್ಟು ಆದಾಯ ಮತ್ತು ವೆಚ್ಚ',
+  'Cash or bank transfer': 'ನಗದು ಅಥವಾ ಬ್ಯಾಂಕ್ ವರ್ಗಾವಣೆ',
+  'Category-wise': 'ವರ್ಗವಾರು',
+  'No category data': 'ವರ್ಗ ಡೇಟಾ ಇಲ್ಲ',
+  'No subcategory data': 'ಉಪವರ್ಗ ಡೇಟಾ ಇಲ್ಲ',
+  'Overall summary': 'ಒಟ್ಟು ಸಾರಾಂಶ',
+  'Please select an organization for transfer':
+      'ವರ್ಗಾವಣೆಗೆ ಸಂಸ್ಥೆ ಆಯ್ಕೆಮಾಡಿ',
+  'Search by name or mobile': 'ಹೆಸರು ಅಥವಾ ಮೊಬೈಲ್‌ನಿಂದ ಹುಡುಕಿ',
+  'Select one or more — amount splits equally':
+      'ಒಂದು ಅಥವಾ ಹೆಚ್ಚು ಆಯ್ಕೆಮಾಡಿ — ಮೊತ್ತ ಸಮಾನವಾಗಿ ಹಂಚಲಾಗುತ್ತದೆ',
+  'Split preview': 'ಹಂಚಿಕೆ ಪೂರ್ವವೀಕ್ಷಣೆ',
+  'Subcategories': 'ಉಪವರ್ಗಗಳು',
+  'Subcategory breakdown': 'ಉಪವರ್ಗ ವಿಭಜನೆ',
+  'Subcategory-wise': 'ಉಪವರ್ಗವಾರು',
+  'Tap a category for subcategory breakdown':
+      'ಉಪವರ್ಗ ವಿಭಜನೆಗೆ ವರ್ಗವನ್ನು ಟ್ಯಾಪ್ ಮಾಡಿ',
+  'Weekly schedule': 'ವಾರದ ವೇಳಾಪಟ್ಟಿ',
+
+  // Feedback
+  'All feedback': 'ಎಲ್ಲಾ ಪ್ರತಿಕ್ರಿಯೆ',
+  'Feedback submitted': 'ಪ್ರತಿಕ್ರಿಯೆ ಸಲ್ಲಿಸಲಾಗಿದೆ',
+  'Menu context (optional)': 'ಮೆನು ಸಂದರ್ಭ (ಐಚ್ಛಿಕ)',
+  'My feedback': 'ನನ್ನ ಪ್ರತಿಕ್ರಿಯೆ',
+  'No feedback yet': 'ಇನ್ನೂ ಪ್ರತಿಕ್ರಿಯೆ ಇಲ್ಲ',
+  'Share ideas and report issues':
+      'ಆಲೋಚನೆಗಳನ್ನು ಹಂಚಿ ಮತ್ತು ಸಮಸ್ಯೆಗಳನ್ನು ವರದಿ ಮಾಡಿ',
+  'Submit feedback': 'ಪ್ರತಿಕ್ರಿಯೆ ಸಲ್ಲಿಸಿ',
+  'We read every message': 'ನಾವು ಪ್ರತಿ ಸಂದೇಶವನ್ನು ಓದುತ್ತೇವೆ',
+  'Write feedback': 'ಪ್ರತಿಕ್ರಿಯೆ ಬರೆಯಿರಿ',
+  'e.g. income_expense': 'ಉದಾ. income_expense',
+  'Seller': 'ಮಾರಾಟಗಾರ',
+  'Posted': 'ಪೋಸ್ಟ್ ಮಾಡಿದ ದಿನಾಂಕ',
+
+  // RTC
+  'Survey number is required': 'ಸರ್ವೆ ಸಂಖ್ಯೆ ಅಗತ್ಯವಿದೆ',
+  'Delete RTC?': 'ಆರ್‌ಟಿಸಿ ಅಳಿಸುವುದೇ?',
+  'RTC deleted': 'ಆರ್‌ಟಿಸಿ ಅಳಿಸಲಾಗಿದೆ',
+  'RTC updated': 'ಆರ್‌ಟಿಸಿ ನವೀಕರಿಸಲಾಗಿದೆ',
+  'RTC saved': 'ಆರ್‌ಟಿಸಿ ಉಳಿಸಲಾಗಿದೆ',
+  'No RTC entries yet. Add one above.':
+      'ಇನ್ನೂ ಆರ್‌ಟಿಸಿ ನಮೂದುಗಳಿಲ್ಲ. ಮೇಲೆ ಸೇರಿಸಿ.',
+  'New RTC entry': 'ಹೊಸ ಆರ್‌ಟಿಸಿ ನಮೂದು',
+  'Edit RTC #{0}': 'ಆರ್‌ಟಿಸಿ #{0} ಸಂಪಾದಿಸಿ',
+  'Survey number': 'ಸರ್ವೆ ಸಂಖ್ಯೆ',
+  'Survey number *': 'ಸರ್ವೆ ಸಂಖ್ಯೆ *',
+  'Hissa': 'ಹಿಸ್ಸಾ',
+  'Acre': 'ಎಕರೆ',
+  'Gunta': 'ಗುಂಟೆ',
+  'Ana': 'ಆಣೆ',
+  'Details / notes': 'ವಿವರಗಳು / ಟಿಪ್ಪಣಿಗಳು',
+  'Shortcuts for details': 'ವಿವರಗಳ ಶಾರ್ಟ್‌ಕಟ್‌ಗಳು',
+  'Upload RTC document': 'ಆರ್‌ಟಿಸಿ ದಾಖಲೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ',
+  'PDF/JPG': 'PDF/JPG',
+  'Save RTC': 'ಆರ್‌ಟಿಸಿ ಉಳಿಸಿ',
+  'Update RTC': 'ಆರ್‌ಟಿಸಿ ನವೀಕರಿಸಿ',
+  'My RTC records': 'ನನ್ನ ಆರ್‌ಟಿಸಿ ದಾಖಲೆಗಳು',
+  'Document attached': 'ದಾಖಲೆ ಲಗತ್ತಿಸಲಾಗಿದೆ',
+  'Owner self': 'ಸ್ವಂತ ಮಾಲೀಕ',
+  'Joint holders': 'ಜಂಟಿ ಮಾಲೀಕರು',
+  'Cultivated': 'ಬೇಸಾಯದ',
+  'Arecanut': 'ಅಡಿಕೆ',
+  'Paddy': 'ಭತ್ತ',
+  'Forest edge': 'ಕಾಡಿನ ಅಂಚು',
+  'Irrigation well': 'ನೀರಾವರಿ ಬಾವಿ',
+  'Total {0} acre': 'ಒಟ್ಟು {0} ಎಕರೆ',
+  'Total: {0} A – {1} G – {2} An ({3} acre)':
+      'ಒಟ್ಟು: {0} ಎ – {1} ಗು – {2} ಆ ({3} ಎಕರೆ)',
+  'Delete survey {0} / {1}?\nThis cannot be undone.':
+      'ಸರ್ವೆ {0} / {1} ಅಳಿಸುವುದೇ?\nಇದನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ.',
+
+  // Labour work categories
+  'Plucking': 'ಕೀಳುವುದು',
+  'Cutting': 'ಕತ್ತರಿಸುವುದು',
+  'Drying': 'ಒಣಗಿಸುವುದು',
+  'Grading': 'ವರ್ಗೀಕರಣ',
+  'Packing': 'ಪ್ಯಾಕಿಂಗ್',
+  'Transport': 'ಸಾರಿಗೆ',
+
+  // Income / expense categories & subcategories
+  'Agriculture Production': 'ಕೃಷಿ ಉತ್ಪಾದನೆ',
+  'By-products': 'ಉಪಉತ್ಪನ್ನಗಳು',
+  'Livestock & Dairy': 'ಜಾನುವಾರು ಮತ್ತು ಡೈರಿ',
+  'Rental / Service': 'ಬಾಡಿಗೆ / ಸೇವೆ',
+  'Government / Subsidy': 'ಸರ್ಕಾರ / ಸಬ್ಸಿಡಿ',
+  'Asset & Miscellaneous': 'ಆಸ್ತಿ ಮತ್ತು ಇತರೆ',
+  'Manure': 'ಗೊಬ್ಬರ',
+  'Chemicals': 'ರಾಸಾಯನಿಕಗಳು',
+  'Machinery Rent': 'ಯಂತ್ರ ಬಾಡಿಗೆ',
+  'Vehicle Rent': 'ವಾಹನ ಬಾಡಿಗೆ',
+  'Implements': 'ಉಪಕರಣಗಳು',
+  'Irrigation': 'ನೀರಾವರಿ',
+  'Machinery Purchase': 'ಯಂತ್ರ ಖರೀದಿ',
+  'Special Works': 'ವಿಶೇಷ ಕಾಮಗಾರಿ',
+  'Cattle Feed': 'ದನದ ಮೇವು',
+  'Fodder': 'ಮೇವು',
+  'Vet Medicines and Care': 'ಪಶುವೈದ್ಯ ಔಷಧ ಮತ್ತು ಆರೈಕೆ',
+  'Live Stock Purchase': 'ಜಾನುವಾರು ಖರೀದಿ',
+  'Grocery': 'ದಿನಸಿ',
+  'Fruits & Veg': 'ಹಣ್ಣು ಮತ್ತು ತರಕಾರಿ',
+  'Milk & Ghee': 'ಹಾಲು ಮತ್ತು ತುಪ್ಪ',
+  'Medicine': 'ಔಷಧ',
+  'Vehicle Maintenance': 'ವಾಹನ ನಿರ್ವಹಣೆ',
+  'Pooja': 'ಪೂಜೆ',
+  'Donation': 'ದಾನ',
+  'Gift': 'ಉಡುಗೊರೆ',
+  'Mobile & Currency': 'ಮೊಬೈಲ್ ಮತ್ತು ನಗದು',
+  'Lifestyle': 'ಜೀವನಶೈಲಿ',
+  'Misc': 'ಇತರೆ',
+  'Refreshing': 'ತಂಪು ಪಾನೀಯ',
+  'Gas': 'ಗ್ಯಾಸ್',
+  'Electricity': 'ವಿದ್ಯುತ್',
+  'Repair': 'ರಿಪೇರಿ',
+  'Transportation Expense': 'ಸಾರಿಗೆ ವೆಚ್ಚ',
+  'Entertainment': 'ಮನರಂಜನೆ',
+  'Tour & Travel': 'ಪ್ರವಾಸ ಮತ್ತು ಪ್ರಯಾಣ',
+  'Newspapers & Books': 'ಪತ್ರಿಕೆಗಳು ಮತ್ತು ಪುಸ್ತಕಗಳು',
+  'Lifestyle Others': 'ಜೀವನಶೈಲಿ ಇತರೆ',
 };

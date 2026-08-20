@@ -29,6 +29,39 @@ func userVendorPayload(user models.User) fiber.Map {
 	return out
 }
 
+// accountSessionPayload returns the shared farm account details. Sub-users see
+// the main holder's profile so family members work on one set of books.
+func accountSessionPayload(loginUser models.User) fiber.Map {
+	account := loginUser
+	isSub := false
+	disabled := []string{}
+	if loginUser.ParentUserID != nil && *loginUser.ParentUserID > 0 {
+		var parent models.User
+		if err := userDB.Where("id = ?", *loginUser.ParentUserID).First(&parent).Error; err == nil {
+			account = parent
+			isSub = true
+			disabled = parseDisabledFeatureList(loginUser.DisabledFeatures)
+		}
+	}
+	out := userVendorPayload(account)
+	out["is_sub_user"] = isSub
+	out["can_manage_family"] = !isSub
+	out["disabled_features"] = disabled
+	out["member_id"] = loginUser.ID
+	if isSub {
+		out["parent_user_id"] = *loginUser.ParentUserID
+		out["member"] = fiber.Map{
+			"id":            loginUser.ID,
+			"firstname":     loginUser.Firstname,
+			"lastname":      loginUser.Lastname,
+			"email":         loginUser.Email,
+			"mobile_number": loginUser.MobileNumber,
+			"active":        loginUser.Active,
+		}
+	}
+	return out
+}
+
 func GetMe(c *fiber.Ctx) error {
 	uid, ok := userIDFromCtx(c)
 	if !ok {
@@ -39,5 +72,5 @@ func GetMe(c *fiber.Ctx) error {
 	if err := userDB.Where("id = ? AND tenant_id = ?", uid, tid).First(&user).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
 	}
-	return c.JSON(userVendorPayload(user))
+	return c.JSON(accountSessionPayload(user))
 }

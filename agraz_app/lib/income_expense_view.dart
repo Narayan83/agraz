@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'api_service.dart';
 import 'auth_token.dart';
 import 'config.dart';
@@ -10,6 +9,7 @@ import 'feedback_fab.dart';
 import 'income_expense_data.dart';
 import 'income_expense_report.dart';
 import 'l10n/app_l10n.dart';
+import 'offline_sync.dart' as offline;
 
 class IncomeExpenseListScreen extends StatefulWidget {
   final String? initialType;
@@ -118,7 +118,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
       ).replace(queryParameters: queryParams);
 
       final headers = await authGetHeaders();
-      final response = await http.get(uri, headers: headers);
+      final response = await offline.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -341,14 +341,14 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      transaction['category'] ?? 'No Category',
+                      tr(transaction['category'] ?? 'No Category'),
                       style: AppText.bodyStrong,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (transaction['sub_category'] != null)
                       Text(
-                        transaction['sub_category'],
+                        tr(transaction['sub_category'].toString()),
                         style: AppText.small,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -882,11 +882,11 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
         children: [
           SizedBox(
             width: 110,
-            child: Text(label, style: AppText.small),
+            child: Text(tr(label), style: AppText.small),
           ),
           Expanded(
             child: Text(
-              value.isEmpty ? '—' : value,
+              value.isEmpty ? '—' : tr(value),
               style: AppText.bodyStrong,
             ),
           ),
@@ -1024,7 +1024,7 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
         _readonlyRow('Pincode', t['pincode']?.toString() ?? ''),
         SizedBox(height: 8),
         Text(
-          'Tap the edit icon to change this entry.',
+          tr('Tap the edit icon to change this entry.'),
           style: AppText.caption,
           textAlign: TextAlign.center,
         ),
@@ -1058,7 +1058,7 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
           decoration:
               InputDecoration(labelText: tr('Category'), filled: true),
           items: _categories
-              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+              .map((c) => DropdownMenuItem(value: c, child: Text(tr(c))))
               .toList(),
           onChanged: (v) {
             setState(() {
@@ -1073,7 +1073,7 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
           decoration:
               InputDecoration(labelText: tr('Sub-category'), filled: true),
           items: _subCategories
-              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+              .map((c) => DropdownMenuItem(value: c, child: Text(tr(c))))
               .toList(),
           onChanged: (v) => setState(() => _subCategory = v),
         ),

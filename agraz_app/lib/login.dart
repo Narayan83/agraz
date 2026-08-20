@@ -9,6 +9,7 @@ import 'reset_password_page.dart';
 import 'registration.dart';
 import 'app_theme.dart';
 import 'l10n/app_l10n.dart';
+import 'event_alarms.dart';
 
 void main() {
   runApp(MaterialApp(debugShowCheckedModeBanner: false, home: LoginScreen()));
@@ -80,6 +81,7 @@ class _LoginScreenState extends State<LoginScreen>
           final token = extractTokenFromLoginResponse(data);
           if (token != null) {
             await saveAuthToken(token);
+            EventAlarms.instance.syncFromApi();
             if (!mounted) return;
           }
           if (!mounted) return;
@@ -232,10 +234,10 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ),
                             SizedBox(height: 18),
-                            Text('Welcome Back', style: AppText.h1),
+                            Text(tr('Welcome Back'), style: AppText.h1),
                             SizedBox(height: 6),
                             Text(
-                              'Sign in to continue farming smarter',
+                              tr('Sign in to continue farming smarter'),
                               style: AppText.subtitle,
                               textAlign: TextAlign.center,
                             ),
@@ -249,7 +251,7 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                               validator: (value) =>
                                   value == null || value.isEmpty
-                                      ? 'Enter your email'
+                                      ? tr('Enter your email')
                                       : null,
                             ),
                             SizedBox(height: 14),
@@ -274,7 +276,7 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                               validator: (value) =>
                                   value == null || value.isEmpty
-                                      ? 'Enter your password'
+                                      ? tr('Enter your password')
                                       : null,
                             ),
                             SizedBox(height: 10),
@@ -303,7 +305,7 @@ class _LoginScreenState extends State<LoginScreen>
                                         ),
                                       ),
                                       SizedBox(width: 8),
-                                      Text('Remember Me', style: AppText.small),
+                                      Text(tr('Remember Me'), style: AppText.small),
                                     ],
                                   ),
                                 ),
@@ -317,7 +319,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     );
                                   },
                                   child: Text(
-                                    'Forgot Password?',
+                                    tr('Forgot Password?'),
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
@@ -329,7 +331,7 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                             SizedBox(height: 24),
                             PrimaryButton(
-                              label: 'Sign In',
+                              label: tr('Sign In'),
                               icon: Icons.login_rounded,
                               onPressed: _isLoading ? null : _handleLogin,
                               loading: _isLoading,
@@ -337,7 +339,7 @@ class _LoginScreenState extends State<LoginScreen>
                             SizedBox(height: 18),
                             Text.rich(
                               TextSpan(
-                                text: "Don't have an account? ",
+                                text: "${tr("Don't have an account?")} ",
                                 style: AppText.small,
                                 children: [
                                   TextSpan(

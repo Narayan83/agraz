@@ -11,7 +11,8 @@ import 'l10n/app_l10n.dart';
 import 'login.dart';
 
 class LabourWorkPage extends StatefulWidget {
-  const LabourWorkPage({super.key});
+  final int initialTab;
+  const LabourWorkPage({super.key, this.initialTab = 0});
 
   @override
   State<LabourWorkPage> createState() => _LabourWorkPageState();
@@ -32,6 +33,10 @@ class _LabourWorkPageState extends State<LabourWorkPage>
   String _shift = 'fullday';
   String _gender = 'Male';
   bool _saving = false;
+  List<Map<String, dynamic>> _pendingShares = [];
+  int _pendingCount = 0;
+  bool _loadingShares = false;
+  int? _actingShareId;
 
   final _shifts = const ['fullday', 'morning', 'evening', 'night'];
   final _genders = const ['Male', 'Female'];
@@ -39,8 +44,16 @@ class _LabourWorkPageState extends State<LabourWorkPage>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 2, vsync: this);
+    _tabs = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialTab.clamp(0, 2),
+    );
+    _tabs.addListener(() {
+      if (!_tabs.indexIsChanging && mounted) setState(() {});
+    });
     _applyShiftDefaultDays(_shift);
+    _loadPendingShares();
   }
 
   @override
@@ -83,10 +96,242 @@ class _LabourWorkPageState extends State<LabourWorkPage>
     if (picked != null) setState(() => _date = picked);
   }
 
-  String get _entryKind => _tabs.index == 0 ? 'receivable' : 'receipt';
+  String get _entryKind => _tabs.index == 1 ? 'receipt' : 'receivable';
+
+  double _asDouble(dynamic v) {
+    if (v == null) return 0;
+    if (v is num) return v.toDouble();
+    return double.tryParse('$v') ?? 0;
+  }
+
+  int? _asInt(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    return int.tryParse('$v');
+  }
+
+  Future<void> _loadPendingShares() async {
+    final token = await getAuthToken();
+    if (token == null || token.isEmpty) return;
+    setState(() => _loadingShares = true);
+    try {
+      final rows = await _api.fetchLaborShares();
+      if (!mounted) return;
+      setState(() {
+        _pendingShares = rows;
+        _pendingCount = rows.length;
+      });
+    } catch (_) {
+      // Keep the form usable even if confirmations fail to load.
+    } finally {
+      if (mounted) setState(() => _loadingShares = false);
+    }
+  }
+
+  Future<void> _decideShare(Map<String, dynamic> row, {required bool accept}) async {
+    final id = _asInt(row['id']);
+    if (id == null) return;
+    final name = '${row['name'] ?? ''}'.trim();
+    final kind = '${row['entry_kind'] ?? ''}';
+    final wage = _asDouble(row['wage']);
+    final hours = _asDouble(row['hours']);
+    final total = wage * hours;
+    final dateStr = '${row['date'] ?? ''}'.split('T').first;
+    final recordedAs = '${row['recorded_as'] ?? ''}'.trim();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(
+          accept ? tr('Confirm this entry?') : tr('Reject this entry?'),
+        ),
+        content: Text(
+          accept
+              ? (kind == 'receipt'
+                  ? trf(
+                      '{0} recorded a payment of {1} to you on {2}. Confirm to save it as a receipt in your Labour Work.',
+                      [name, total.toStringAsFixed(2), dateStr],
+                    )
+                  : trf(
+                      '{0} recorded work for you on {1} for {2}. Confirm to save it as receivable in your Labour Work.',
+                      [name, dateStr, total.toStringAsFixed(2)],
+                    ))
+              : tr(
+                  'This will not be added to your books. The other person\'s entry stays as-is.',
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(d, false),
+            child: Text(tr('Cancel')),
+          ),
+          FilledButton(
+            style: accept
+                ? null
+                : FilledButton.styleFrom(backgroundColor: AppColors.expense),
+            onPressed: () => Navigator.pop(d, true),
+            child: Text(accept ? tr('Confirm') : tr('Reject')),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    if (!mounted) return;
+
+    setState(() => _actingShareId = id);
+    try {
+      final res = accept
+          ? await _api.acceptLaborShare(id)
+          : await _api.rejectLaborShare(id);
+      if (!mounted) return;
+      if (res['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              accept
+                  ? (recordedAs.isEmpty
+                      ? tr('Added to your work entries')
+                      : trf('Added to your work entries as {0}', [recordedAs]))
+                  : tr('Entry rejected'),
+            ),
+            backgroundColor: accept ? AppColors.income : AppColors.warning,
+          ),
+        );
+        await _loadPendingShares();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${res['message'] ?? tr('Failed')}'),
+            backgroundColor: AppColors.expense,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$e'.replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.expense,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _actingShareId = null);
+    }
+  }
+
+  Widget _buildConfirmations() {
+    if (_loadingShares && _pendingShares.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_pendingShares.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            tr('No entries waiting for confirmation'),
+            textAlign: TextAlign.center,
+            style: AppText.body,
+          ),
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _loadPendingShares,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
+        itemCount: _pendingShares.length,
+        itemBuilder: (context, i) {
+          final row = _pendingShares[i];
+          final id = _asInt(row['id']);
+          final wage = _asDouble(row['wage']);
+          final hours = _asDouble(row['hours']);
+          final total = wage * hours;
+          final kind = '${row['entry_kind'] ?? ''}';
+          final dateStr = '${row['date'] ?? ''}'.split('T').first;
+          final recordedAs = '${row['recorded_as'] ?? ''}'.trim();
+          final category = '${row['category'] ?? ''}'.trim();
+          final shift = '${row['shift'] ?? ''}'.trim();
+          final mobile = '${row['mobile'] ?? ''}'.trim();
+          final rent = _asDouble(row['rent']);
+          final food = _asDouble(row['food']);
+          final bonus = _asDouble(row['bonus']);
+          final extras = <String>[
+            if (rent > 0) '${tr('Rent')} ${rent.toStringAsFixed(2)}',
+            if (food > 0) '${tr('Food')} ${food.toStringAsFixed(2)}',
+            if (bonus > 0) '${tr('Bonus')} ${bonus.toStringAsFixed(2)}',
+          ];
+          final busy = _actingShareId == id;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${row['name'] ?? ''}',
+                    style: AppText.title,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    [
+                      dateStr,
+                      kind == 'receipt' ? tr('Receipt') : tr('Work Entry'),
+                      if (category.isNotEmpty) category,
+                      if (shift.isNotEmpty) tr(shift),
+                      if (hours > 0) '${tr('Days / Hour')} ${hours.toStringAsFixed(2)}',
+                      '${tr('Rate')} ${wage.toStringAsFixed(2)}',
+                      total.toStringAsFixed(2),
+                      if (mobile.isNotEmpty) mobile,
+                    ].join(' · '),
+                    style: AppText.small,
+                  ),
+                  if (recordedAs.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      trf('Recorded you as {0}', [recordedAs]),
+                      style: AppText.caption,
+                    ),
+                  ],
+                  if (extras.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(extras.join(' · '), style: AppText.caption),
+                  ],
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: busy ? null : () => _decideShare(row, accept: false),
+                          child: Text(tr('Reject')),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: busy ? null : () => _decideShare(row, accept: true),
+                          child: busy
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : Text(tr('Confirm')),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   Future<void> _save() async {
     if (!await _ensureLogin()) return;
+    if (!mounted) return;
     final name = _nameCtrl.text.trim();
     final rate = double.tryParse(_rateCtrl.text.trim()) ?? 0;
     final hours = double.tryParse(_daysHourCtrl.text.trim()) ?? 0;
@@ -339,6 +584,8 @@ class _LabourWorkPageState extends State<LabourWorkPage>
               color: AppColors.surface,
               child: TabBar(
                 controller: _tabs,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
                 labelColor: AppColors.primary,
                 unselectedLabelColor: AppColors.textMuted,
                 indicatorColor: AppColors.primary,
@@ -346,10 +593,36 @@ class _LabourWorkPageState extends State<LabourWorkPage>
                 tabs: [
                   Tab(text: tr('Work Entry')),
                   Tab(text: tr('Receipt')),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(tr('Confirm')),
+                        if (_pendingCount > 0) ...[
+                          const SizedBox(width: 6),
+                          CircleAvatar(
+                            radius: 9,
+                            backgroundColor: AppColors.accent,
+                            child: Text(
+                              '$_pendingCount',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-            Expanded(child: _buildForm()),
+            Expanded(
+              child: _tabs.index == 2 ? _buildConfirmations() : _buildForm(),
+            ),
           ],
         ),
       ),

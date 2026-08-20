@@ -369,6 +369,7 @@ func createLaborPaymentRow(uid uint, body *laborPayload, paidAmount float64) (*m
 	if err := laborDB.Create(&row).Error; err != nil {
 		return nil, err
 	}
+	syncLaborShare(uid, row, nil)
 	return &row, nil
 }
 
@@ -409,6 +410,7 @@ func CreateLabor(c *fiber.Ctx) error {
 	} else if extra != nil {
 		row.Extra = extra
 	}
+	syncLaborShare(uid, row, row.Extra)
 
 	resp := fiber.Map{"message": "Laborer added successfully", "data": row}
 	if body.PaidAmount > 0 && body.EntryKind != "tally" {
@@ -493,6 +495,7 @@ func CreateLaborsBatch(c *fiber.Ctx) error {
 		} else if extra != nil {
 			row.Extra = extra
 		}
+		syncLaborShare(uid, row, row.Extra)
 		rows = append(rows, row)
 
 		if body.PaidAmount > 0 && body.EntryKind != "tally" {
@@ -614,6 +617,7 @@ func UpdateLabor(c *fiber.Ctx) error {
 	} else {
 		row.Extra = extra
 	}
+	syncLaborShare(uid, row, row.Extra)
 	return c.JSON(fiber.Map{"message": "Labor record updated", "data": row})
 }
 
@@ -624,6 +628,11 @@ func DeleteLabor(c *fiber.Ctx) error {
 	}
 	id := c.Params("id")
 	_ = laborDB.Where("user_id = ? AND labor_id = ?", uid, id).Delete(&models.LaborExtra{})
+	var existing models.Labor
+	if err := scopeByUserID(laborDB.Model(&models.Labor{}), uid).
+		First(&existing, id).Error; err == nil {
+		cancelPendingLaborShares(existing.ID)
+	}
 	res := scopeByUserID(laborDB.Model(&models.Labor{}), uid).
 		Delete(&models.Labor{}, id)
 	if res.Error != nil {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'l10n/app_l10n.dart';
 import 'l10n/locale_controller.dart';
 
 /// AgRaz design system — a modern, professional and cohesive look.
@@ -466,10 +467,10 @@ class SectionTitle extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: AppText.title),
+              Text(tr(title), style: AppText.title),
               if (subtitle != null) ...[
                 const SizedBox(height: 1),
-                Text(subtitle!, style: AppText.small),
+                Text(tr(subtitle!), style: AppText.small),
               ],
             ],
           ),
@@ -587,7 +588,7 @@ class AppHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  tr(title),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -597,7 +598,7 @@ class AppHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  subtitle,
+                  tr(subtitle),
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 12.5,
@@ -635,7 +636,7 @@ class GradientAppBar extends StatelessWidget implements PreferredSizeWidget {
       title: title == null
           ? null
           : Text(
-              title!,
+              tr(title!),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -714,8 +715,8 @@ class AppField extends StatelessWidget {
         color: AppColors.textPrimary,
       ),
       decoration: InputDecoration(
-        labelText: required ? '$label *' : label,
-        hintText: hint,
+        labelText: required ? '${tr(label)} *' : tr(label),
+        hintText: hint == null ? null : tr(hint!),
         prefixIcon: Icon(icon, size: 20),
         prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 0),
         alignLabelWithHint: multi,
@@ -762,10 +763,12 @@ class AppDropdown extends StatelessWidget {
       validator:
           validator ??
           (required
-              ? (v) => (v == null || v.isEmpty) ? 'Please select $label' : null
+              ? (v) => (v == null || v.isEmpty)
+                  ? trf('Please select {0}', [tr(label)])
+                  : null
               : null),
       decoration: InputDecoration(
-        labelText: required ? '$label *' : label,
+        labelText: required ? '${tr(label)} *' : tr(label),
         prefixIcon: Icon(icon, size: 20),
         prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 0),
       ),
@@ -778,7 +781,10 @@ class AppDropdown extends StatelessWidget {
       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
       items: items
           .map(
-            (e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis)),
+            (e) => DropdownMenuItem(
+              value: e,
+              child: Text(tr(e), overflow: TextOverflow.ellipsis),
+            ),
           )
           .toList(),
     );
@@ -843,23 +849,28 @@ class PrimaryButton extends StatelessWidget {
                         strokeWidth: 2.6,
                       ),
                     )
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (icon != null) ...[
-                          Icon(icon!, color: Colors.white, size: 20),
-                          const SizedBox(width: 9),
-                        ],
-                        Text(
-                          label,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15.5,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.2,
+                  : FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (icon != null) ...[
+                            Icon(icon!, color: Colors.white, size: 20),
+                            const SizedBox(width: 9),
+                          ],
+                          Text(
+                            tr(label),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
             ),
           ),
@@ -890,7 +901,7 @@ class SecondaryButton extends StatelessWidget {
       child: OutlinedButton.icon(
         onPressed: onPressed,
         icon: Icon(icon ?? Icons.arrow_forward_ios_rounded, size: 17),
-        label: Text(label),
+        label: Text(tr(label)),
         style: OutlinedButton.styleFrom(
           foregroundColor: color,
           side: BorderSide(color: color.withValues(alpha: 0.55), width: 1.4),

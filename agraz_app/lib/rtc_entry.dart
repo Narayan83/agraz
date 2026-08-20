@@ -10,6 +10,7 @@ import 'api_service.dart';
 import 'app_theme.dart';
 import 'auth_token.dart';
 import 'config.dart';
+import 'l10n/app_l10n.dart';
 import 'login.dart';
 import 'uk_land_geo.dart';
 
@@ -210,7 +211,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
     final survey = _surveyCtrl.text.trim();
     if (survey.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Survey number is required')),
+        SnackBar(content: Text(tr('Survey number is required'))),
       );
       return;
     }
@@ -244,7 +245,9 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_editingId != null ? 'RTC updated' : 'RTC saved')),
+        SnackBar(
+          content: Text(tr(_editingId != null ? 'RTC updated' : 'RTC saved')),
+        ),
       );
       _resetForm();
       await _load();
@@ -264,19 +267,22 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete RTC?'),
+        title: Text(tr('Delete RTC?')),
         content: Text(
-          'Delete survey ${row['survey_number'] ?? ''} / ${row['hissa'] ?? '-'}?\nThis cannot be undone.',
+          trf('Delete survey {0} / {1}?\nThis cannot be undone.', [
+            row['survey_number'] ?? '',
+            row['hissa'] ?? '-',
+          ]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(tr('Cancel')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.expense),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
+            child: Text(tr('Delete')),
           ),
         ],
       ),
@@ -288,7 +294,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('RTC deleted')),
+        SnackBar(content: Text(tr('RTC deleted'))),
       );
     } catch (e) {
       if (!mounted) return;
@@ -316,12 +322,12 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: GradientAppBar(
-        title: 'RTC Entry',
+        title: tr('RTC Entry'),
         actions: [
           if (_editingId != null)
             TextButton(
               onPressed: _resetForm,
-              child: const Text('New', style: TextStyle(color: Colors.white)),
+              child: Text(tr('New'), style: const TextStyle(color: Colors.white)),
             ),
         ],
       ),
@@ -333,7 +339,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
             _buildFormCard(hoblis, area),
             const SizedBox(height: 18),
             Text(
-              'My RTC records',
+              tr('My RTC records'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
@@ -351,7 +357,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
                 child: Column(
                   children: [
                     Text(_error!, style: const TextStyle(color: AppColors.expense)),
-                    TextButton(onPressed: _load, child: const Text('Retry')),
+                    TextButton(onPressed: _load, child: Text(tr('Retry'))),
                   ],
                 ),
               )
@@ -362,7 +368,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Text('No RTC entries yet. Add one above.'),
+                child: Text(tr('No RTC entries yet. Add one above.')),
               )
             else
               GridView.builder(
@@ -402,7 +408,9 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            _editingId == null ? 'New RTC entry' : 'Edit RTC #$_editingId',
+            _editingId == null
+                ? tr('New RTC entry')
+                : trf('Edit RTC #{0}', [_editingId]),
             style: const TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 16,
@@ -411,21 +419,21 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
           ),
           const SizedBox(height: 12),
           _dropdown(
-            label: 'State',
+            label: tr('State'),
             value: _state,
             items: UkLandGeo.states,
             onChanged: (v) => setState(() => _state = v!),
           ),
           const SizedBox(height: 10),
           _dropdown(
-            label: 'District',
+            label: tr('District'),
             value: _district,
             items: UkLandGeo.districts,
             onChanged: (v) => setState(() => _district = v!),
           ),
           const SizedBox(height: 10),
           _dropdown(
-            label: 'Taluk',
+            label: tr('Taluk'),
             value: _taluk,
             items: UkLandGeo.taluks,
             onChanged: (v) {
@@ -440,14 +448,14 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
           const SizedBox(height: 10),
           if (hoblis.isEmpty)
             TextFormField(
-              decoration: _dec('Hobli'),
+              decoration: _dec(tr('Hobli')),
               initialValue: _hobli,
               onChanged: (v) => _hobli = v.trim(),
             )
           else
             DropdownButtonFormField<String>(
               value: hoblis.contains(_hobli) ? _hobli : hoblis.first,
-              decoration: _dec('Hobli'),
+              decoration: _dec(tr('Hobli')),
               items: hoblis
                   .map((h) => DropdownMenuItem(value: h, child: Text(h)))
                   .toList(),
@@ -456,13 +464,13 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
           const SizedBox(height: 10),
           TextFormField(
             controller: _surveyCtrl,
-            decoration: _dec('Survey number *'),
+            decoration: _dec(tr('Survey number *')),
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 10),
           TextFormField(
             controller: _hissaCtrl,
-            decoration: _dec('Hissa'),
+            decoration: _dec(tr('Hissa')),
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 10),
@@ -471,7 +479,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
               Expanded(
                 child: TextFormField(
                   controller: _acreCtrl,
-                  decoration: _dec('Acre'),
+                  decoration: _dec(tr('Acre')),
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 ),
@@ -480,7 +488,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
               Expanded(
                 child: TextFormField(
                   controller: _guntaCtrl,
-                  decoration: _dec('Gunta'),
+                  decoration: _dec(tr('Gunta')),
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 ),
@@ -489,7 +497,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
               Expanded(
                 child: TextFormField(
                   controller: _anaCtrl,
-                  decoration: _dec('Ana'),
+                  decoration: _dec(tr('Ana')),
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 ),
@@ -504,8 +512,12 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              'Total: ${area.acre} A – ${area.gunta} G – ${area.ana} An'
-              '  (${UkLandGeo.formatTotal(area.totalAcres)} acre)',
+              trf('Total: {0} A – {1} G – {2} An ({3} acre)', [
+                area.acre,
+                area.gunta,
+                area.ana,
+                UkLandGeo.formatTotal(area.totalAcres),
+              ]),
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
                 color: AppColors.primaryDark,
@@ -515,14 +527,14 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
           const SizedBox(height: 12),
           TextFormField(
             controller: _detailsCtrl,
-            decoration: _dec('Details / notes'),
+            decoration: _dec(tr('Details / notes')),
             minLines: 2,
             maxLines: 4,
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Shortcuts for details',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          Text(
+            tr('Shortcuts for details'),
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 6),
           Wrap(
@@ -531,16 +543,16 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
             children: _detailShortcuts
                 .map(
                   (s) => ActionChip(
-                    label: Text(s, style: const TextStyle(fontSize: 12)),
+                    label: Text(tr(s), style: const TextStyle(fontSize: 12)),
                     onPressed: () => _appendDetailShortcut(s),
                   ),
                 )
                 .toList(),
           ),
           const SizedBox(height: 14),
-          const Text(
-            'Upload RTC document',
-            style: TextStyle(fontWeight: FontWeight.w600),
+          Text(
+            tr('Upload RTC document'),
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Row(
@@ -549,7 +561,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
                 child: OutlinedButton.icon(
                   onPressed: _pickCamera,
                   icon: const Icon(Icons.photo_camera_outlined, size: 18),
-                  label: const Text('Camera'),
+                  label: Text(tr('Camera')),
                 ),
               ),
               const SizedBox(width: 8),
@@ -557,7 +569,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
                 child: OutlinedButton.icon(
                   onPressed: _pickFile,
                   icon: const Icon(Icons.upload_file, size: 18),
-                  label: const Text('PDF/JPG'),
+                  label: Text(tr('PDF/JPG')),
                 ),
               ),
             ],
@@ -582,7 +594,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
                       color: Colors.white,
                     ),
                   )
-                : Text(_editingId == null ? 'Save RTC' : 'Update RTC'),
+                : Text(tr(_editingId == null ? 'Save RTC' : 'Update RTC')),
           ),
         ],
       ),
@@ -632,13 +644,13 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
           Expanded(
             child: Text(
               _localFileName ??
-                  (_documentUrl.isNotEmpty ? p.basename(_documentUrl) : 'Document'),
+                  (_documentUrl.isNotEmpty ? p.basename(_documentUrl) : tr('Document')),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           IconButton(
-            tooltip: 'Remove',
+            tooltip: tr('Remove'),
             onPressed: () => setState(() {
               _localFilePath = null;
               _localFileName = null;
@@ -723,7 +735,7 @@ class _RtcCard extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip: 'Edit',
+                tooltip: tr('Edit'),
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -731,7 +743,7 @@ class _RtcCard extends StatelessWidget {
                 icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.info),
               ),
               IconButton(
-                tooltip: 'Delete',
+                tooltip: tr('Delete'),
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -753,7 +765,7 @@ class _RtcCard extends StatelessWidget {
           ),
           if (total != null)
             Text(
-              'Total ${total.toString()} acre',
+              trf('Total {0} acre', [total]),
               style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
             ),
           const Spacer(),
@@ -768,10 +780,10 @@ class _RtcCard extends StatelessWidget {
                   color: AppColors.primary,
                 ),
                 const SizedBox(width: 4),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Document attached',
-                    style: TextStyle(fontSize: 11, color: AppColors.primary),
+                    tr('Document attached'),
+                    style: const TextStyle(fontSize: 11, color: AppColors.primary),
                   ),
                 ),
               ],

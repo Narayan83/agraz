@@ -2,16 +2,18 @@ package handler
 
 import (
 	"testing"
+
+	"erp.local/backend/models"
 )
 
 func TestNormalizeLaborEntryKind(t *testing.T) {
 	cases := map[string]string{
 		"":        "payable",
-		"paid":     "payment",
-		"PAYMENT":  "payment",
-		"tally":    "tally",
-		"opening":  "opening",
-		"payable":  "payable",
+		"paid":    "payment",
+		"PAYMENT": "payment",
+		"tally":   "tally",
+		"opening": "opening",
+		"payable": "payable",
 	}
 	for in, want := range cases {
 		got := normalizeLaborEntryKind(in)
@@ -68,5 +70,46 @@ func TestNormalizeLaborWorkKind(t *testing.T) {
 	}
 	if normalizeLaborWorkKind("payment") != "receipt" {
 		t.Fatal("payment should map to receipt")
+	}
+}
+
+func TestLast10Phone(t *testing.T) {
+	cases := map[string]string{
+		"9876543210":      "9876543210",
+		"+91 98765 43210": "9876543210",
+		"919876543210":    "9876543210",
+		"12345":           "12345",
+		"":                "",
+	}
+	for in, want := range cases {
+		if got := last10Phone(in); got != want {
+			t.Fatalf("last10Phone(%q)=%q want %q", in, got, want)
+		}
+	}
+}
+
+func TestReverseLaborKind(t *testing.T) {
+	if reverseLaborKind("payable") != "receivable" {
+		t.Fatal("payable should reverse to receivable")
+	}
+	if reverseLaborKind("opening") != "receivable" {
+		t.Fatal("opening should reverse to receivable")
+	}
+	if reverseLaborKind("payment") != "receipt" {
+		t.Fatal("payment should reverse to receipt")
+	}
+	if reverseLaborKind("paid") != "receipt" {
+		t.Fatal("paid should reverse to receipt")
+	}
+}
+
+func TestUserDisplayName(t *testing.T) {
+	u := models.User{Firstname: "Rama", Lastname: "Gowda"}
+	if userDisplayName(u) != "Rama Gowda" {
+		t.Fatalf("got %q", userDisplayName(u))
+	}
+	u = models.User{Email: "a@b.com"}
+	if userDisplayName(u) != "a@b.com" {
+		t.Fatalf("got %q", userDisplayName(u))
 	}
 }

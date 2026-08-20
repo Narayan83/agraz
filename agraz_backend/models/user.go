@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+
+	"gorm.io/datatypes"
 )
 
 
@@ -23,7 +25,13 @@ type User struct {
 	// Approved: new users (mobile + admin) are auto-approved; admin can still revoke.
 	Approved      bool      `gorm:"not null;default:true" json:"approved"`
 	VendorID      *uint     `gorm:"index" json:"vendor_id,omitempty"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	// ParentUserID is set for family sub-accounts. Their farm data is stored
+	// on the parent (main) account. Empty means this user is a main holder.
+	ParentUserID *uint `gorm:"index" json:"parent_user_id,omitempty"`
+	// DisabledFeatures is a JSON string array of app option keys the main
+	// holder has turned off for this sub-member. Empty/[] means all options.
+	DisabledFeatures datatypes.JSON `gorm:"type:jsonb;not null;default:'[]'" json:"disabled_features,omitempty"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
 }
 
