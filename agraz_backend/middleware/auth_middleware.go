@@ -12,32 +12,53 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+func bearerToken(authHeader string) string {
+	authHeader = strings.TrimSpace(authHeader)
+	if authHeader == "" {
+		return ""
+	}
+	if len(authHeader) >= 7 && strings.EqualFold(authHeader[:7], "bearer ") {
+		return strings.TrimSpace(authHeader[7:])
+	}
+	// Some clients send the raw JWT with no scheme.
+	if !strings.Contains(authHeader, " ") {
+		return authHeader
+	}
+	return ""
+}
+
 func Protected() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		authHeader := c.Get("Authorization")
-		if authHeader == "" {
+		tokenString := bearerToken(c.Get("Authorization"))
+		if tokenString == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error":   "Missing or malformed JWT",
 				"message": "Missing or malformed JWT",
 			})
 		}
 
-		tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return []byte(os.Getenv("JWT_SECRET")), nil
+			secret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
+			return []byte(secret), nil
 		})
 
-		if err != nil || !token.Valid {
+		if err != nil || token == nil || !token.Valid {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error":   "Invalid or expired JWT",
 				"message": "Invalid or expired JWT",
 			})
 		}
 
-		claims := token.Claims.(jwt.MapClaims)
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error":   "Invalid or expired JWT",
+				"message": "Invalid or expired JWT",
+			})
+		}
 		c.Locals("user_id", claims["user_id"])
 		c.Locals("email", claims["email"])
 

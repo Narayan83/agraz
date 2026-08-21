@@ -11,7 +11,6 @@ import 'app_theme.dart';
 import 'auth_token.dart';
 import 'feedback_fab.dart';
 import 'l10n/app_l10n.dart';
-import 'login.dart';
 import 'voice_dictation.dart';
 
 class IncomeExpensePage extends StatefulWidget {
@@ -87,25 +86,17 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   }
 
   Future<void> _bootstrapLogin() async {
-    var token = await getAuthToken();
-    if (token == null || token.isEmpty) {
-      if (!mounted) return;
-      final loggedIn = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
-      token = await getAuthToken();
-      if (loggedIn != true || token == null || token.isEmpty) {
-        if (mounted) Navigator.pop(context);
-        return;
-      }
+    final ok = await ensureLoggedIn(context);
+    if (!ok) {
+      if (mounted) Navigator.pop(context);
+      return;
     }
     await _loadOrganizations();
   }
 
   Future<void> _loadOrganizations() async {
     try {
-      final token = await getAuthToken();
+      final token = await getValidAuthToken();
       if (token == null || token.isEmpty) return;
       final rows = await _apiService.fetchOrganizations();
       if (!mounted) return;
@@ -371,9 +362,12 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
             child: Text(tr('Cancel')),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              Navigator.of(context).pushNamed('/login');
+              final ok = await ensureLoggedIn(context, force: true);
+              if (ok && mounted) {
+                // Stay on the form; user can tap save again.
+              }
             },
             child: Text(tr('Login')),
           ),
@@ -464,23 +458,15 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     }
 
     // Saving requires a valid login.
-    var token = await getAuthToken();
-    if (token == null || token.isEmpty) {
-      final loggedIn = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+    if (!await ensureLoggedIn(context)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(tr('Login required to save')),
+          backgroundColor: AppColors.expense,
+        ),
       );
-      if (loggedIn != true || !mounted) return;
-      token = await getAuthToken();
-      if (token == null || token.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(tr('Login required to save')),
-            backgroundColor: AppColors.expense,
-          ),
-        );
-        return;
-      }
+      return;
     }
 
     setState(() => isLoading = true);

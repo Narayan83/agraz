@@ -67,7 +67,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
     }
     if (_startDate.isNotEmpty) _startDateController.text = _startDate;
     if (_endDate.isNotEmpty) _endDateController.text = _endDate;
-    _fetchTransactions();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchTransactions());
   }
 
   @override
@@ -84,13 +84,33 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
   int get _expenseCount =>
       _transactions.where((t) => t['type'] == 'Expense').length;
 
-  Future<void> _fetchTransactions() async {
+  Future<void> _fetchTransactions({bool retried = false}) async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
     try {
+      var token = await getValidAuthToken();
+      if (token == null) {
+        if (!retried && mounted) {
+          final ok = await ensureLoggedIn(context);
+          if (ok && mounted) {
+            await _fetchTransactions(retried: true);
+            return;
+          }
+        }
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = tr(
+            'Invalid or expired JWT. Please login again to continue.',
+          );
+          _isLoading = false;
+        });
+        return;
+      }
+
       final Map<String, String> queryParams = {
         'page': _currentPage.toString(),
         'limit': _limit.toString(),
@@ -123,18 +143,42 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
-          _transactions = data['data'];
-          _totalRecords = data['total'];
-          _totalPages = (_totalRecords / _limit).ceil();
+          _transactions = data['data'] ?? [];
+          _totalRecords = data['total'] is int
+              ? data['total'] as int
+              : int.tryParse('${data['total']}') ?? 0;
+          _totalPages = _totalRecords == 0 ? 1 : (_totalRecords / _limit).ceil();
           _isLoading = false;
         });
-      } else {
-        setState(() {
-          _errorMessage = 'Failed to load transactions: ${response.statusCode}';
-          _isLoading = false;
-        });
+        return;
       }
+
+      if (isUnauthorizedStatus(response.statusCode)) {
+        await clearAuthToken();
+        if (!retried && mounted) {
+          final ok = await ensureLoggedIn(context, force: true);
+          if (ok && mounted) {
+            await _fetchTransactions(retried: true);
+            return;
+          }
+        }
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = tr(
+            'Invalid or expired JWT. Please login again to continue.',
+          );
+          _isLoading = false;
+        });
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = tr('Failed to load transactions');
+        _isLoading = false;
+      });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Error: $e';
         _isLoading = false;
@@ -580,7 +624,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
             IconButton(
               icon: const Icon(Icons.refresh_rounded),
               tooltip: tr('Refresh'),
-              onPressed: _fetchTransactions,
+              onPressed: () => _fetchTransactions(),
             ),
           ],
         ),
@@ -617,9 +661,23 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
                               ),
                               SizedBox(height: 16),
                               ElevatedButton(
-                                onPressed: _fetchTransactions,
+                                onPressed: () => _fetchTransactions(),
                                 child: Text(tr('Retry')),
                               ),
+                              if (_errorMessage.contains('JWT') ||
+                                  _errorMessage.contains('login')) ...[
+                                SizedBox(height: 8),
+                                TextButton(
+                                  onPressed: () async {
+                                    final ok = await ensureLoggedIn(
+                                      context,
+                                      force: true,
+                                    );
+                                    if (ok && mounted) _fetchTransactions();
+                                  },
+                                  child: Text(tr('Login')),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -634,7 +692,7 @@ class _IncomeExpenseListScreenState extends State<IncomeExpenseListScreen> {
                             children: [
                               Expanded(
                                 child: RefreshIndicator(
-                                  onRefresh: _fetchTransactions,
+                                  onRefresh: () => _fetchTransactions(),
                                   child: ListView.builder(
                                     padding: const EdgeInsets.only(
                                       top: 4,

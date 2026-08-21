@@ -74,17 +74,19 @@ func Login(c *fiber.Ctx) error {
 		}
 	}
 
-	// Create JWT Token
-	token := jwt.New(jwt.SigningMethodHS256)
-	claims := token.Claims.(jwt.MapClaims)
-	claims["user_id"] = user.ID
-	claims["email"] = user.Email
+	// Create JWT Token (30 days — farmers should not re-login every few days)
+	claims := jwt.MapClaims{
+		"user_id": user.ID,
+		"email":   user.Email,
+		"exp":     time.Now().Add(time.Hour * 24 * 30).Unix(),
+		"iat":     time.Now().Unix(),
+	}
 	if user.VendorID != nil && *user.VendorID > 0 {
 		claims["vendor_id"] = *user.VendorID
 	}
-	claims["exp"] = time.Now().Add(time.Hour * 72).Unix() // 3 days
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	t, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	t, err := token.SignedString([]byte(strings.TrimSpace(os.Getenv("JWT_SECRET"))))
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Could not generate token"})
 	}

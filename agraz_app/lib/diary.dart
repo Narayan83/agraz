@@ -9,7 +9,6 @@ import 'app_theme.dart';
 import 'auth_token.dart';
 import 'feedback_fab.dart';
 import 'l10n/app_l10n.dart';
-import 'login.dart';
 
 const Map<String, IconData> kDiaryIconMap = {
   'label': Icons.label_rounded,
@@ -215,18 +214,7 @@ class _DiaryPageState extends State<DiaryPage> {
   }
 
   Future<bool> _ensureLogin({bool force = false}) async {
-    if (!force) {
-      final token = await getAuthToken();
-      if (token != null && token.isNotEmpty) return true;
-    } else {
-      await clearAuthToken();
-    }
-    if (!mounted) return false;
-    final ok = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
-    return ok == true;
+    return ensureLoggedIn(context, force: force);
   }
 
   bool _isAuthFailure(Map<String, dynamic> result) {
@@ -1095,18 +1083,7 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
   }
 
   Future<bool> _ensureLogin({bool force = false}) async {
-    if (!force) {
-      final token = await getAuthToken();
-      if (token != null && token.isNotEmpty) return true;
-    } else {
-      await clearAuthToken();
-    }
-    if (!mounted) return false;
-    final ok = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
-    return ok == true;
+    return ensureLoggedIn(context, force: force);
   }
 
   bool _isAuthFailure(Map<String, dynamic> result) {

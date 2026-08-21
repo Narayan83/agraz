@@ -14,6 +14,7 @@ const Map<String, String> kKannadaTranslations = {
   'Delete': 'ಅಳಿಸಿ',
   'Edit': 'ಸಂಪಾದಿಸಿ',
   'Retry': 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
+  'Failed to load transactions': 'ವಹಿವಾಟುಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ',
   'Refresh': 'ರಿಫ್ರೆಶ್',
   'Clear': 'ತೆರವುಗೊಳಿಸಿ',
   'Apply': 'ಅನ್ವಯಿಸಿ',

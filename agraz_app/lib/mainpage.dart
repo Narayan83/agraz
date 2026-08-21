@@ -111,7 +111,7 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<void> _refreshAuthState() async {
-    final token = await getAuthToken();
+    final token = await getValidAuthToken();
     if (!mounted) return;
     setState(() => _isLoggedIn = token != null);
     if (token != null) {

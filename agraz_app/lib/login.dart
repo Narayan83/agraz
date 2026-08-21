@@ -79,22 +79,20 @@ class _LoginScreenState extends State<LoginScreen>
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           final token = extractTokenFromLoginResponse(data);
-          if (token != null) {
-            await saveAuthToken(token);
-            EventAlarms.instance.syncFromApi();
-            if (!mounted) return;
-          }
-          if (!mounted) return;
-          if (token == null) {
+          if (token == null || token.isEmpty) {
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  'No JWT in login response — Buy & Sell and other APIs may return 401.',
+                  tr('No JWT in login response — Buy & Sell and other APIs may return 401.'),
                 ),
+                backgroundColor: Colors.red,
               ),
             );
+            return;
           }
+          await saveAuthToken(token);
+          EventAlarms.instance.syncFromApi();
           if (!mounted) return;
           if (Navigator.canPop(context)) {
             Navigator.pop(context, true);

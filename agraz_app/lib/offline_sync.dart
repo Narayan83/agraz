@@ -103,7 +103,10 @@ class OfflineSync extends ChangeNotifier with WidgetsBindingObserver {
           continue;
         }
         final code = response.statusCode;
-        if (code == 401) break;
+        if (code == 401) {
+          await clearAuthToken();
+          break;
+        }
         if (_isNetworkStatus(code) || code == 408 || code == 429 || code >= 500) {
           break;
         }

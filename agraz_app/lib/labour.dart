@@ -11,7 +11,6 @@ import 'feedback_fab.dart';
 import 'labor_categories.dart';
 import 'labour_summary.dart';
 import 'l10n/app_l10n.dart';
-import 'login.dart';
 import 'update_labour_rate.dart';
 import 'voice_dictation.dart';
 
@@ -134,15 +133,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   }
 
   Future<void> _bootstrapLogin() async {
-    var token = await getAuthToken();
-    if (token == null || token.isEmpty) {
-      if (!mounted) return;
-      final ok = await _promptLoginForSave();
-      token = await getAuthToken();
-      if (ok != true || token == null || token.isEmpty) {
-        if (mounted) Navigator.pop(context);
-        return;
-      }
+    final loggedIn = await ensureLoggedIn(context);
+    if (!loggedIn) {
+      if (mounted) Navigator.pop(context);
+      return;
     }
     await _loadLabors();
     await _loadCategories();
@@ -1006,11 +1000,11 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       return;
     }
 
-    var token = await getAuthToken();
+    var token = await getValidAuthToken();
     if (token == null || token.isEmpty) {
       final ok = await _promptLoginForSave();
       if (ok != true) return;
-      token = await getAuthToken();
+      token = await getValidAuthToken();
       if (token == null || token.isEmpty) {
         _showSnack(tr('Login required to save labour'), error: true);
         return;
@@ -1103,11 +1097,11 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     }
 
     // Saving requires a valid login — guest browse is allowed, write is not.
-    var token = await getAuthToken();
+    var token = await getValidAuthToken();
     if (token == null || token.isEmpty) {
       final ok = await _promptLoginForSave();
       if (ok != true) return;
-      token = await getAuthToken();
+      token = await getValidAuthToken();
       if (token == null || token.isEmpty) {
         _showSnack(tr('Login required to save labour'), error: true);
         return;
@@ -1226,11 +1220,11 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       return;
     }
 
-    var token = await getAuthToken();
+    var token = await getValidAuthToken();
     if (token == null || token.isEmpty) {
       final ok = await _promptLoginForSave();
       if (ok != true) return;
-      token = await getAuthToken();
+      token = await getValidAuthToken();
       if (token == null || token.isEmpty) {
         _showSnack(tr('Login required to save labour'), error: true);
         return;
@@ -1298,11 +1292,7 @@ class _LaborManagementPageState extends State<LaborManagementPage>
 
   Future<bool?> _promptLoginForSave() async {
     if (!mounted) return false;
-    final loggedIn = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
-    return loggedIn == true;
+    return ensureLoggedIn(context, force: true);
   }
 
   Future<void> _showJwtExpiredDialog(String message) async {

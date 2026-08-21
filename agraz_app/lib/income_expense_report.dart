@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import 'api_service.dart';
 import 'app_theme.dart';
+import 'auth_token.dart';
 import 'feedback_fab.dart';
 import 'income_expense_view.dart';
 import 'l10n/app_l10n.dart';
@@ -51,7 +52,7 @@ class _IncomeExpenseReportPageState extends State<IncomeExpenseReportPage>
   void initState() {
     super.initState();
     _tabs = TabController(length: 4, vsync: this);
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   @override
@@ -98,13 +99,31 @@ class _IncomeExpenseReportPageState extends State<IncomeExpenseReportPage>
     return {};
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool retried = false}) async {
     setState(() {
       _loading = true;
       _error = null;
       _drillCategory = null;
     });
     try {
+      if (!retried) {
+        final token = await getValidAuthToken();
+        if (!mounted) return;
+        if (token == null) {
+          final ok = await ensureLoggedIn(context);
+          if (!ok) {
+            if (!mounted) return;
+            setState(() {
+              _error = tr(
+                'Invalid or expired JWT. Please login again to continue.',
+              );
+              _loading = false;
+            });
+            return;
+          }
+        }
+      }
+      if (!mounted) return;
       final data = await _api.fetchIncomeExpenseReports(
         year: _selectedMonth.year,
         month: _selectedMonth.month,
@@ -118,9 +137,21 @@ class _IncomeExpenseReportPageState extends State<IncomeExpenseReportPage>
         _loading = false;
       });
     } catch (e) {
+      final msg = e.toString().toLowerCase();
+      if (!retried && (msg.contains('401') || msg.contains('jwt'))) {
+        await clearAuthToken();
+        if (!mounted) return;
+        final ok = await ensureLoggedIn(context, force: true);
+        if (ok && mounted) {
+          await _load(retried: true);
+          return;
+        }
+      }
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = msg.contains('401') || msg.contains('jwt')
+            ? tr('Invalid or expired JWT. Please login again to continue.')
+            : e.toString().replaceFirst('Exception: ', '');
         _loading = false;
       });
     }
@@ -271,7 +302,7 @@ class _IncomeExpenseReportPageState extends State<IncomeExpenseReportPage>
                     ),
                     IconButton(
                       tooltip: tr('Refresh'),
-                      onPressed: _load,
+                      onPressed: () => _load(),
                       icon: const Icon(Icons.refresh_rounded,
                           color: Colors.white),
                     ),
@@ -362,7 +393,7 @@ class _IncomeExpenseReportPageState extends State<IncomeExpenseReportPage>
               child: _loading
                   ? Center(child: CircularProgressIndicator())
                   : _error != null
-                      ? _ErrorView(message: _error!, onRetry: _load)
+                      ? _ErrorView(message: _error!, onRetry: () { _load(); })
                       : TabBarView(
                           controller: _tabs,
                           children: [
@@ -434,7 +465,7 @@ class _IncomeExpenseReportPageState extends State<IncomeExpenseReportPage>
     final labelKey = _drillCategory == null ? 'category' : 'sub_category';
 
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: () => _load(),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
         children: [
@@ -685,7 +716,7 @@ class _IncomeExpenseReportPageState extends State<IncomeExpenseReportPage>
   Widget _buildMonthly() {
     final monthly = _list('monthly');
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: () => _load(),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
         children: [
@@ -782,7 +813,7 @@ class _IncomeExpenseReportPageState extends State<IncomeExpenseReportPage>
   Widget _buildWeekly() {
     final weekly = _list('weekly');
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: () => _load(),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
         children: [
@@ -875,7 +906,7 @@ class _IncomeExpenseReportPageState extends State<IncomeExpenseReportPage>
     final expense = cats.where((c) => c['type'] == 'Expense').toList();
 
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: () => _load(),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
         children: [
