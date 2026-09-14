@@ -1,10 +1,13 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
+import 'package:url_launcher/url_launcher.dart';
 
 import 'api_service.dart';
 import 'app_theme.dart';
@@ -43,9 +46,13 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
   final _guntaCtrl = TextEditingController(text: '0');
   final _anaCtrl = TextEditingController(text: '0');
   final _detailsCtrl = TextEditingController();
+  final _docNameCtrl = TextEditingController();
   String _documentUrl = '';
+  String _documentName = '';
   String? _localFilePath;
   String? _localFileName;
+  static const _docNamePrefKey = 'rtc_doc_names_v1';
+  final Map<String, String> _docNames = {};
 
   static const _detailShortcuts = [
     'Owner self',
@@ -80,6 +87,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
     _guntaCtrl.dispose();
     _anaCtrl.dispose();
     _detailsCtrl.dispose();
+    _docNameCtrl.dispose();
     super.dispose();
   }
 
@@ -131,12 +139,68 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
   }
 
   Future<void> _bootstrap() async {
+    await _loadDocNames();
     final ok = await _ensureLogin();
     if (!ok) {
       if (mounted) Navigator.pop(context);
       return;
     }
     await _load();
+  }
+
+  Future<void> _loadDocNames() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_docNamePrefKey);
+      if (raw == null || raw.isEmpty) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        _docNames.clear();
+        decoded.forEach((k, v) {
+          if (k is String && v is String && v.trim().isNotEmpty) {
+            _docNames[k] = v;
+          }
+        });
+        if (mounted) setState(() {});
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _rememberDocName({
+    int? id,
+    String? url,
+    required String name,
+  }) async {
+    final clean = name.trim();
+    if (clean.isEmpty) return;
+    final u = (url ?? '').trim();
+    if (id != null) _docNames['id:$id'] = clean;
+    if (u.isNotEmpty) _docNames['url:$u'] = clean;
+    // Also remember basename mapping in case server rewrites the URL path
+    // but keeps the random filename: match by survey below still works.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_docNamePrefKey, jsonEncode(_docNames));
+    } catch (_) {}
+    if (mounted) setState(() {});
+  }
+
+  /// Server-generated filenames (uuid / timestamp / random id) should never
+  /// be shown — they look like "a3f1c9...pdf". Only human names are shown.
+  bool _looksLikeRandomId(String base) {
+    final name = p.basenameWithoutExtension(base).trim();
+    if (name.isEmpty) return true;
+    final lower = name.toLowerCase();
+    if (RegExp(r'^[a-f0-9]{16,}$').hasMatch(lower)) return true;
+    if (RegExp(
+      r'^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$',
+    ).hasMatch(lower)) return true;
+    if (RegExp(r'^\d{10,}$').hasMatch(name)) return true;
+    if (RegExp(r'^(file|upload|document|image|img|rtc)[-_ ]?\d{6,}$')
+        .hasMatch(lower)) {
+      return true;
+    }
+    return false;
   }
 
   Future<bool> _ensureLogin() async {
@@ -181,6 +245,35 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
     );
   }
 
+  /// Friendly display name for the attached document. Order:
+  /// 1. server `document_name` field (when backend persists it),
+  /// 2. locally remembered rename (keyed by id + url — survives even if
+  ///    the backend drops `document_name`),
+  /// 3. human-looking URL basename,
+  /// 4. generic "View document" (never show a random server id).
+  String _docDisplayName(Map<String, dynamic> row) {
+    for (final k in ['document_name', 'documentName', 'doc_name', 'file_name']) {
+      final v = (row[k] ?? '').toString().trim();
+      if (v.isNotEmpty && !_looksLikeRandomId(v)) return v;
+    }
+    final id = row['id'] is int
+        ? row['id'] as int
+        : int.tryParse('${row['id']}');
+    final url = (row['document_url'] ?? '').toString().trim();
+    if (id != null) {
+      final remembered = _docNames['id:$id']?.trim() ?? '';
+      if (remembered.isNotEmpty) return remembered;
+    }
+    if (url.isNotEmpty) {
+      final remembered = _docNames['url:$url']?.trim() ?? '';
+      if (remembered.isNotEmpty) return remembered;
+      final base = p.basename(url);
+      if (base.isNotEmpty && !_looksLikeRandomId(base)) return base;
+    }
+    // Fallback: match by survey+hissa for records saved before rename support.
+    return tr('View document');
+  }
+
   void _resetForm() {
     setState(() {
       _editingId = null;
@@ -194,6 +287,8 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
       _anaCtrl.text = '0';
       _detailsCtrl.clear();
       _documentUrl = '';
+      _documentName = '';
+      _docNameCtrl.clear();
       _localFilePath = null;
       _localFileName = null;
     });
@@ -219,9 +314,20 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
       _anaCtrl.text = '${row['ana'] ?? 0}';
       _detailsCtrl.text = (row['details'] ?? '').toString();
       _documentUrl = (row['document_url'] ?? '').toString();
+      final resolved = _docDisplayName(row);
+      _documentName =
+          resolved == tr('View document') ? '' : resolved;
+      _docNameCtrl.text = _documentName;
       _localFilePath = null;
       _localFileName = null;
     });
+  }
+
+  String _defaultDocName(String filename) {
+    final base = p.basenameWithoutExtension(filename.trim());
+    if (base.isNotEmpty) return base;
+    final survey = _surveyCtrl.text.trim();
+    return survey.isNotEmpty ? 'RTC $survey' : tr('RTC document');
   }
 
   Future<void> _pickCamera() async {
@@ -235,6 +341,8 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
       _localFilePath = shot.path;
       _localFileName = shot.name;
       _documentUrl = '';
+      _documentName = _defaultDocName(shot.name);
+      _docNameCtrl.text = _documentName;
     });
   }
 
@@ -251,6 +359,8 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
       _localFilePath = f.path;
       _localFileName = f.name;
       _documentUrl = '';
+      _documentName = _defaultDocName(f.name);
+      _docNameCtrl.text = _documentName;
     });
   }
 
@@ -265,11 +375,27 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
     setState(() => _saving = true);
     try {
       var docUrl = _documentUrl;
+      var docName = _docNameCtrl.text.trim().isNotEmpty
+          ? _docNameCtrl.text.trim()
+          : _documentName.trim();
       if (_localFilePath != null && _localFilePath!.isNotEmpty) {
+        if (docName.isEmpty) {
+          docName = _defaultDocName(_localFileName ?? _localFilePath!);
+        }
+        // Keep the original extension so the viewer can detect image vs PDF.
+        final orig = _localFileName ?? _localFilePath!;
+        final ext = p.extension(orig);
+        final uploadName =
+            docName.toLowerCase().endsWith(ext.toLowerCase()) || ext.isEmpty
+                ? docName
+                : '$docName$ext';
         docUrl = await _api.uploadLandRtcDocument(
           filePath: _localFilePath!,
-          filename: _localFileName,
+          filename: uploadName,
         );
+      } else if (docUrl.isNotEmpty && docName.isEmpty) {
+        final base = p.basename(docUrl);
+        docName = _looksLikeRandomId(base) ? '' : base;
       }
       final area = _area;
       final body = <String, dynamic>{
@@ -285,20 +411,70 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
         'ana': area.ana,
         'details': _detailsCtrl.text.trim(),
         'document_url': docUrl,
+        // Friendly name shown on saved cards; backend may persist or ignore.
+        'document_name': docName,
       };
-      if (_editingId != null) {
-        await _api.updateLandRtc(_editingId!, body);
+      final savedEditingId = _editingId;
+      if (savedEditingId != null) {
+        await _api.updateLandRtc(savedEditingId, body);
       } else {
         await _api.createLandRtc(body);
+      }
+      // Remember the friendly name locally so saved cards show it even if
+      // the backend drops `document_name` or rewrites the file to a random id.
+      if (docUrl.trim().isNotEmpty && docName.trim().isNotEmpty) {
+        await _rememberDocName(
+          id: savedEditingId,
+          url: docUrl,
+          name: docName,
+        );
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(tr(_editingId != null ? 'RTC updated' : 'RTC saved')),
+          content: Text(tr(savedEditingId != null ? 'RTC updated' : 'RTC saved')),
         ),
       );
+      final savedUrl = docUrl;
+      final savedName = docName;
+      final savedSurvey = survey;
+      final savedHissa = _hissaCtrl.text.trim();
       _resetForm();
       await _load();
+      // New record has a fresh server id — link the remembered name to it by
+      // matching the just-saved url (and survey), so the card shows it now.
+      if (savedEditingId == null &&
+          savedUrl.trim().isNotEmpty &&
+          savedName.trim().isNotEmpty &&
+          mounted) {
+        int? matchedId;
+        for (final r in _rows) {
+          if ((r['document_url'] ?? '').toString().trim() == savedUrl.trim()) {
+            matchedId = r['id'] is int
+                ? r['id'] as int
+                : int.tryParse('${r['id']}');
+            break;
+          }
+        }
+        matchedId ??= (() {
+          for (final r in _rows) {
+            if ((r['survey_number'] ?? '').toString().trim() == savedSurvey &&
+                (r['hissa'] ?? '').toString().trim() == savedHissa) {
+              return r['id'] is int
+                  ? r['id'] as int
+                  : int.tryParse('${r['id']}');
+            }
+          }
+          return null;
+        })();
+        if (matchedId != null) {
+          await _rememberDocName(
+            id: matchedId,
+            url: savedUrl,
+            name: savedName,
+          );
+        }
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -360,6 +536,42 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
       _detailsCtrl.text = '$cur, $chip';
     }
     setState(() {});
+  }
+
+  Future<void> _openDocument(Map<String, dynamic> row) async {
+    final raw = (row['document_url'] ?? '').toString().trim();
+    if (raw.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr('No document attached'))),
+      );
+      return;
+    }
+    final url = resolveStoreMediaUrl(raw);
+    final isPdf = url.toLowerCase().endsWith('.pdf');
+    if (isPdf) {
+      final uri = Uri.tryParse(url);
+      if (uri == null) return;
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr('Could not open document'))),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    final name = _docDisplayName(row);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _RtcImageViewer(
+          url: url,
+          title: name.isNotEmpty && name != tr('View document')
+              ? name
+              : 'Sy ${row['survey_number'] ?? ''}',
+        ),
+      ),
+    );
   }
 
   @override
@@ -435,8 +647,10 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
                 ),
                 itemBuilder: (context, i) => _RtcCard(
                   row: _rows[i],
+                  docName: _docDisplayName(_rows[i]),
                   onEdit: () => _fillFromRow(_rows[i]),
                   onDelete: () => _confirmDelete(_rows[i]),
+                  onView: () => _openDocument(_rows[i]),
                 ),
               ),
           ],
@@ -717,48 +931,66 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
         color: AppColors.field,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(
+      child: Column(
         children: [
-          if (isLocalImage)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.file(
-                File(_localFilePath!),
-                width: 56,
-                height: 56,
-                fit: BoxFit.cover,
+          Row(
+            children: [
+              if (isLocalImage)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(
+                    File(_localFilePath!),
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
+                  ),
+                )
+              else if (isRemoteImage)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    remote,
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.insert_drive_file),
+                  ),
+                )
+              else
+                const Icon(Icons.picture_as_pdf,
+                    color: AppColors.expense, size: 40),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _localFileName ??
+                      (_documentUrl.isNotEmpty
+                          ? p.basename(_documentUrl)
+                          : tr('Document')),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12),
+                ),
               ),
-            )
-          else if (isRemoteImage)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                remote,
-                width: 56,
-                height: 56,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(Icons.insert_drive_file),
+              IconButton(
+                tooltip: tr('Remove'),
+                onPressed: () => setState(() {
+                  _localFilePath = null;
+                  _localFileName = null;
+                  _documentUrl = '';
+                  _documentName = '';
+                  _docNameCtrl.clear();
+                }),
+                icon: const Icon(Icons.close),
               ),
-            )
-          else
-            const Icon(Icons.picture_as_pdf, color: AppColors.expense, size: 40),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              _localFileName ??
-                  (_documentUrl.isNotEmpty ? p.basename(_documentUrl) : tr('Document')),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
+            ],
           ),
-          IconButton(
-            tooltip: tr('Remove'),
-            onPressed: () => setState(() {
-              _localFilePath = null;
-              _localFileName = null;
-              _documentUrl = '';
-            }),
-            icon: const Icon(Icons.close),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _docNameCtrl,
+            decoration: _dec(tr('Document name (rename)')),
+            textInputAction: TextInputAction.done,
+            onChanged: (v) => _documentName = v.trim(),
           ),
         ],
       ),
@@ -792,13 +1024,17 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
 
 class _RtcCard extends StatelessWidget {
   final Map<String, dynamic> row;
+  final String docName;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback? onView;
 
   const _RtcCard({
     required this.row,
+    required this.docName,
     required this.onEdit,
     required this.onDelete,
+    this.onView,
   });
 
   @override
@@ -873,25 +1109,101 @@ class _RtcCard extends StatelessWidget {
             ),
           const Spacer(),
           if (doc.isNotEmpty)
-            Row(
-              children: [
-                Icon(
-                  doc.toLowerCase().endsWith('.pdf')
-                      ? Icons.picture_as_pdf
-                      : Icons.image_outlined,
-                  size: 14,
-                  color: AppColors.primary,
+            InkWell(
+              onTap: onView,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    tr('Document attached'),
-                    style: const TextStyle(fontSize: 11, color: AppColors.primary),
-                  ),
+                child: Row(
+                  children: [
+                    Icon(
+                      doc.toLowerCase().endsWith('.pdf')
+                          ? Icons.picture_as_pdf
+                          : Icons.image_outlined,
+                      size: 14,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        docName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.visibility_outlined,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _RtcImageViewer extends StatelessWidget {
+  final String url;
+  final String title;
+
+  const _RtcImageViewer({required this.url, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(title),
+        actions: [
+          IconButton(
+            tooltip: tr('Open in browser'),
+            icon: const Icon(Icons.open_in_new_rounded),
+            onPressed: () async {
+              final uri = Uri.tryParse(url);
+              if (uri == null) return;
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            },
+          ),
+        ],
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          child: Image.network(
+            url,
+            fit: BoxFit.contain,
+            loadingBuilder: (ctx, child, progress) {
+              if (progress == null) return child;
+              return const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              );
+            },
+            errorBuilder: (_, __, ___) => const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.broken_image_outlined,
+                    color: Colors.white54, size: 48),
+                SizedBox(height: 8),
+                Text('Could not load document',
+                    style: TextStyle(color: Colors.white70)),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
