@@ -1,8 +1,9 @@
-/// Uttara Kannada taluks and hoblis for Karnataka RTC entry.
+/// Uttara Kannada taluks, hoblis and gramas for Karnataka RTC entry.
 class UkLandGeo {
   static const String defaultState = 'Karnataka';
   static const String defaultDistrict = 'Uttara Kannada';
   static const String defaultTaluk = 'Sirsi';
+  static const String otherGrama = 'Other';
 
   static const List<String> states = ['Karnataka'];
 
@@ -23,7 +24,7 @@ class UkLandGeo {
     'Bhatkal',
   ];
 
-  /// Hoblis keyed by taluk (revenue circles commonly used in UK RTC).
+  /// Hoblis keyed by taluk (revenue circles used in UK Bhoomi / RTC).
   static const Map<String, List<String>> hoblisByTaluk = {
     'Sirsi': [
       'Sirsi',
@@ -34,6 +35,8 @@ class UkLandGeo {
       'Hulekal',
       'Devanalli',
       'Bisalkoppa',
+      'Sampakanda',
+      'Sampakhanda',
     ],
     'Siddapur': [
       'Siddapur',
@@ -41,10 +44,12 @@ class UkLandGeo {
       'Kyadgi',
       'Hareguli',
       'Bilagi',
+      'Bilgi',
     ],
     'Yellapur': [
       'Yellapur',
       'Kiravatti',
+      'Kirwatti',
       'Idagundi',
       'Vajralli',
     ],
@@ -103,8 +108,166 @@ class UkLandGeo {
     ],
   };
 
+  /// Gramas (villages) keyed by hobli for Sirsi, Siddapur and Yellapur.
+  static const Map<String, List<String>> gramasByHobli = {
+    'Sirsi': [
+      'Sirsi',
+      'Sirsi (Rural)',
+      'Hutgar',
+      'Sadashivalli',
+      'Chipgi',
+    ],
+    'Banavasi': [
+      'Banavasi',
+      'Margundi',
+    ],
+    'Sonda': [
+      'Sonda',
+      'Sondha',
+      'Audala',
+      'Hancharata',
+    ],
+    'Sugavi': [
+      'Sugavi',
+      'Bengle',
+      'Vaddinakoppa',
+    ],
+    'Chipgi': [
+      'Chipgi',
+      'Boppanalli',
+      'Sannakeri',
+      'Isalooru',
+    ],
+    'Hulekal': [
+      'Hulekal',
+      'Bakkal',
+      'Harehulekal',
+      'Hancharata',
+    ],
+    'Devanalli': [
+      'Devanalli',
+      'Devanmane',
+      'Benagaon',
+      'Sarguppa',
+    ],
+    'Bisalkoppa': [
+      'Bisalkoppa',
+      'Adnalli',
+      'Angodkoppa',
+      'Ullal',
+      'Benagi',
+    ],
+    'Sampakanda': [
+      'Sampakanda',
+      'Sampakhanda',
+      'Janmane',
+      'Adalli',
+      'Balavalli',
+    ],
+    'Sampakhanda': [
+      'Sampakhanda',
+      'Sampakanda',
+      'Janmane',
+      'Adalli',
+      'Balavalli',
+    ],
+    'Siddapur': [
+      'Siddapur',
+      'Kangod',
+      'Akkunji',
+      'Kolsirsi',
+      'Itagi',
+    ],
+    'Kansur': [
+      'Kansur',
+      'Tarehalli-Kansur',
+      'Kangod-Kansur',
+    ],
+    'Kyadgi': [
+      'Kyadgi',
+      'Hostot',
+      'Heggarani',
+    ],
+    'Hareguli': [
+      'Hareguli',
+    ],
+    'Bilagi': [
+      'Bilagi',
+      'Bilgi',
+      'Itagi',
+      'Hosamanju',
+    ],
+    'Bilgi': [
+      'Bilgi',
+      'Bilagi',
+      'Itagi',
+      'Hosamanju',
+    ],
+    'Yellapur': [
+      'Yellapur',
+      'Madnur',
+    ],
+    'Kiravatti': [
+      'Kiravatti',
+      'Kirwatti',
+      'Hosalli',
+      'Kanchanahalli',
+    ],
+    'Kirwatti': [
+      'Kirwatti',
+      'Kiravatti',
+      'Hosalli',
+      'Kanchanahalli',
+    ],
+    'Idagundi': [
+      'Idagundi',
+      'Idgundi',
+    ],
+    'Vajralli': [
+      'Vajralli',
+      'Magod',
+      'Nandolli',
+    ],
+  };
+
+  /// Taluk-headquarter gramas always offered for the three core taluks.
+  static const Map<String, List<String>> gramasByTaluk = {
+    'Sirsi': ['Sirsi'],
+    'Siddapur': ['Siddapur'],
+    'Yellapur': ['Yellapur'],
+  };
+
   static List<String> hoblisFor(String taluk) {
     return List<String>.from(hoblisByTaluk[taluk] ?? const <String>[]);
+  }
+
+  static List<String> gramasFor(String taluk, String hobli) {
+    final seen = <String>{};
+    final out = <String>[];
+    void addAll(Iterable<String> names) {
+      for (final n in names) {
+        final name = n.trim();
+        if (name.isEmpty || !seen.add(name)) continue;
+        out.add(name);
+      }
+    }
+
+    addAll(gramasByHobli[hobli] ?? const <String>[]);
+    addAll(gramasByTaluk[taluk] ?? const <String>[]);
+    if (hobli.trim().isNotEmpty) addAll([hobli.trim()]);
+    if (out.isEmpty && taluk.trim().isNotEmpty) addAll([taluk.trim()]);
+    addAll([otherGrama]);
+    return out;
+  }
+
+  /// Keep a saved value visible even if it is not in the canonical list.
+  static List<String> withCurrent(List<String> options, String? current) {
+    final list = List<String>.from(options);
+    final cur = (current ?? '').trim();
+    if (cur.isNotEmpty && !list.contains(cur)) {
+      list.insert(0, cur);
+    }
+    return list;
   }
 
   /// 40 gunta = 1 acre, 4 ana = 1 gunta.

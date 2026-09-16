@@ -25,6 +25,7 @@ type landRtcBody struct {
 	District     string `json:"district"`
 	Taluk        string `json:"taluk"`
 	Hobli        string `json:"hobli"`
+	Grama        string `json:"grama"`
 	SurveyNumber string `json:"survey_number"`
 	Hissa        string `json:"hissa"`
 	Acre         int    `json:"acre"`
@@ -62,6 +63,7 @@ func applyLandRtcBody(row *models.LandRtc, body landRtcBody) error {
 	row.District = district
 	row.Taluk = taluk
 	row.Hobli = strings.TrimSpace(body.Hobli)
+	row.Grama = strings.TrimSpace(body.Grama)
 	row.SurveyNumber = survey
 	row.Hissa = strings.TrimSpace(body.Hissa)
 	row.Acre = acre
@@ -336,8 +338,8 @@ func AdminListLandRtcs(c *fiber.Ctx) error {
 	if s := strings.TrimSpace(c.Query("q")); s != "" {
 		like := "%" + s + "%"
 		q = q.Where(
-			"survey_number ILIKE ? OR taluk ILIKE ? OR hobli ILIKE ? OR district ILIKE ? OR hissa ILIKE ?",
-			like, like, like, like, like,
+			"survey_number ILIKE ? OR taluk ILIKE ? OR hobli ILIKE ? OR grama ILIKE ? OR district ILIKE ? OR hissa ILIKE ?",
+			like, like, like, like, like, like,
 		)
 	}
 

@@ -554,7 +554,7 @@ func collectLandRtcs(uid uint, w dailyWindow, acc *dailySummaryAcc) {
 			ID:          r.ID,
 			Date:        r.CreatedAt,
 			Title:       joinParts("RTC", r.SurveyNumber, r.Hissa),
-			Subtitle:    joinParts(r.Taluk, r.Hobli, r.Details),
+			Subtitle:    joinParts(r.Taluk, r.Hobli, r.Grama, r.Details),
 			Side:        "none",
 			Kind:        "RTC",
 		})

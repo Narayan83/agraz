@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'api_service.dart';
 import 'app_theme.dart';
 import 'auth_token.dart';
+import 'dairy_parties.dart';
 import 'feedback_fab.dart';
 import 'l10n/app_l10n.dart';
 import 'login.dart';
@@ -49,10 +50,17 @@ String dairyLiters(dynamic v) {
 }
 
 class DairyPage extends StatefulWidget {
-  const DairyPage({super.key, this.skipBootstrap = false});
+  const DairyPage({
+    super.key,
+    this.skipBootstrap = false,
+    this.seedEntries = const [],
+  });
 
   /// When true, skip login/API so widget tests can pump the Entry form.
   final bool skipBootstrap;
+
+  /// Saved vendor/customer rows used when [skipBootstrap] is true.
+  final List<Map<String, dynamic>> seedEntries;
 
   @override
   State<DairyPage> createState() => _DairyPageState();
@@ -78,6 +86,10 @@ class _DairyPageState extends State<DairyPage>
   int? _editingId;
   Map<String, dynamic> _summary = {};
   List<Map<String, dynamic>> _entries = [];
+  List<DairyParty> _parties = [];
+  List<DairyParty> _nameSuggestions = [];
+  bool _suppressIdentity = false;
+  bool _suppressSuggestions = false;
 
   bool get _isMilk =>
       _kind == 'milk_given' || _kind == 'milk_bought';
@@ -91,8 +103,12 @@ class _DairyPageState extends State<DairyPage>
     });
     _qtyCtrl.addListener(_recalcAmount);
     _rateCtrl.addListener(_recalcAmount);
+    _nameCtrl.addListener(_onPartyIdentityChanged);
+    _mobileCtrl.addListener(_onPartyIdentityChanged);
     if (widget.skipBootstrap) {
       _loading = false;
+      _entries = List<Map<String, dynamic>>.from(widget.seedEntries);
+      _parties = dairyPartiesFrom(entries: _entries);
     } else {
       _bootstrap();
     }
@@ -101,6 +117,8 @@ class _DairyPageState extends State<DairyPage>
   @override
   void dispose() {
     _tabs.dispose();
+    _nameCtrl.removeListener(_onPartyIdentityChanged);
+    _mobileCtrl.removeListener(_onPartyIdentityChanged);
     _nameCtrl.dispose();
     _mobileCtrl.dispose();
     _qtyCtrl.dispose();
@@ -118,6 +136,71 @@ class _DairyPageState extends State<DairyPage>
     if (amt > 0) {
       _amountCtrl.text = amt.toStringAsFixed(2);
     }
+  }
+
+  void _onPartyIdentityChanged() {
+    if (_suppressIdentity || !mounted) return;
+    _suppressSuggestions = false;
+    _refreshPartyIdentity();
+  }
+
+  void _rebuildParties() {
+    _parties = dairyPartiesFrom(entries: _entries);
+  }
+
+  void _refreshPartyIdentity() {
+    if (_editingId != null) {
+      if (_nameSuggestions.isNotEmpty) {
+        setState(() => _nameSuggestions = []);
+      }
+      return;
+    }
+    final name = _nameCtrl.text.trim();
+    final mobile = _mobileCtrl.text.trim();
+    final suggestions = _suppressSuggestions
+        ? <DairyParty>[]
+        : searchDairyParties(_parties, name: name, mobile: mobile);
+    final match = dairyMatchedParty(_parties, name: name, mobile: mobile);
+    if (match != null) {
+      _applyMatchedParty(match);
+    }
+    setState(() => _nameSuggestions = suggestions);
+  }
+
+  void _applyMatchedParty(DairyParty party) {
+    _suppressIdentity = true;
+    if (party.name.isNotEmpty &&
+        dairyLast10(_mobileCtrl.text).length == 10 &&
+        _nameCtrl.text.trim().toLowerCase() != party.name.toLowerCase()) {
+      _nameCtrl.text = party.name;
+    }
+    if (party.mobile.isNotEmpty && _mobileCtrl.text.trim().isEmpty) {
+      _mobileCtrl.text = party.mobile;
+    }
+    if (_isMilk && party.lastRate > 0) {
+      _rateCtrl.text = dairyRateText(party.lastRate);
+      _recalcAmount();
+    }
+    _suppressIdentity = false;
+  }
+
+  void _selectParty(DairyParty party) {
+    _suppressIdentity = true;
+    _nameCtrl.text = party.name;
+    _nameCtrl.selection = TextSelection.collapsed(offset: party.name.length);
+    if (party.mobile.isNotEmpty) {
+      _mobileCtrl.text = party.mobile;
+    }
+    if (_isMilk && party.lastRate > 0) {
+      _rateCtrl.text = dairyRateText(party.lastRate);
+      _recalcAmount();
+    }
+    _suppressIdentity = false;
+    setState(() {
+      _nameSuggestions = [];
+      _suppressSuggestions = true;
+    });
+    FocusManager.instance.primaryFocus?.unfocus();
   }
 
   Future<bool> _ensureLogin() async {
@@ -148,6 +231,7 @@ class _DairyPageState extends State<DairyPage>
       setState(() {
         _summary = summary;
         _entries = entries;
+        _rebuildParties();
         _loading = false;
       });
     } catch (e) {
@@ -171,8 +255,10 @@ class _DairyPageState extends State<DairyPage>
 
   void _resetForm() {
     _editingId = null;
+    _suppressIdentity = true;
     _nameCtrl.clear();
     _mobileCtrl.clear();
+    _suppressIdentity = false;
     _qtyCtrl.clear();
     _rateCtrl.clear();
     _amountCtrl.clear();
@@ -180,9 +266,12 @@ class _DairyPageState extends State<DairyPage>
     _kind = 'milk_given';
     _shift = 'morning';
     _date = DateTime.now();
+    _nameSuggestions = [];
+    _suppressSuggestions = false;
   }
 
   void _fillFrom(Map<String, dynamic> row) {
+    _suppressIdentity = true;
     _editingId = dairyNum(row['id']).toInt();
     _kind = '${row['kind'] ?? 'milk_given'}';
     _nameCtrl.text = '${row['party_name'] ?? ''}';
@@ -200,6 +289,9 @@ class _DairyPageState extends State<DairyPage>
     final shift = '${row['shift'] ?? ''}';
     _shift = (shift == 'evening') ? 'evening' : 'morning';
     _date = DateTime.tryParse('${row['date']}') ?? DateTime.now();
+    _nameSuggestions = [];
+    _suppressSuggestions = true;
+    _suppressIdentity = false;
     _tabs.animateTo(0);
     setState(() {});
   }
@@ -464,6 +556,10 @@ class _DairyPageState extends State<DairyPage>
                   label: tr('Dairy / party name'),
                   icon: Icons.store_rounded,
                   required: true,
+                ),
+                dairyPartySuggestionList(
+                  parties: _nameSuggestions,
+                  onSelect: _selectParty,
                 ),
                 const SizedBox(height: 12),
                 AppField(

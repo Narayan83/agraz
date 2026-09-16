@@ -59,6 +59,39 @@ void main() {
     expect(find.text('No dairy entries yet'), findsOneWidget);
   });
 
+  testWidgets('Dairy searches saved vendor and fills last-day rate',
+      (tester) async {
+    await pumpPage(
+      tester,
+      DairyPage(
+        skipBootstrap: true,
+        seedEntries: const [
+          {
+            'id': 1,
+            'party_name': 'Gowda Dairy',
+            'party_mobile': '9876543210',
+            'kind': 'milk_given',
+            'rate_per_liter': 42,
+            'date': '2026-09-12',
+          },
+        ],
+      ),
+    );
+
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), 'Go');
+    await tester.pump();
+    expect(find.text('Gowda Dairy'), findsOneWidget);
+    expect(find.textContaining('Last rate'), findsOneWidget);
+
+    await tester.tap(find.text('Gowda Dairy'));
+    await tester.pump();
+
+    expect(tester.widget<TextField>(fields.at(0)).controller?.text, 'Gowda Dairy');
+    expect(tester.widget<TextField>(fields.at(1)).controller?.text, '9876543210');
+    expect(tester.widget<TextField>(fields.at(3)).controller?.text, '42');
+  });
+
   testWidgets('Dairy owner entry form with narration does not assert',
       (tester) async {
     await pumpPage(tester, const DairyOwnerPage(skipBootstrap: true));
@@ -81,5 +114,38 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Add customer'), findsOneWidget);
+  });
+
+  testWidgets('Dairy owner searches customer and fills last-day rate',
+      (tester) async {
+    await pumpPage(
+      tester,
+      DairyOwnerPage(
+        skipBootstrap: true,
+        seedCustomers: const [
+          {
+            'id': 9,
+            'name': 'Ramu Gowda',
+            'mobile': '9999900000',
+            'village': 'Hebbal',
+            'default_rate': 38,
+            'last_rate': 41,
+          },
+        ],
+      ),
+    );
+
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), 'Ra');
+    await tester.pump();
+    expect(find.text('Ramu Gowda'), findsWidgets);
+    expect(find.textContaining('Last rate'), findsOneWidget);
+
+    await tester.enterText(fields.at(0), 'Ramu Gowda');
+    await tester.pump();
+
+    expect(tester.widget<TextField>(fields.at(0)).controller?.text, 'Ramu Gowda');
+    expect(tester.widget<TextField>(fields.at(1)).controller?.text, '9999900000');
+    expect(tester.widget<TextField>(fields.at(3)).controller?.text, '41');
   });
 }

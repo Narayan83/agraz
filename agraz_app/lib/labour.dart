@@ -218,8 +218,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       _labourReceivable = null;
       return;
     }
+    // Name typeahead uses /labors/people (same as History). Rates/balance load
+    // after the user picks a suggestion or finishes an exact name.
     _rateLookupDebounce = Timer(const Duration(milliseconds: 400), () {
-      _loadRatesForLabourer(name: name);
+      _refreshNameSuggestions(name);
     });
   }
 
@@ -308,11 +310,67 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     });
   }
 
+  /// Name autocomplete via distinct labourers API (works with partial names).
+  Future<void> _refreshNameSuggestions(String name) async {
+    final query = name.trim();
+    if (query.length < 2 || _suppressSuggestions) return;
+    try {
+      final people = await _api.fetchLaborPeople(q: query);
+      if (!mounted) return;
+      // Stale response if the field changed while the request was in flight.
+      if (_nameController.text.trim() != query || _suppressSuggestions) return;
+
+      final suggestions = <String>[];
+      final suggestionGender = <String, String>{};
+      final qLower = query.toLowerCase();
+      for (final p in people) {
+        final rowName = p['name']?.toString().trim() ?? '';
+        if (rowName.isEmpty) continue;
+        final lower = rowName.toLowerCase();
+        if (lower == qLower) continue;
+        suggestions.add(rowName);
+        final g = p['gender']?.toString().trim() ?? '';
+        if ((g == 'Male' || g == 'Female') &&
+            !suggestionGender.containsKey(rowName)) {
+          suggestionGender[rowName] = g;
+        }
+        if (suggestions.length >= 8) break;
+      }
+
+      setState(() {
+        _nameSuggestionGenders = suggestionGender;
+        _nameSuggestions = suggestions.take(5).toList();
+      });
+
+      // If the typed text already matches one person exactly, load rates.
+      Map<String, dynamic>? exact;
+      for (final p in people) {
+        if ((p['name']?.toString().trim().toLowerCase() ?? '') == qLower) {
+          exact = p;
+          break;
+        }
+      }
+      if (exact != null) {
+        final mob = exact['mobile']?.toString().trim() ?? '';
+        await _loadRatesForLabourer(
+          mobile: mob.length == 10 ? mob : null,
+          name: exact['name']?.toString().trim(),
+        );
+      }
+    } catch (_) {
+      if (!mounted || _suppressSuggestions) return;
+      setState(() {
+        _nameSuggestions = [];
+        _nameSuggestionGenders = {};
+      });
+    }
+  }
+
   /// Loads both the "settings" rate (explicit per-labourer rate, set via the
   /// rate popup) and the "latest" historically entered rate per category for
   /// the labourer identified by [mobile] and/or [name]. Settings rates take
   /// priority; latest entered rate is the fallback (requirement: settings
-  /// rate OR latest entered rate). Also refreshes name suggestions.
+  /// rate OR latest entered rate).
   Future<void> _loadRatesForLabourer({String? mobile, String? name}) async {
     final byMobile = mobile != null && mobile.isNotEmpty;
     final results = await Future.wait([
@@ -320,6 +378,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       _api.fetchLabors(
         mobile: mobile,
         name: byMobile ? null : name,
+        // Prefer one person after selection; typeahead uses /labors/people.
+        exactName: !byMobile && (name?.trim().isNotEmpty ?? false),
         limit: 30,
       ),
     ]);
@@ -341,8 +401,6 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     }
 
     final latestMap = <String, double>{};
-    final suggestions = <String>{};
-    final suggestionGender = <String, String>{};
     final query = (name ?? '').trim().toLowerCase();
     String? lastGender;
     for (final r in historyRows) {
@@ -374,21 +432,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
           !byMobile &&
           query.isNotEmpty &&
           rowName.toLowerCase().startsWith(query)) {
-        // While typing, take gender from closest name prefix match.
         lastGender = rowGender;
-      }
-
-      if (!byMobile && rowName.isNotEmpty && rowName.toLowerCase() != query) {
-        suggestions.add(rowName);
-        if ((rowGender == 'Male' || rowGender == 'Female') &&
-            !suggestionGender.containsKey(rowName)) {
-          suggestionGender[rowName] = rowGender;
-        }
       }
     }
 
-    // If searching by mobile, fall back to first history gender.
-    // For name search, only use exact/prefix matches above (avoid ILIKE noise).
     if (lastGender == null && byMobile) {
       for (final r in historyRows) {
         final g = r['gender']?.toString().trim() ?? '';
@@ -402,14 +449,8 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     setState(() {
       _ratesForLabourer = settingsMap;
       _latestRatesForLabourer = latestMap;
-      _nameSuggestionGenders = suggestionGender;
       if (lastGender != null) {
         _selectedGender = lastGender;
-      }
-      if (!_suppressSuggestions) {
-        final list = suggestions.toList()
-          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-        _nameSuggestions = list.take(5).toList();
       }
     });
     _applyRateForSelectedCategory();

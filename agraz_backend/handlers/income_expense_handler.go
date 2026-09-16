@@ -11,6 +11,93 @@ import (
 	"gorm.io/gorm"
 )
 
+// parseIEProductLines reads product_lines / productLines from a raw JSON map.
+func parseIEProductLines(raw map[string]interface{}) []models.IncomeExpenseProductLine {
+	var arr []interface{}
+	if v, ok := raw["product_lines"].([]interface{}); ok {
+		arr = v
+	} else if v, ok := raw["productLines"].([]interface{}); ok {
+		arr = v
+	}
+	if len(arr) == 0 {
+		return nil
+	}
+	out := make([]models.IncomeExpenseProductLine, 0, len(arr))
+	for i, item := range arr {
+		m, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		product := strFromAny(m["product"])
+		unit := strFromAny(m["unit"])
+		qtyF, _ := toFloat64(m["quantity"])
+		priceF, _ := toFloat64(m["unit_price"])
+		if priceF == 0 {
+			if v, ok := toFloat64(m["unitPrice"]); ok {
+				priceF = v
+			} else if v, ok := toFloat64(m["price"]); ok {
+				priceF = v
+			}
+		}
+		totalF, hasTotal := toFloat64(m["total"])
+		qty := decimal.NewFromFloat(qtyF)
+		price := decimal.NewFromFloat(priceF)
+		total := decimal.Zero
+		if hasTotal && totalF > 0 {
+			total = decimal.NewFromFloat(totalF).Round(2)
+		}
+		if !qty.IsZero() {
+			if price.IsZero() && total.GreaterThan(decimal.Zero) {
+				price = total.Div(qty).Round(2)
+			} else if total.IsZero() && price.GreaterThan(decimal.Zero) {
+				total = qty.Mul(price).Round(2)
+			}
+		}
+		if strings.TrimSpace(product) == "" && qty.IsZero() && price.IsZero() && total.IsZero() {
+			continue
+		}
+		out = append(out, models.IncomeExpenseProductLine{
+			LineNo:    i + 1,
+			Product:   product,
+			Quantity:  qty,
+			Unit:      unit,
+			UnitPrice: price,
+			Total:     total,
+		})
+	}
+	return out
+}
+
+func sumIEProductLineTotals(lines []models.IncomeExpenseProductLine) decimal.Decimal {
+	sum := decimal.Zero
+	for _, ln := range lines {
+		sum = sum.Add(ln.Total)
+	}
+	return sum
+}
+
+func replaceIEProductLines(tx *gorm.DB, parentID uint, lines []models.IncomeExpenseProductLine) error {
+	if err := tx.Where("income_expense_id = ?", parentID).
+		Delete(&models.IncomeExpenseProductLine{}).Error; err != nil {
+		return err
+	}
+	for i := range lines {
+		lines[i].ID = 0
+		lines[i].IncomeExpenseID = parentID
+		lines[i].LineNo = i + 1
+		if err := tx.Create(&lines[i]).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func preloadIEProductLines(q *gorm.DB) *gorm.DB {
+	return q.Preload("ProductLines", func(db *gorm.DB) *gorm.DB {
+		return db.Order("line_no ASC, id ASC")
+	})
+}
+
 var incomeExpenseDB *gorm.DB
 
 func SetIncomeExpenseDB(db *gorm.DB) {
@@ -208,7 +295,7 @@ func GetIncomeExpenses(c *fiber.Ctx) error {
 	if err := q.Count(&total).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	if err := q.Order("date DESC, id DESC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
+	if err := preloadIEProductLines(q).Order("date DESC, id DESC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(fiber.Map{"data": rows, "total": total, "page": page, "limit": limit})
@@ -220,7 +307,7 @@ func GetIncomeExpense(c *fiber.Ctx) error {
 		return err
 	}
 	var row models.IncomeExpense
-	if err := scopeByUserID(incomeExpenseDB.Model(&models.IncomeExpense{}), uid).
+	if err := preloadIEProductLines(scopeByUserID(incomeExpenseDB.Model(&models.IncomeExpense{}), uid)).
 		First(&row, c.Params("id")).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Record not found"})
 	}
@@ -300,6 +387,7 @@ func UpdateIncomeExpense(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to update", "details": err.Error()})
 	}
 	incomeExpenseDB.First(&row, row.ID)
+	syncLaborFromLinkedIE(uid, &row)
 	return c.JSON(row)
 }
 
@@ -308,13 +396,23 @@ func DeleteIncomeExpense(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	id := c.Params("id")
+	var existing models.IncomeExpense
+	if err := scopeByUserID(incomeExpenseDB.Model(&models.IncomeExpense{}), uid).
+		First(&existing, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Record not found"})
+	}
+	deleteLaborLinkedToIE(uid, existing.ID)
 	res := scopeByUserID(incomeExpenseDB.Model(&models.IncomeExpense{}), uid).
-		Delete(&models.IncomeExpense{}, c.Params("id"))
+		Delete(&models.IncomeExpense{}, id)
 	if res.Error != nil {
 		return c.Status(500).JSON(fiber.Map{"error": res.Error.Error()})
 	}
 	if res.RowsAffected == 0 {
 		return c.Status(404).JSON(fiber.Map{"error": "Record not found"})
 	}
+	// Clean up product lines if FK cascade is not enforced yet.
+	_ = incomeExpenseDB.Where("income_expense_id = ?", id).
+		Delete(&models.IncomeExpenseProductLine{})
 	return c.JSON(fiber.Map{"message": "Deleted"})
 }

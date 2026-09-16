@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'income_expense_data.dart';
 import 'income_expense_view.dart';
 import 'income_expense_report.dart';
+import 'farm_income_products.dart';
 import 'api_service.dart';
 import 'app_theme.dart';
 import 'auth_token.dart';
@@ -54,12 +55,6 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
-
-  String get _partyLabel {
-    if (_formData.receiptPaymentType == 'Expense') return tr('To');
-    if (_formData.receiptPaymentType == 'Income') return tr('By');
-    return tr('By / To');
-  }
 
   bool _isJwtError(Object e) {
     final msg = e.toString().toLowerCase();
@@ -142,20 +137,53 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
               [];
       _formData.subCategory = null;
       _formData.subCategories = [];
+      _formData.productLines = [];
     });
   }
 
-  void _toggleSubCategory(String option) {
+  void _selectSubCategory(String option) {
     setState(() {
-      if (_formData.subCategories.contains(option)) {
-        _formData.subCategories.remove(option);
-      } else {
-        _formData.subCategories.add(option);
+      final already =
+          _formData.subCategories.length == 1 &&
+          _formData.subCategories.first == option;
+      if (already) {
+        _formData.subCategories = [];
+        _formData.subCategory = null;
+        _formData.productLines = [];
+        return;
       }
-      _formData.subCategory = _formData.subCategories.isEmpty
+      final prev = _formData.subCategories.isEmpty
           ? null
           : _formData.subCategories.first;
+      _formData.subCategories = [option];
+      _formData.subCategory = option;
+      if (prev != option) {
+        _formData.productLines = [];
+      }
     });
+  }
+
+  Future<void> _openProductDetails() async {
+    if (!_formData.canAddProductDetails) return;
+    final crop = _formData.effectiveSubCategories.first;
+    final result = await showFarmIncomeProductLinesSheet(
+      context: context,
+      crop: crop,
+      initial: List<FarmIncomeProductLine>.from(_formData.productLines),
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      _formData.productLines = result;
+      if (result.isNotEmpty) {
+        _formData.syncAmountFromProductLines();
+        _amountController.text = _trimAmount(_formData.amount ?? 0);
+      }
+    });
+  }
+
+  String _trimAmount(double v) {
+    if (v == v.roundToDouble()) return v.toInt().toString();
+    return v.toStringAsFixed(2);
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -412,6 +440,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       _showNameSuggestions = false;
       _clearPartyBalance();
       _formData.subCategories = [];
+      _formData.productLines = [];
       _updateCategories();
     });
   }
@@ -663,36 +692,36 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
               ),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
+                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 16),
                   child: Form(
                     key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _buildStepper(),
-                        const SizedBox(height: 12),
-                        _buildTransactionTypeCard(),
-                        const SizedBox(height: 12),
-                        _buildTransactionModeCard(),
-                        const SizedBox(height: 12),
-                        _buildDateAmountCard(),
+                        const SizedBox(height: 8),
+                        _buildBasicsCard(),
                         if (_formData.receiptPaymentType != null &&
                             categories.isNotEmpty) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           _buildCategorySection(),
                         ],
                         if (_formData.category != null &&
                             subCategories.isNotEmpty) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           _buildSubCategorySection(),
                         ],
-                        const SizedBox(height: 12),
+                        if (_formData.canAddProductDetails) ...[
+                          const SizedBox(height: 8),
+                          _buildProductDetailsCard(),
+                        ],
+                        const SizedBox(height: 8),
                         _buildPartyCard(),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                         _buildNarrationCard(),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 12),
                         _buildSubmitButton(),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                         _buildSecondaryActions(),
                       ],
                     ),
@@ -781,10 +810,10 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
         boxShadow: [AppColors.softShadow],
       ),
@@ -800,45 +829,12 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     );
   }
 
-  Widget _sectionTitle(String title, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              color: AppColors.primarySoft,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 14, color: AppColors.primary),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTransactionTypeCard() {
+  Widget _buildBasicsCard() {
     return AppCard(
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SectionTitle(
-            icon: Icons.swap_horiz_rounded,
-            title: tr('Transaction Type'),
-            subtitle: tr('Is this money in or money out?'),
-          ),
-          SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -849,7 +845,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                   AppColors.incomeSoft,
                 ),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: _typeToggle(
                   'Expense',
@@ -860,26 +856,13 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTransactionModeCard() {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionTitle(
-            icon: Icons.payments_rounded,
-            title: tr('Transaction Mode'),
-            subtitle: tr('Cash or bank transfer'),
-          ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           DropdownButtonFormField<String>(
             initialValue: _formData.transactionMode,
             decoration: InputDecoration(
-              labelText: tr('Mode'),
+              hintText: tr('Mode'),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
             ),
             items: [
@@ -898,11 +881,13 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
             },
           ),
           if (_formData.transactionMode == 'Transfer') ...[
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             DropdownButtonFormField<int>(
               initialValue: _formData.organizationId,
               decoration: InputDecoration(
-                labelText: tr('Organization'),
+                hintText: tr('Organization'),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 prefixIcon: const Icon(Icons.business_rounded),
               ),
               items: _organizations.map((o) {
@@ -922,6 +907,14 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
               },
             ),
           ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: _buildDateField()),
+              const SizedBox(width: 10),
+              Expanded(child: _buildAmountField()),
+            ],
+          ),
         ],
       ),
     );
@@ -942,164 +935,37 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
         });
       },
       child: AnimatedScale(
-        scale: pressed ? 0.96 : 1.0,
+        scale: pressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOutCubic,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 260),
-          curve: Curves.easeOutCubic,
-          height: 96,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          duration: const Duration(milliseconds: 220),
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            gradient: selected
-                ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color.lerp(color, Colors.white, 0.18)!,
-                      color,
-                    ],
-                  )
-                : null,
-            color: selected ? null : Colors.white,
-            borderRadius: BorderRadius.circular(18),
+            color: selected ? color : softColor,
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: selected ? color : AppColors.border,
-              width: selected ? 1.6 : 1.2,
+              color: selected ? color : color.withValues(alpha: 0.28),
+              width: 1.2,
             ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.32),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ]
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
           ),
-          child: Stack(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Row(
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 260),
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: selected
-                          ? LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Colors.white.withValues(alpha: 0.35),
-                                Colors.white.withValues(alpha: 0.12),
-                              ],
-                            )
-                          : null,
-                      color: selected ? null : softColor,
-                      border: Border.all(
-                        color: selected
-                            ? Colors.white.withValues(alpha: 0.4)
-                            : color.withValues(alpha: 0.2),
-                        width: 1.4,
-                      ),
-                    ),
-                    child: Icon(
-                      icon,
-                      color: selected ? Colors.white : color,
-                      size: 23,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          type,
-                          style: TextStyle(
-                            color: selected
-                                ? Colors.white
-                                : AppColors.textPrimary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          selected ? 'Selected' : 'Tap to select',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: selected
-                                ? Colors.white.withValues(alpha: 0.9)
-                                : AppColors.textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if (selected)
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 260),
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.16),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Icon(Icons.check_rounded, color: color, size: 14),
-                  ),
+              Icon(icon, color: selected ? Colors.white : color, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                tr(type),
+                style: TextStyle(
+                  color: selected ? Colors.white : AppColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
                 ),
+              ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildDateAmountCard() {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionTitle(
-            icon: Icons.calendar_month_rounded,
-            title: tr('Date & Amount'),
-            subtitle: tr('When and how much?'),
-          ),
-          SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(child: _buildDateField()),
-              SizedBox(width: 12),
-              Expanded(child: _buildAmountField()),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -1201,21 +1067,11 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
 
   Widget _buildCategorySection() {
     return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionTitle(
-            icon: Icons.category_rounded,
-            title: tr('Category'),
-            subtitle: tr('Pick the type of income or expense'),
-          ),
-          SizedBox(height: 14),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: categories.map((cat) => _categoryChip(cat)).toList(),
-          ),
-        ],
+      padding: const EdgeInsets.all(12),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: categories.map((cat) => _categoryChip(cat)).toList(),
       ),
     );
   }
@@ -1307,56 +1163,78 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   }
 
   Widget _buildSubCategorySection() {
-    final preview = _formData.splitPreview();
     return AppCard(
+      padding: const EdgeInsets.all(12),
+      child: _buildSubCategoryGrid(),
+    );
+  }
+
+  Widget _buildProductDetailsCard() {
+    final lines = _formData.productLines;
+    final fmt = NumberFormat('#,##0.##');
+    return AppCard(
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle(tr('Sub Category'), Icons.list_alt_rounded),
-          Text(
-            tr('Select one or more — amount splits equally'),
-            style: AppText.caption,
-          ),
-          SizedBox(height: 10),
-          _buildSubCategoryGrid(),
-          if (preview.length >= 2) ...[
-            SizedBox(height: 14),
-            Text(tr('Split preview'), style: AppText.label),
-            SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
+          InkWell(
+            onTap: _openProductDetails,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.primarySoft.withValues(alpha: 0.45),
+                color: AppColors.field,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.15),
-                ),
+                border: Border.all(color: AppColors.border),
               ),
-              child: Column(
-                children: preview
-                    .map(
-                      (p) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(tr(p.name), style: AppText.small),
-                            ),
-                            Text(
-                              '₹${NumberFormat('#,##0').format(p.amount)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12.5,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.grid_view_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      lines.isEmpty
+                          ? tr('Add product details')
+                          : '${tr('Total')}: ₹${fmt.format(_formData.productLinesTotal)}',
+                      style: AppText.small,
+                    ),
+                  ),
+                  const Icon(Icons.add, color: AppColors.primary, size: 20),
+                ],
               ),
             ),
+          ),
+          if (lines.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ...lines.map((l) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${tr(l.product.isEmpty ? '—' : l.product)}'
+                        ' · ${fmt.format(l.quantity)} ${l.unit}',
+                        style: AppText.small,
+                      ),
+                    ),
+                    Text(
+                      '₹${fmt.format(l.total)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
           ],
         ],
       ),
@@ -1373,10 +1251,9 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
         final emoji =
             _formData.categorySubCategoryMap[_formData.category]![option] ??
                 '📋';
-        return FilterChip(
+        return ChoiceChip(
           selected: selected,
-          showCheckmark: true,
-          checkmarkColor: Colors.white,
+          showCheckmark: false,
           avatar: Container(
             width: 26,
             height: 26,
@@ -1403,7 +1280,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
             width: 1.2,
           ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          onSelected: (_) => _toggleSubCategory(option),
+          onSelected: (_) => _selectSubCategory(option),
         );
       }).toList(),
     );
@@ -1411,31 +1288,10 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
 
   Widget _buildPartyCard() {
     return AppCard(
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _sectionTitle(_partyLabel, Icons.person_rounded),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  tr('Search by name or mobile'),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1469,7 +1325,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                       hintText: tr('Name (optional, for search)'),
                       hintStyle:
                           TextStyle(color: Colors.grey.shade400, fontSize: 13),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
                     ),
                   ),
                 ),
@@ -1657,52 +1513,45 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
 
   Widget _buildNarrationCard() {
     return AppCard(
-      child: Column(
+      padding: const EdgeInsets.all(12),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _sectionTitle(
-                  tr('Narration (optional)'),
-                  Icons.description_rounded,
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.field,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.border),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: TextFormField(
+                controller: _narrationController,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ),
+                minLines: 2,
+                maxLines: 6,
+                keyboardType: TextInputType.multiline,
+                validator: (value) {
+                  return null;
+                },
+                onSaved: (value) => _formData.narration =
+                    (value == null || value.trim().isEmpty) ? null : value.trim(),
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  isDense: true,
+                  hintText: tr('Narration (optional)'),
+                  hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 ),
               ),
-              VoiceMicButton(
-                fieldId: 'ie_narration',
-                controller: _narrationController,
-              ),
-            ],
+            ),
           ),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.field,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: TextFormField(
-              controller: _narrationController,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textPrimary,
-              ),
-              minLines: 3,
-              maxLines: 8,
-              keyboardType: TextInputType.multiline,
-              validator: (value) {
-                return null;
-              },
-              onSaved: (value) => _formData.narration =
-                  (value == null || value.trim().isEmpty) ? null : value.trim(),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                hintText: tr('Describe the transaction (optional)...'),
-                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
-              ),
-            ),
+          VoiceMicButton(
+            fieldId: 'ie_narration',
+            controller: _narrationController,
           ),
         ],
       ),

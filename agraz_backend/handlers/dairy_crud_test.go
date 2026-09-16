@@ -321,3 +321,205 @@ func TestOwnerDairyCustomerAndEntryCRUD(t *testing.T) {
 		t.Fatalf("customer list after delete: %v", listed)
 	}
 }
+
+func TestOwnerDairyCustomerIdentityReusedAndLastRate(t *testing.T) {
+	app := setupDairyCRUDApp(t, 22)
+
+	code, cust := dairyJSON(t, app, http.MethodPost, "/api/dairy/owner/customers", map[string]any{
+		"name":         "Ramu",
+		"default_rate": 38,
+	})
+	if code != 201 {
+		t.Fatalf("customer create %d %v", code, cust)
+	}
+
+	code, created := dairyJSON(t, app, http.MethodPost, "/api/dairy/owner/entries", map[string]any{
+		"owner_kind":      "collected",
+		"party_name":      "Ramu",
+		"party_mobile":    "9876543210",
+		"date":            "2026-09-12",
+		"shift":           "morning",
+		"quantity_liters": 10,
+		"rate_per_liter":  42,
+	})
+	if code != 201 {
+		t.Fatalf("entry create %d %v", code, created)
+	}
+
+	code, listed := dairyJSON(t, app, http.MethodGet, "/api/dairy/owner/customers", nil)
+	if code != 200 {
+		t.Fatalf("list %d %v", code, listed)
+	}
+	crows, _ := listed["data"].([]any)
+	if len(crows) != 1 {
+		t.Fatalf("want 1 customer identity, got %v", listed)
+	}
+	row, _ := crows[0].(map[string]any)
+	if fmt.Sprint(row["mobile"]) != "9876543210" {
+		t.Fatalf("mobile not attached to identity: %v", row)
+	}
+	if dairyDecimal(row["last_rate"]) != 42 {
+		t.Fatalf("last_rate after first day: %v", row["last_rate"])
+	}
+	if dairyDecimal(row["default_rate"]) != 42 {
+		t.Fatalf("default_rate should follow last day: %v", row["default_rate"])
+	}
+
+	code, _ = dairyJSON(t, app, http.MethodPost, "/api/dairy/owner/entries", map[string]any{
+		"owner_kind":      "collected",
+		"party_name":      "Ramu",
+		"party_mobile":    "9876543210",
+		"date":            "2026-09-13",
+		"shift":           "morning",
+		"quantity_liters": 8,
+		"rate_per_liter":  45,
+	})
+	if code != 201 {
+		t.Fatalf("second day entry %d", code)
+	}
+
+	code, listed = dairyJSON(t, app, http.MethodGet, "/api/dairy/owner/customers", nil)
+	if code != 200 {
+		t.Fatalf("list after day 2 %d %v", code, listed)
+	}
+	crows, _ = listed["data"].([]any)
+	if len(crows) != 1 {
+		t.Fatalf("identity duplicated: %v", listed)
+	}
+	row, _ = crows[0].(map[string]any)
+	if dairyDecimal(row["last_rate"]) != 45 {
+		t.Fatalf("last_rate after second day: %v", row["last_rate"])
+	}
+}
+
+func TestDairySummaryReceivablePayableNet(t *testing.T) {
+	app := setupDairyCRUDApp(t, 23)
+
+	must := func(kind string, qty, rate, amt float64, date string) {
+		t.Helper()
+		body := map[string]any{
+			"kind":       kind,
+			"party_name": "Gowda Dairy",
+			"party_mobile": "9876501234",
+			"date":       date,
+		}
+		if kind == "milk_given" || kind == "milk_bought" {
+			body["quantity_liters"] = qty
+			body["rate_per_liter"] = rate
+			body["shift"] = "morning"
+		} else {
+			body["amount"] = amt
+		}
+		code, resp := dairyJSON(t, app, http.MethodPost, "/api/dairy/entries", body)
+		if code != 201 {
+			t.Fatalf("%s create %d %v", kind, code, resp)
+		}
+	}
+
+	must("milk_given", 10, 40, 0, "2026-09-01")   // receivable +400
+	must("milk_bought", 5, 30, 0, "2026-09-02")   // payable +150
+	must("payment_received", 0, 0, 100, "2026-09-03")
+	must("payment_made", 0, 0, 50, "2026-09-04")
+
+	code, sum := dairyJSON(t, app, http.MethodGet, "/api/dairy/summary", nil)
+	if code != 200 {
+		t.Fatalf("summary %d %v", code, sum)
+	}
+	if dairyDecimal(sum["milk_given_amount"]) != 400 {
+		t.Fatalf("given amt=%v", sum["milk_given_amount"])
+	}
+	if dairyDecimal(sum["milk_bought_amount"]) != 150 {
+		t.Fatalf("bought amt=%v", sum["milk_bought_amount"])
+	}
+	if dairyDecimal(sum["payment_received"]) != 100 {
+		t.Fatalf("recv=%v", sum["payment_received"])
+	}
+	if dairyDecimal(sum["payment_made"]) != 50 {
+		t.Fatalf("paid=%v", sum["payment_made"])
+	}
+	if dairyDecimal(sum["receivable"]) != 300 { // 400-100
+		t.Fatalf("receivable=%v want 300", sum["receivable"])
+	}
+	if dairyDecimal(sum["payable"]) != 100 { // 150-50
+		t.Fatalf("payable=%v want 100", sum["payable"])
+	}
+	if dairyDecimal(sum["net"]) != 200 { // 300-100
+		t.Fatalf("net=%v want 200", sum["net"])
+	}
+	if sum["net_side"] != "receivable" {
+		t.Fatalf("net_side=%v", sum["net_side"])
+	}
+}
+
+func TestDairyEntryUpdateAffectsSummary(t *testing.T) {
+	app := setupDairyCRUDApp(t, 24)
+
+	code, created := dairyJSON(t, app, http.MethodPost, "/api/dairy/entries", map[string]any{
+		"kind":            "milk_given",
+		"party_name":      "Nandini",
+		"date":            "2026-09-10",
+		"shift":           "morning",
+		"quantity_liters": 10,
+		"rate_per_liter":  40,
+	})
+	if code != 201 {
+		t.Fatalf("create %d %v", code, created)
+	}
+	eid := dairyDataID(t, created)
+
+	code, _ = dairyJSON(t, app, http.MethodPut, "/api/dairy/entries/"+eid, map[string]any{
+		"kind":            "milk_given",
+		"party_name":      "Nandini",
+		"date":            "2026-09-10",
+		"shift":           "morning",
+		"quantity_liters": 12,
+		"rate_per_liter":  40,
+	})
+	if code != 200 {
+		t.Fatalf("update %d", code)
+	}
+
+	code, sum := dairyJSON(t, app, http.MethodGet, "/api/dairy/summary", nil)
+	if code != 200 {
+		t.Fatalf("summary %d %v", code, sum)
+	}
+	if dairyDecimal(sum["milk_given_liters"]) != 12 {
+		t.Fatalf("liters after edit=%v want 12", sum["milk_given_liters"])
+	}
+	if dairyDecimal(sum["receivable"]) != 480 {
+		t.Fatalf("receivable after edit=%v want 480", sum["receivable"])
+	}
+
+	code, _ = dairyJSON(t, app, http.MethodDelete, "/api/dairy/entries/"+eid, nil)
+	if code != 200 {
+		t.Fatalf("delete %d", code)
+	}
+	code, sum = dairyJSON(t, app, http.MethodGet, "/api/dairy/summary", nil)
+	if dairyDecimal(sum["receivable"]) != 0 || dairyDecimal(sum["entry_count"]) != 0 {
+		t.Fatalf("summary after delete: %v", sum)
+	}
+}
+
+func dairyDecimal(v any) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case float32:
+		return float64(n)
+	case int:
+		return float64(n)
+	case int64:
+		return float64(n)
+	case json.Number:
+		f, _ := n.Float64()
+		return f
+	case string:
+		var f float64
+		fmt.Sscanf(n, "%f", &f)
+		return f
+	default:
+		var out float64
+		fmt.Sscanf(fmt.Sprint(v), "%f", &out)
+		return out
+	}
+}

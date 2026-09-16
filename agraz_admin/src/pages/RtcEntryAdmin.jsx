@@ -40,10 +40,23 @@ const TALUKS = [
   "Bhatkal",
 ];
 
+const OTHER_GRAMA = "Other";
+
 const HOBLIS = {
-  Sirsi: ["Sirsi", "Banavasi", "Sonda", "Sugavi", "Chipgi", "Hulekal", "Devanalli", "Bisalkoppa"],
-  Siddapur: ["Siddapur", "Kansur", "Kyadgi", "Hareguli", "Bilagi"],
-  Yellapur: ["Yellapur", "Kiravatti", "Idagundi", "Vajralli"],
+  Sirsi: [
+    "Sirsi",
+    "Banavasi",
+    "Sonda",
+    "Sugavi",
+    "Chipgi",
+    "Hulekal",
+    "Devanalli",
+    "Bisalkoppa",
+    "Sampakanda",
+    "Sampakhanda",
+  ],
+  Siddapur: ["Siddapur", "Kansur", "Kyadgi", "Hareguli", "Bilagi", "Bilgi"],
+  Yellapur: ["Yellapur", "Kiravatti", "Kirwatti", "Idagundi", "Vajralli"],
   Mundgod: ["Mundgod", "Pala", "Bedasgaon", "Hangarki"],
   Haliyal: ["Haliyal", "Bhagawati", "Tattihalla", "Murkwad"],
   Joida: ["Joida", "Castle Rock", "Anshi", "Kumbarwada"],
@@ -54,6 +67,66 @@ const HOBLIS = {
   Honnavar: ["Honnavar", "Manki", "Karki", "Idagunji"],
   Bhatkal: ["Bhatkal", "Murdeshwar", "Mavinkurve", "Shirali"],
 };
+
+const GRAMAS_BY_HOBLI = {
+  Sirsi: ["Sirsi", "Sirsi (Rural)", "Hutgar", "Sadashivalli", "Chipgi"],
+  Banavasi: ["Banavasi", "Margundi"],
+  Sonda: ["Sonda", "Sondha", "Audala", "Hancharata"],
+  Sugavi: ["Sugavi", "Bengle", "Vaddinakoppa"],
+  Chipgi: ["Chipgi", "Boppanalli", "Sannakeri", "Isalooru"],
+  Hulekal: ["Hulekal", "Bakkal", "Harehulekal", "Hancharata"],
+  Devanalli: ["Devanalli", "Devanmane", "Benagaon", "Sarguppa"],
+  Bisalkoppa: ["Bisalkoppa", "Adnalli", "Angodkoppa", "Ullal", "Benagi"],
+  Sampakanda: ["Sampakanda", "Sampakhanda", "Janmane", "Adalli", "Balavalli"],
+  Sampakhanda: ["Sampakhanda", "Sampakanda", "Janmane", "Adalli", "Balavalli"],
+  Siddapur: ["Siddapur", "Kangod", "Akkunji", "Kolsirsi", "Itagi"],
+  Kansur: ["Kansur", "Tarehalli-Kansur", "Kangod-Kansur"],
+  Kyadgi: ["Kyadgi", "Hostot", "Heggarani"],
+  Hareguli: ["Hareguli"],
+  Bilagi: ["Bilagi", "Bilgi", "Itagi", "Hosamanju"],
+  Bilgi: ["Bilgi", "Bilagi", "Itagi", "Hosamanju"],
+  Yellapur: ["Yellapur", "Madnur"],
+  Kiravatti: ["Kiravatti", "Kirwatti", "Hosalli", "Kanchanahalli"],
+  Kirwatti: ["Kirwatti", "Kiravatti", "Hosalli", "Kanchanahalli"],
+  Idagundi: ["Idagundi", "Idgundi"],
+  Vajralli: ["Vajralli", "Magod", "Nandolli"],
+};
+
+const GRAMAS_BY_TALUK = {
+  Sirsi: ["Sirsi"],
+  Siddapur: ["Siddapur"],
+  Yellapur: ["Yellapur"],
+};
+
+function uniqueNames(names) {
+  const seen = new Set();
+  const out = [];
+  for (const n of names) {
+    const name = String(n || "").trim();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    out.push(name);
+  }
+  return out;
+}
+
+function gramasFor(taluk, hobli) {
+  const list = uniqueNames([
+    ...(GRAMAS_BY_HOBLI[hobli] || []),
+    ...(GRAMAS_BY_TALUK[taluk] || []),
+    hobli,
+  ]);
+  if (list.length === 0 && taluk) list.push(taluk);
+  list.push(OTHER_GRAMA);
+  return list;
+}
+
+function withCurrent(options, current) {
+  const list = [...options];
+  const cur = String(current || "").trim();
+  if (cur && !list.includes(cur)) list.unshift(cur);
+  return list;
+}
 
 function normalizeArea(acre, gunta, ana) {
   let a = Number(acre) || 0;
@@ -80,6 +153,7 @@ const emptyForm = () => ({
   district: "Uttara Kannada",
   taluk: "Sirsi",
   hobli: "Sirsi",
+  grama: "Sirsi",
   survey_number: "",
   hissa: "",
   acre: 0,
@@ -142,7 +216,12 @@ const RtcEntryAdmin = () => {
   }, [fetchRows]);
 
   const totalPages = Math.max(1, Math.ceil(total / limit) || 1);
-  const hobliOptions = HOBLIS[form.taluk] || [];
+  const hobliOptions = withCurrent(HOBLIS[form.taluk] || [], form.hobli);
+  const gramaOptions = withCurrent(gramasFor(form.taluk, form.hobli), form.grama);
+  const canonicalGramas = gramaOptions.filter((g) => g !== OTHER_GRAMA);
+  const gramaIsOther =
+    form.grama === OTHER_GRAMA ||
+    (form.grama && !canonicalGramas.includes(form.grama));
   const area = useMemo(
     () => normalizeArea(form.acre, form.gunta, form.ana),
     [form.acre, form.gunta, form.ana]
@@ -163,6 +242,7 @@ const RtcEntryAdmin = () => {
       district: row.district || "Uttara Kannada",
       taluk: row.taluk || "Sirsi",
       hobli: row.hobli || "",
+      grama: row.grama || "",
       survey_number: row.survey_number || "",
       hissa: row.hissa || "",
       acre: row.acre || 0,
@@ -177,10 +257,22 @@ const RtcEntryAdmin = () => {
 
   const onTalukChange = (taluk) => {
     const list = HOBLIS[taluk] || [];
+    const hobli = list.includes(form.hobli) ? form.hobli : list[0] || "";
+    const grammas = gramasFor(taluk, hobli).filter((g) => g !== OTHER_GRAMA);
     setForm((f) => ({
       ...f,
       taluk,
-      hobli: list.includes(f.hobli) ? f.hobli : list[0] || "",
+      hobli,
+      grama: grammas.includes(f.grama) ? f.grama : grammas[0] || "",
+    }));
+  };
+
+  const onHobliChange = (hobli) => {
+    const grammas = gramasFor(form.taluk, hobli).filter((g) => g !== OTHER_GRAMA);
+    setForm((f) => ({
+      ...f,
+      hobli,
+      grama: grammas.includes(f.grama) ? f.grama : grammas[0] || "",
     }));
   };
 
@@ -219,6 +311,7 @@ const RtcEntryAdmin = () => {
         district: form.district,
         taluk: form.taluk,
         hobli: form.hobli,
+        grama: form.grama === OTHER_GRAMA ? "" : String(form.grama || "").trim(),
         survey_number: String(form.survey_number).trim(),
         hissa: String(form.hissa || "").trim(),
         acre: area.acre,
@@ -272,7 +365,7 @@ const RtcEntryAdmin = () => {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search survey / taluk / hobli…"
+            placeholder="Search survey / taluk / hobli / grama…"
             style={{ width: "100%", border: "none", outline: "none", background: "transparent" }}
           />
         </div>
@@ -361,6 +454,7 @@ const RtcEntryAdmin = () => {
                         <br />
                         <span style={{ color: "var(--text-muted)" }}>
                           {row.taluk} · {row.hobli}
+                          {row.grama ? ` · ${row.grama}` : ""}
                         </span>
                       </td>
                       <td style={td}>
@@ -474,7 +568,7 @@ const RtcEntryAdmin = () => {
                   Hobli
                   <select
                     value={form.hobli}
-                    onChange={(e) => setForm((f) => ({ ...f, hobli: e.target.value }))}
+                    onChange={(e) => onHobliChange(e.target.value)}
                     style={inputStyle}
                   >
                     {hobliOptions.map((h) => (
@@ -485,6 +579,31 @@ const RtcEntryAdmin = () => {
                   </select>
                 </label>
               </div>
+              <label>
+                Grama
+                <select
+                  value={gramaIsOther ? OTHER_GRAMA : form.grama || gramaOptions[0] || ""}
+                  onChange={(e) => setForm((f) => ({ ...f, grama: e.target.value }))}
+                  style={inputStyle}
+                >
+                  {gramaOptions.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {gramaIsOther && (
+                <label>
+                  Grama name
+                  <input
+                    value={form.grama === OTHER_GRAMA ? "" : form.grama || ""}
+                    onChange={(e) => setForm((f) => ({ ...f, grama: e.target.value }))}
+                    style={inputStyle}
+                    placeholder="Enter village name"
+                  />
+                </label>
+              )}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                 <label>
                   Survey number *

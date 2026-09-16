@@ -69,6 +69,24 @@ func applyEntryAnalyticsFilters(q *gorm.DB, dateCol string, filterUID uint, from
 	return q
 }
 
+func applyEntryPersonFilter(q *gorm.DB, person string) *gorm.DB {
+	person = strings.TrimSpace(person)
+	if person == "" {
+		return q
+	}
+	return q.Where("LOWER(TRIM(name)) = LOWER(?)", person)
+}
+
+func entryPeople(q *gorm.DB) ([]string, error) {
+	var people []string
+	err := q.
+		Where("TRIM(name) <> ''").
+		Distinct("name").
+		Order("name ASC").
+		Pluck("name", &people).Error
+	return people, err
+}
+
 // AdminEntryAnalytics handles GET /api/admin/entry-analytics
 func AdminEntryAnalytics(c *fiber.Ctx) error {
 	menuFilter := strings.TrimSpace(c.Query("menu"))
@@ -324,9 +342,15 @@ func AdminEntryAnalyticsEntries(c *fiber.Ctx) error {
 	}
 	fromT, hasFrom := parseOptionalTime(c.Query("from"))
 	toT, hasTo := parseOptionalTime(c.Query("to"))
+	person := strings.TrimSpace(c.Query("person"))
 
 	if menu == "labor" {
-		q := applyEntryAnalyticsFilters(laborDB.Model(&models.Labor{}), "date", filterUID, fromT, hasFrom, toT, hasTo)
+		base := applyEntryAnalyticsFilters(laborDB.Model(&models.Labor{}), "date", filterUID, fromT, hasFrom, toT, hasTo)
+		people, err := entryPeople(base.Session(&gorm.Session{}))
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		}
+		q := applyEntryPersonFilter(base, person)
 		var total int64
 		if err := q.Count(&total).Error; err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -335,10 +359,15 @@ func AdminEntryAnalyticsEntries(c *fiber.Ctx) error {
 		if err := q.Order("date DESC, id DESC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 		}
-		return c.JSON(fiber.Map{"data": rows, "total": total, "page": page, "limit": limit, "menu": menu})
+		return c.JSON(fiber.Map{"data": rows, "total": total, "page": page, "limit": limit, "menu": menu, "people": people})
 	}
 
-	q := applyEntryAnalyticsFilters(incomeExpenseDB.Model(&models.IncomeExpense{}), "date", filterUID, fromT, hasFrom, toT, hasTo)
+	base := applyEntryAnalyticsFilters(incomeExpenseDB.Model(&models.IncomeExpense{}), "date", filterUID, fromT, hasFrom, toT, hasTo)
+	people, err := entryPeople(base.Session(&gorm.Session{}))
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	q := applyEntryPersonFilter(base, person)
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -347,5 +376,5 @@ func AdminEntryAnalyticsEntries(c *fiber.Ctx) error {
 	if err := q.Order("date DESC, id DESC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(fiber.Map{"data": rows, "total": total, "page": page, "limit": limit, "menu": menu})
+	return c.JSON(fiber.Map{"data": rows, "total": total, "page": page, "limit": limit, "menu": menu, "people": people})
 }

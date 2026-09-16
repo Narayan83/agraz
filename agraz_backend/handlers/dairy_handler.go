@@ -295,22 +295,29 @@ func ensureDairyCustomer(ownerUID uint, name, mobile, village string, rate decim
 		return nil, nil
 	}
 	var row models.DairyCustomer
-	q := dairyDB.Where("user_id = ?", ownerUID)
+	err := gorm.ErrRecordNotFound
 	if mobile != "" {
-		q = q.Where("mobile = ?", mobile)
-	} else {
-		q = q.Where("mobile = ? AND LOWER(name) = ?", "", strings.ToLower(name))
+		err = dairyDB.Where("user_id = ? AND mobile = ?", ownerUID, mobile).First(&row).Error
 	}
-	err := q.First(&row).Error
+	if err == gorm.ErrRecordNotFound {
+		q := dairyDB.Where("user_id = ? AND LOWER(name) = ?", ownerUID, strings.ToLower(name))
+		if mobile != "" {
+			q = q.Where("mobile = '' OR mobile = ?", mobile)
+		}
+		err = q.First(&row).Error
+	}
 	if err == nil {
 		updates := map[string]interface{}{}
 		if name != "" && row.Name != name {
 			updates["name"] = name
 		}
+		if mobile != "" && row.Mobile != mobile {
+			updates["mobile"] = mobile
+		}
 		if village != "" && row.Village == "" {
 			updates["village"] = village
 		}
-		if rate.GreaterThan(decimal.Zero) && row.DefaultRate.Equal(decimal.Zero) {
+		if rate.GreaterThan(decimal.Zero) && !row.DefaultRate.Equal(rate) {
 			updates["default_rate"] = rate
 		}
 		if len(updates) > 0 {
@@ -586,14 +593,67 @@ func listDairyCustomersForOwner(c *fiber.Ctx, ownerUID uint) error {
 	if err := q.Order("name ASC").Find(&rows).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	byID, byMobile, byName := dairyLastMilkRates(ownerUID)
 	tid := tenantIDFromCtx(c)
 	out := make([]fiber.Map, 0, len(rows))
 	for _, r := range rows {
 		m := dairyCustomerToMap(r, tid)
+		m["last_rate"] = dairyCustomerLastRate(r, byID, byMobile, byName)
 		m["balance"] = dairyCustomerBalance(ownerUID, r)
 		out = append(out, m)
 	}
 	return c.JSON(fiber.Map{"data": out, "total": len(out)})
+}
+
+func dairyLastMilkRates(ownerUID uint) (byID map[uint]decimal.Decimal, byMobile map[string]decimal.Decimal, byName map[string]decimal.Decimal) {
+	byID = map[uint]decimal.Decimal{}
+	byMobile = map[string]decimal.Decimal{}
+	byName = map[string]decimal.Decimal{}
+	var rows []models.DairyEntry
+	_ = dairyDB.Where("user_id = ? AND origin = ?", ownerUID, dairyOriginDairy).
+		Where("kind IN ?", []string{dairyKindGiven, dairyKindBought}).
+		Where("rate_per_liter > 0").
+		Order("date DESC, id DESC").
+		Find(&rows).Error
+	for _, r := range rows {
+		if r.CustomerID != nil && *r.CustomerID > 0 {
+			if _, ok := byID[*r.CustomerID]; !ok {
+				byID[*r.CustomerID] = r.RatePerLiter
+			}
+		}
+		if m := last10Phone(r.PartyMobile); m != "" {
+			if _, ok := byMobile[m]; !ok {
+				byMobile[m] = r.RatePerLiter
+			}
+		}
+		key := strings.ToLower(strings.TrimSpace(r.PartyName))
+		if key != "" {
+			if _, ok := byName[key]; !ok {
+				byName[key] = r.RatePerLiter
+			}
+		}
+	}
+	return
+}
+
+func dairyCustomerLastRate(
+	cust models.DairyCustomer,
+	byID map[uint]decimal.Decimal,
+	byMobile map[string]decimal.Decimal,
+	byName map[string]decimal.Decimal,
+) decimal.Decimal {
+	if rate, ok := byID[cust.ID]; ok {
+		return rate
+	}
+	if m := last10Phone(cust.Mobile); m != "" {
+		if rate, ok := byMobile[m]; ok {
+			return rate
+		}
+	}
+	if rate, ok := byName[strings.ToLower(strings.TrimSpace(cust.Name))]; ok {
+		return rate
+	}
+	return cust.DefaultRate
 }
 
 func dairyCustomerBalance(ownerUID uint, cust models.DairyCustomer) fiber.Map {
@@ -847,6 +907,17 @@ func saveUpdatedOwnerDairyEntry(c *fiber.Ctx, ownerUID uint, body dairyEntryBody
 	}
 	if err := applyDairyEntryBody(&row, body, true); err != nil {
 		return err
+	}
+	cust, err := ensureDairyCustomer(ownerUID, row.PartyName, row.PartyMobile, "", row.RatePerLiter)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to save customer"})
+	}
+	if cust != nil {
+		id := cust.ID
+		row.CustomerID = &id
+		if row.PartyMobile == "" {
+			row.PartyMobile = cust.Mobile
+		}
 	}
 	if err := dairyDB.Save(&row).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to update dairy entry"})

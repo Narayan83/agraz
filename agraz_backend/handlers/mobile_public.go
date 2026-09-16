@@ -333,10 +333,29 @@ func CreateIncomeExpenseMobile(c *fiber.Ctx) error {
 		})
 	}
 
+	productLines := parseIEProductLines(raw)
+	if len(productLines) > 0 {
+		lineSum := sumIEProductLineTotals(productLines)
+		if lineSum.GreaterThan(decimal.Zero) {
+			amt = lineSum
+		}
+	}
+
 	row := baseRow
 	row.SubCategory = subs[0]
 	row.Amount = amt
-	if err := incomeExpenseDB.Create(&row).Error; err != nil {
+	if err := incomeExpenseDB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&row).Error; err != nil {
+			return err
+		}
+		if len(productLines) > 0 {
+			if err := replaceIEProductLines(tx, row.ID, productLines); err != nil {
+				return err
+			}
+			row.ProductLines = productLines
+		}
+		return nil
+	}); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create record", "details": err.Error()})
 	}
 	syncIETransferToOrg(uid, &row)
@@ -495,9 +514,34 @@ func UpdateIncomeExpenseMobile(c *fiber.Ctx) error {
 	if row.TransactionMode == "Transfer" && row.OrganizationID == nil {
 		return c.Status(400).JSON(fiber.Map{"error": "organization_id is required when transaction_mode is Transfer"})
 	}
-	if err := incomeExpenseDB.Save(&row).Error; err != nil {
+
+	_, hasProductLines := raw["product_lines"]
+	if !hasProductLines {
+		_, hasProductLines = raw["productLines"]
+	}
+	productLines := parseIEProductLines(raw)
+	if hasProductLines && len(productLines) > 0 {
+		lineSum := sumIEProductLineTotals(productLines)
+		if lineSum.GreaterThan(decimal.Zero) {
+			row.Amount = lineSum
+		}
+	}
+
+	if err := incomeExpenseDB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(&row).Error; err != nil {
+			return err
+		}
+		if hasProductLines {
+			if err := replaceIEProductLines(tx, row.ID, productLines); err != nil {
+				return err
+			}
+			row.ProductLines = productLines
+		}
+		return nil
+	}); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to update", "details": err.Error()})
 	}
+	syncLaborFromLinkedIE(uid, &row)
 	return c.JSON(fiber.Map{"message": "Transaction updated successfully", "data": row})
 }
 
@@ -573,7 +617,7 @@ func GetIncomeExpensesByMobilePublic(c *fiber.Ctx) error {
 	if err := q.Count(&total).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	if err := q.Order("date DESC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
+	if err := preloadIEProductLines(q).Order("date DESC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(fiber.Map{"data": rows, "total": total, "page": page, "limit": limit})

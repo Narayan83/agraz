@@ -5,6 +5,7 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  Download,
   X,
   Users,
   Briefcase,
@@ -33,6 +34,36 @@ function fmtDateTime(v) {
   return d.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
 }
 
+function fmtAmount(v) {
+  const amount = Number(v);
+  if (!Number.isFinite(amount)) return "—";
+  return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function laborAmount(row) {
+  return Number(row?.wage || 0) * Number(row?.hours || 0);
+}
+
+function csvCell(value) {
+  const text = value == null ? "" : String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadCsv(filename, columns, rows) {
+  const csv = [
+    columns.map((column) => csvCell(column.label)).join(","),
+    ...rows.map((row) => columns.map((column) => csvCell(column.value(row))).join(",")),
+  ].join("\r\n");
+  const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 const MENU_CARDS = [
   { key: "labor", label: "Labour", totalKey: "labors", icon: Briefcase, color: "#2563eb" },
   { key: "income_expense", label: "Income & Expense", totalKey: "income_expenses", icon: Wallet, color: "#059669" },
@@ -52,6 +83,9 @@ const EntryAnalytics = () => {
   const [entriesTotal, setEntriesTotal] = useState(0);
   const [entriesPage, setEntriesPage] = useState(1);
   const [entriesLoading, setEntriesLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [entryPeople, setEntryPeople] = useState([]);
+  const [entryPerson, setEntryPerson] = useState("");
 
   const fetchSummary = useCallback(async () => {
     setLoading(true);
@@ -74,7 +108,8 @@ const EntryAnalytics = () => {
   }, [from, to]);
 
   useEffect(() => {
-    fetchSummary();
+    const timer = window.setTimeout(fetchSummary, 0);
+    return () => window.clearTimeout(timer);
   }, [fetchSummary]);
 
   const fetchEntries = useCallback(async () => {
@@ -91,27 +126,34 @@ const EntryAnalytics = () => {
         limit: entryLimit,
       };
       if (drill.user_id) params.user_id = drill.user_id;
+      if (entryPerson) params.person = entryPerson;
       if (from) params.from = from;
       if (to) params.to = to;
       const data = await getAdminEntryAnalyticsEntries(params);
       setEntries(data.data || []);
       setEntriesTotal(data.total ?? 0);
+      setEntryPeople(data.people || []);
     } catch (e) {
       console.error(e);
       setEntries([]);
       setEntriesTotal(0);
+      setEntryPeople([]);
       alert(e?.response?.data?.error || "Failed to load entries");
     } finally {
       setEntriesLoading(false);
     }
-  }, [drill, entriesPage, from, to]);
+  }, [drill, entriesPage, entryPerson, from, to]);
 
   useEffect(() => {
-    if (drill) fetchEntries();
+    if (!drill) return undefined;
+    const timer = window.setTimeout(fetchEntries, 0);
+    return () => window.clearTimeout(timer);
   }, [drill, fetchEntries]);
 
   const openDrill = (menu, user = null) => {
     setEntriesPage(1);
+    setEntryPerson("");
+    setEntryPeople([]);
     setDrill({
       menu,
       user_id: user?.user_id || null,
@@ -124,9 +166,60 @@ const EntryAnalytics = () => {
     setEntries([]);
     setEntriesTotal(0);
     setEntriesPage(1);
+    setEntryPerson("");
+    setEntryPeople([]);
   };
 
   const entriesPages = Math.max(1, Math.ceil(entriesTotal / entryLimit) || 1);
+
+  const exportEntries = async () => {
+    if (!drill || drill.menu === "feedback" || entriesTotal < 1) return;
+    setExportLoading(true);
+    try {
+      const params = {
+        menu: drill.menu,
+        page: 1,
+        limit: Math.max(entriesTotal, entryLimit),
+      };
+      if (drill.user_id) params.user_id = drill.user_id;
+      if (entryPerson) params.person = entryPerson;
+      if (from) params.from = from;
+      if (to) params.to = to;
+      const data = await getAdminEntryAnalyticsEntries(params);
+      const rows = data.data || [];
+      const columns = drill.menu === "labor"
+        ? [
+            { label: "Date", value: (row) => fmtDate(row.date) },
+            { label: "Name", value: (row) => row.name },
+            { label: "Category", value: (row) => row.category },
+            { label: "Shift", value: (row) => row.shift },
+            { label: "Entry Type", value: (row) => row.entry_kind },
+            { label: "Wage", value: (row) => row.wage },
+            { label: "Hours", value: (row) => row.hours },
+            { label: "Amount", value: (row) => laborAmount(row) },
+            { label: "User ID", value: (row) => row.user_id },
+          ]
+        : [
+            { label: "Date", value: (row) => fmtDate(row.date) },
+            { label: "Type", value: (row) => row.type },
+            { label: "Name", value: (row) => row.name },
+            { label: "Category", value: (row) => row.category },
+            { label: "Sub Category", value: (row) => row.sub_category || row.SubCategory },
+            { label: "Amount", value: (row) => row.amount },
+            { label: "Transaction Mode", value: (row) => row.transaction_mode },
+            { label: "Narration", value: (row) => row.narration },
+            { label: "User ID", value: (row) => row.user_id },
+          ];
+      const scope = entryPerson || drill.user_name || "all";
+      const safeScope = scope.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "all";
+      downloadCsv(`${drill.menu}-${safeScope}-${new Date().toISOString().slice(0, 10)}.csv`, columns, rows);
+    } catch (e) {
+      console.error(e);
+      alert(e?.response?.data?.error || "Failed to export entries");
+    } finally {
+      setExportLoading(false);
+    }
+  };
 
   const feedbackUsers = (byUser || []).filter((u) => (u.feedback_count || 0) > 0);
   const drillFeedbackUsers = drill?.user_id
@@ -312,7 +405,11 @@ const EntryAnalytics = () => {
 
       {drill && (
         <div className="modal-overlay" onClick={closeDrill}>
-          <div className="modal-content sr-modal sr-modal-wide" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal-content sr-modal sr-modal-wide"
+            style={{ overflowY: "auto" }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="modal-header sr-modal-header">
               <h3>
                 {drill.menu}
@@ -362,8 +459,35 @@ const EntryAnalytics = () => {
             ) : (
               <div style={{ padding: "0 1rem 1rem" }}>
                 <div className="sr-list-header" style={{ padding: "0 0 0.75rem", border: "none" }}>
-                  <span className="sr-count">{entriesTotal} entries</span>
+                  <div style={{ display: "flex", alignItems: "end", gap: "0.75rem", flexWrap: "wrap" }}>
+                    <span className="sr-count" style={{ paddingBottom: "0.55rem" }}>{entriesTotal} entries</span>
+                    <label className="mr-filter-label">
+                      {drill.menu === "labor" ? "Labourer" : "Person"}
+                      <select
+                        className="sr-input"
+                        value={entryPerson}
+                        onChange={(e) => {
+                          setEntriesPage(1);
+                          setEntryPerson(e.target.value);
+                        }}
+                      >
+                        <option value="">All</option>
+                        {entryPeople.map((person) => (
+                          <option key={person} value={person}>{person}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
                   <div className="sr-pagination">
+                    <button
+                      type="button"
+                      className="sr-btn sr-btn-ghost"
+                      disabled={entriesTotal < 1 || exportLoading}
+                      onClick={exportEntries}
+                    >
+                      {exportLoading ? <Loader2 className="spinner" size={16} /> : <Download size={16} />}
+                      Export Excel
+                    </button>
                     <span>
                       Page {entriesPage} / {entriesPages}
                     </span>
@@ -396,13 +520,14 @@ const EntryAnalytics = () => {
                           <th>Name</th>
                           <th>Category</th>
                           <th>Shift</th>
+                          <th>Amount</th>
                           <th>User ID</th>
                         </tr>
                       </thead>
                       <tbody>
                         {entries.length === 0 ? (
                           <tr>
-                            <td colSpan={5}>
+                            <td colSpan={6}>
                               <div className="sr-empty">No labour entries</div>
                             </td>
                           </tr>
@@ -413,6 +538,7 @@ const EntryAnalytics = () => {
                               <td>{row.name}</td>
                               <td>{row.category}</td>
                               <td>{row.shift}</td>
+                              <td>{fmtAmount(laborAmount(row))}</td>
                               <td>{row.user_id}</td>
                             </tr>
                           ))
@@ -445,7 +571,7 @@ const EntryAnalytics = () => {
                               <td>{row.type}</td>
                               <td>{row.category}</td>
                               <td>{row.sub_category || row.SubCategory || "—"}</td>
-                              <td>{row.amount != null ? String(row.amount) : "—"}</td>
+                              <td>{fmtAmount(row.amount)}</td>
                               <td>{row.user_id}</td>
                             </tr>
                           ))

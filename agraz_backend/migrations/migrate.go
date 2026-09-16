@@ -26,6 +26,7 @@ func main() {
 		&models.UserHierarchy{},
 		&models.Employee{},
 		&models.IncomeExpense{},
+		&models.IncomeExpenseProductLine{},
 		&models.Labor{},
 		&models.LaborRate{},
 		&models.LaborExtra{},
@@ -66,6 +67,10 @@ func main() {
 
 	if err != nil {
 		log.Fatal("Migration failed:", err)
+	}
+
+	if err := models.EnsureLaborSearchIndexes(initializers.DB); err != nil {
+		log.Printf("Labor search indexes: %v", err)
 	}
 
 	log.Println("RBAC migration completed successfully.")

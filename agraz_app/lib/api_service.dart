@@ -361,6 +361,7 @@ class ApiService {
     String? to,
     String? category,
     String? entryKind,
+    bool exactName = false,
     int limit = 100,
   }) async {
     try {
@@ -369,6 +370,7 @@ class ApiService {
           'limit': limit.toString(),
           if (mobile != null && mobile.isNotEmpty) 'mobile': mobile,
           if (name != null && name.isNotEmpty) 'name': name,
+          if (exactName) 'exact': '1',
           if (q != null && q.isNotEmpty) 'q': q,
           if (from != null && from.isNotEmpty) 'from': from,
           if (to != null && to.isNotEmpty) 'to': to,

@@ -35,6 +35,8 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
   String _district = UkLandGeo.defaultDistrict;
   String _taluk = UkLandGeo.defaultTaluk;
   String? _hobli;
+  String? _grama;
+  final _gramaCtrl = TextEditingController();
   final _surveyCtrl = TextEditingController();
   final _hissaCtrl = TextEditingController();
   final _acreCtrl = TextEditingController(text: '0');
@@ -61,6 +63,8 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
     _hobli = UkLandGeo.hoblisFor(_taluk).isNotEmpty
         ? UkLandGeo.hoblisFor(_taluk).first
         : null;
+    _grama = _defaultGrama(_taluk, _hobli);
+    _gramaCtrl.text = _grama ?? '';
     _acreCtrl.addListener(_onAreaChanged);
     _guntaCtrl.addListener(_onAreaChanged);
     _anaCtrl.addListener(_onAreaChanged);
@@ -69,6 +73,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
 
   @override
   void dispose() {
+    _gramaCtrl.dispose();
     _surveyCtrl.dispose();
     _hissaCtrl.dispose();
     _acreCtrl.dispose();
@@ -80,6 +85,49 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
 
   void _onAreaChanged() {
     if (mounted) setState(() {});
+  }
+
+  String? _defaultGrama(String taluk, String? hobli) {
+    final list = UkLandGeo.gramasFor(taluk, hobli ?? '')
+        .where((g) => g != UkLandGeo.otherGrama)
+        .toList();
+    return list.isNotEmpty ? list.first : null;
+  }
+
+  void _applyLocation({required String taluk, String? hobli, String? grama}) {
+    _taluk = taluk;
+    final hoblis = UkLandGeo.hoblisFor(taluk);
+    if (hobli != null && hobli.isNotEmpty) {
+      _hobli = hobli;
+    } else {
+      _hobli = hoblis.isNotEmpty ? hoblis.first : null;
+    }
+    final options = UkLandGeo.gramasFor(_taluk, _hobli ?? '')
+        .where((g) => g != UkLandGeo.otherGrama)
+        .toList();
+    if (grama != null && grama.trim().isNotEmpty) {
+      _grama = grama.trim();
+    } else {
+      _grama = options.isNotEmpty ? options.first : null;
+    }
+    _gramaCtrl.text = (_grama == null || options.contains(_grama)) ? '' : _grama!;
+  }
+
+  String _resolvedGrama() {
+    final typed = _gramaCtrl.text.trim();
+    final options = UkLandGeo.gramasFor(_taluk, _hobli ?? '')
+        .where((g) => g != UkLandGeo.otherGrama)
+        .toList();
+    if (_grama == UkLandGeo.otherGrama || !options.contains(_grama)) {
+      if (typed.isNotEmpty) return typed;
+      if (_grama != null &&
+          _grama!.isNotEmpty &&
+          _grama != UkLandGeo.otherGrama) {
+        return _grama!;
+      }
+      return typed;
+    }
+    return (_grama ?? '').trim();
   }
 
   Future<void> _bootstrap() async {
@@ -138,9 +186,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
       _editingId = null;
       _state = UkLandGeo.defaultState;
       _district = UkLandGeo.defaultDistrict;
-      _taluk = UkLandGeo.defaultTaluk;
-      final hoblis = UkLandGeo.hoblisFor(_taluk);
-      _hobli = hoblis.isNotEmpty ? hoblis.first : null;
+      _applyLocation(taluk: UkLandGeo.defaultTaluk);
       _surveyCtrl.clear();
       _hissaCtrl.clear();
       _acreCtrl.text = '0';
@@ -155,16 +201,17 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
 
   void _fillFromRow(Map<String, dynamic> row) {
     final taluk = (row['taluk'] ?? UkLandGeo.defaultTaluk).toString();
-    final hoblis = UkLandGeo.hoblisFor(taluk);
     final hobliVal = (row['hobli'] ?? '').toString();
+    final gramaVal = (row['grama'] ?? '').toString();
     setState(() {
       _editingId = row['id'] is int ? row['id'] as int : int.tryParse('${row['id']}');
       _state = (row['state'] ?? UkLandGeo.defaultState).toString();
       _district = (row['district'] ?? UkLandGeo.defaultDistrict).toString();
-      _taluk = taluk;
-      _hobli = hobliVal.isEmpty
-          ? (hoblis.isNotEmpty ? hoblis.first : null)
-          : (hoblis.contains(hobliVal) ? hobliVal : hobliVal);
+      _applyLocation(
+        taluk: taluk,
+        hobli: hobliVal,
+        grama: gramaVal,
+      );
       _surveyCtrl.text = (row['survey_number'] ?? '').toString();
       _hissaCtrl.text = (row['hissa'] ?? '').toString();
       _acreCtrl.text = '${row['acre'] ?? 0}';
@@ -230,6 +277,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
         'district': _district,
         'taluk': _taluk,
         'hobli': _hobli ?? '',
+        'grama': _resolvedGrama(),
         'survey_number': survey,
         'hissa': _hissaCtrl.text.trim(),
         'acre': area.acre,
@@ -316,7 +364,11 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final hoblis = UkLandGeo.hoblisFor(_taluk);
+    final hoblis = UkLandGeo.withCurrent(UkLandGeo.hoblisFor(_taluk), _hobli);
+    final grammas = UkLandGeo.withCurrent(
+      UkLandGeo.gramasFor(_taluk, _hobli ?? ''),
+      _grama,
+    );
     final area = _area;
 
     return Scaffold(
@@ -336,7 +388,7 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           children: [
-            _buildFormCard(hoblis, area),
+            _buildFormCard(hoblis, grammas, area),
             const SizedBox(height: 18),
             Text(
               tr('My RTC records'),
@@ -395,8 +447,20 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
 
   Widget _buildFormCard(
     List<String> hoblis,
+    List<String> grammas,
     ({int acre, int gunta, int ana, double totalAcres}) area,
   ) {
+    final canonicalGramas =
+        grammas.where((g) => g != UkLandGeo.otherGrama).toList();
+    final gramaIsOther = _grama == UkLandGeo.otherGrama ||
+        (_grama != null &&
+            _grama!.isNotEmpty &&
+            !canonicalGramas.contains(_grama));
+    final gramaDropdownValue = gramaIsOther
+        ? UkLandGeo.otherGrama
+        : (canonicalGramas.contains(_grama)
+            ? _grama
+            : (canonicalGramas.isNotEmpty ? canonicalGramas.first : null));
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -438,10 +502,8 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
             items: UkLandGeo.taluks,
             onChanged: (v) {
               final t = v!;
-              final list = UkLandGeo.hoblisFor(t);
               setState(() {
-                _taluk = t;
-                _hobli = list.isNotEmpty ? list.first : null;
+                _applyLocation(taluk: t);
               });
             },
           ),
@@ -450,7 +512,10 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
             TextFormField(
               decoration: _dec(tr('Hobli')),
               initialValue: _hobli,
-              onChanged: (v) => _hobli = v.trim(),
+              onChanged: (v) => setState(() {
+                _hobli = v.trim();
+                _applyLocation(taluk: _taluk, hobli: _hobli);
+              }),
             )
           else
             DropdownButtonFormField<String>(
@@ -459,8 +524,45 @@ class _RtcEntryPageState extends State<RtcEntryPage> {
               items: hoblis
                   .map((h) => DropdownMenuItem(value: h, child: Text(h)))
                   .toList(),
-              onChanged: (v) => setState(() => _hobli = v),
+              onChanged: (v) => setState(() {
+                _applyLocation(taluk: _taluk, hobli: v);
+              }),
             ),
+          const SizedBox(height: 10),
+          if (grammas.isEmpty)
+            TextFormField(
+              controller: _gramaCtrl,
+              decoration: _dec(tr('Grama')),
+              onChanged: (v) => _grama = v.trim(),
+            )
+          else
+            DropdownButtonFormField<String>(
+              value: grammas.contains(gramaDropdownValue)
+                  ? gramaDropdownValue
+                  : grammas.first,
+              decoration: _dec(tr('Grama')),
+              items: grammas
+                  .map((g) => DropdownMenuItem(
+                        value: g,
+                        child: Text(g == UkLandGeo.otherGrama ? tr('Other') : g),
+                      ))
+                  .toList(),
+              onChanged: (v) => setState(() {
+                _grama = v;
+                if (v != UkLandGeo.otherGrama) {
+                  _gramaCtrl.clear();
+                }
+              }),
+            ),
+          if (gramaIsOther) ...[
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: _gramaCtrl,
+              decoration: _dec(tr('Grama name')),
+              textInputAction: TextInputAction.next,
+              onChanged: (v) => _grama = v.trim().isEmpty ? UkLandGeo.otherGrama : v.trim(),
+            ),
+          ],
           const SizedBox(height: 10),
           TextFormField(
             controller: _surveyCtrl,
@@ -705,6 +807,7 @@ class _RtcCard extends StatelessWidget {
     final hissa = (row['hissa'] ?? '').toString();
     final taluk = (row['taluk'] ?? '').toString();
     final hobli = (row['hobli'] ?? '').toString();
+    final grama = (row['grama'] ?? '').toString();
     final acre = row['acre'] ?? 0;
     final gunta = row['gunta'] ?? 0;
     final ana = row['ana'] ?? 0;
@@ -753,8 +856,8 @@ class _RtcCard extends StatelessWidget {
             ],
           ),
           Text(
-            '$taluk · $hobli',
-            maxLines: 1,
+            [taluk, hobli, grama].where((s) => s.isNotEmpty).join(' · '),
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),

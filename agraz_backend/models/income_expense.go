@@ -29,9 +29,28 @@ type IncomeExpense struct {
 	CreatedAt       time.Time       `json:"created_at"`
 	UpdatedAt       time.Time       `json:"updated_at"`
 
-	Organization *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	Organization *Organization             `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	ProductLines []IncomeExpenseProductLine `gorm:"foreignKey:IncomeExpenseID;constraint:OnDelete:CASCADE" json:"product_lines,omitempty"`
 }
 
 func (IncomeExpense) TableName() string {
 	return "income_expenses"
+}
+
+// IncomeExpenseProductLine is a farm-income product row (variety / unit / qty / price).
+type IncomeExpenseProductLine struct {
+	ID              uint            `gorm:"primaryKey;autoIncrement" json:"id"`
+	IncomeExpenseID uint            `gorm:"not null;index" json:"income_expense_id"`
+	LineNo          int             `gorm:"not null;default:1" json:"line_no"`
+	Product         string          `gorm:"type:varchar(100);not null;default:''" json:"product"`
+	Quantity        decimal.Decimal `gorm:"type:numeric(15,3);not null;default:0" json:"quantity"`
+	Unit            string          `gorm:"type:varchar(20);not null;default:''" json:"unit"`
+	UnitPrice       decimal.Decimal `gorm:"type:numeric(15,2);not null;default:0" json:"unit_price"`
+	Total           decimal.Decimal `gorm:"type:numeric(15,2);not null;default:0" json:"total"`
+	CreatedAt       time.Time       `json:"created_at"`
+	UpdatedAt       time.Time       `json:"updated_at"`
+}
+
+func (IncomeExpenseProductLine) TableName() string {
+	return "income_expense_product_lines"
 }

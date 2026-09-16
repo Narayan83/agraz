@@ -42,6 +42,7 @@ func init() {
 		&models.LaborWorkEntry{},
 		&models.LaborShare{},
 		&models.IncomeExpense{},
+		&models.IncomeExpenseProductLine{},
 		&models.Organization{},
 		&models.OrgLedger{},
 		&models.OrgTransaction{},
@@ -77,6 +78,9 @@ func init() {
 		&models.AchieversLobbyCategory{},
 		&models.AchieversLobbyItem{},
 	)
+	if err := models.EnsureLaborSearchIndexes(initializers.DB); err != nil {
+		log.Printf("Labor search indexes: %v", err)
+	}
 	seeds.SeedAll()
 }
 

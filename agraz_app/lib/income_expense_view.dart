@@ -8,6 +8,7 @@ import 'app_theme.dart';
 import 'feedback_fab.dart';
 import 'income_expense_data.dart';
 import 'income_expense_report.dart';
+import 'farm_income_products.dart';
 import 'l10n/app_l10n.dart';
 import 'offline_sync.dart' as offline;
 
@@ -746,6 +747,7 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
   final _districtCtrl = TextEditingController();
   final _extraCtrl = TextEditingController();
   final _pincodeCtrl = TextEditingController();
+  List<FarmIncomeProductLine> _productLines = [];
 
   bool _editing = false;
   bool _saving = false;
@@ -779,6 +781,17 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
         (t['extra_address'] ?? t['extraAddress'])?.toString() ?? '';
     _pincodeCtrl.text = t['pincode']?.toString() ?? '';
     _date = DateTime.tryParse(t['date']?.toString() ?? '') ?? DateTime.now();
+    final rawLines = t['product_lines'] ?? t['productLines'];
+    _productLines = [];
+    if (rawLines is List) {
+      for (final e in rawLines) {
+        if (e is Map) {
+          _productLines.add(
+            FarmIncomeProductLine.fromJson(Map<String, dynamic>.from(e)),
+          );
+        }
+      }
+    }
   }
 
   String _numStr(dynamic v) {
@@ -849,7 +862,8 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
       ..taluk = _talukCtrl.text.trim()
       ..district = _districtCtrl.text.trim()
       ..extraAddress = _extraCtrl.text.trim()
-      ..pincode = _pincodeCtrl.text.trim();
+      ..pincode = _pincodeCtrl.text.trim()
+      ..productLines = List<FarmIncomeProductLine>.from(_productLines);
 
     setState(() => _saving = true);
     try {
@@ -1062,6 +1076,12 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
         _readonlyRow('Category', t['category']?.toString() ?? ''),
         _readonlyRow('Sub-category', t['sub_category']?.toString() ?? ''),
         _readonlyRow('Amount', '₹${_numStr(t['amount'])}'),
+        buildFarmIncomeProductLinesReadonly(
+          () {
+            final raw = t['product_lines'] ?? t['productLines'];
+            return raw is List ? raw : null;
+          }(),
+        ),
         _readonlyRow(
           'Date',
           '${_date.day.toString().padLeft(2, '0')}/'
@@ -1107,6 +1127,7 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
               _type = v;
               _category = null;
               _subCategory = null;
+              _productLines = [];
             });
           },
         ),
@@ -1122,6 +1143,7 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
             setState(() {
               _category = v;
               _subCategory = null;
+              _productLines = [];
             });
           },
         ),
@@ -1133,9 +1155,55 @@ class _TransactionDetailSheetState extends State<_TransactionDetailSheet> {
           items: _subCategories
               .map((c) => DropdownMenuItem(value: c, child: Text(tr(c))))
               .toList(),
-          onChanged: (v) => setState(() => _subCategory = v),
+          onChanged: (v) => setState(() {
+            _subCategory = v;
+            if (!IncomeExpenseData.supportsProductDetails(
+              _category,
+              v == null ? const [] : [v],
+            )) {
+              _productLines = [];
+            }
+          }),
         ),
         SizedBox(height: 10),
+        if (IncomeExpenseData.supportsProductDetails(
+          _category,
+          _subCategory == null ? const [] : [_subCategory!],
+        )) ...[
+          Row(
+            children: [
+              Expanded(
+                child: Text(tr('Product details'), style: AppText.label),
+              ),
+              TextButton.icon(
+                onPressed: () async {
+                  final result = await showFarmIncomeProductLinesSheet(
+                    context: context,
+                    crop: _subCategory!,
+                    initial: List<FarmIncomeProductLine>.from(_productLines),
+                  );
+                  if (result == null || !mounted) return;
+                  setState(() {
+                    _productLines = result;
+                    if (result.isNotEmpty) {
+                      final total = result.fold<double>(
+                        0,
+                        (s, e) => s + e.total,
+                      );
+                      _amountCtrl.text = total.toStringAsFixed(2);
+                    }
+                  });
+                },
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: Text(tr('Edit lines')),
+              ),
+            ],
+          ),
+          buildFarmIncomeProductLinesReadonly(
+            _productLines.map((e) => e.toJson()).toList(),
+          ),
+          SizedBox(height: 10),
+        ],
         _field(
           'Amount',
           _amountCtrl,

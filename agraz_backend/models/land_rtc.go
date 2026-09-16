@@ -14,6 +14,7 @@ type LandRtc struct {
 	District     string          `gorm:"type:varchar(100);not null;default:'Uttara Kannada'" json:"district"`
 	Taluk        string          `gorm:"type:varchar(100);not null;default:''" json:"taluk"`
 	Hobli        string          `gorm:"type:varchar(100);not null;default:''" json:"hobli"`
+	Grama        string          `gorm:"type:varchar(150);not null;default:''" json:"grama"`
 	SurveyNumber string          `gorm:"type:varchar(100);not null;default:''" json:"survey_number"`
 	Hissa        string          `gorm:"type:varchar(50);not null;default:''" json:"hissa"`
 	Acre         int             `gorm:"not null;default:0" json:"acre"`

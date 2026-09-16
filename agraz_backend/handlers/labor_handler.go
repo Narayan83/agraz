@@ -329,6 +329,21 @@ func upsertLaborExtra(uid uint, laborID uint, rent, food, bonus float64) (*model
 	return &extra, nil
 }
 
+func laborIEDB() *gorm.DB {
+	if incomeExpenseDB != nil {
+		return incomeExpenseDB
+	}
+	return laborDB
+}
+
+func laborPaymentAmount(row models.Labor) float64 {
+	amt := row.Wage.Mul(row.Hours).InexactFloat64()
+	if amt < 0 {
+		return 0
+	}
+	return amt
+}
+
 func createLaborExpenseIE(uid uint, name string, mobile *string, amount float64, date time.Time, narration string) (*models.IncomeExpense, error) {
 	mob := ""
 	if mobile != nil {
@@ -349,14 +364,136 @@ func createLaborExpenseIE(uid uint, name string, mobile *string, amount float64,
 		Date:        date,
 		Name:        strings.TrimSpace(name),
 	}
-	db := incomeExpenseDB
-	if db == nil {
-		db = laborDB
-	}
-	if err := db.Create(&row).Error; err != nil {
+	if err := laborIEDB().Create(&row).Error; err != nil {
 		return nil, err
 	}
 	return &row, nil
+}
+
+// deleteLaborLinkedIE removes the Farming Expense / Labour row tied to a payment.
+func deleteLaborLinkedIE(uid uint, ieID *uint) {
+	if ieID == nil || *ieID == 0 {
+		return
+	}
+	_ = laborIEDB().Where("user_id = ? AND id = ?", uid, *ieID).Delete(&models.IncomeExpense{})
+}
+
+// syncLaborLinkedIE keeps income_expenses in lockstep with labour payment rows.
+// Payments create/update Farming Expense / Labour. Non-payments clear any link.
+func syncLaborLinkedIE(uid uint, row *models.Labor) error {
+	kind := normalizeLaborEntryKind(row.EntryKind)
+	db := laborIEDB()
+
+	if kind != "payment" {
+		if row.IncomeExpenseID != nil {
+			deleteLaborLinkedIE(uid, row.IncomeExpenseID)
+			row.IncomeExpenseID = nil
+			if err := laborDB.Model(row).Update("income_expense_id", nil).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	amount := laborPaymentAmount(*row)
+	if amount <= 0 {
+		return fiber.NewError(400, "payment amount must be greater than zero")
+	}
+	mob := ""
+	if row.Mobile != nil {
+		mob = strings.TrimSpace(*row.Mobile)
+	}
+	var narr *string
+	if n := strings.TrimSpace(row.Narration); n != "" {
+		narr = &n
+	}
+
+	if row.IncomeExpenseID != nil && *row.IncomeExpenseID != 0 {
+		updates := map[string]interface{}{
+			"type":         "Expense",
+			"category":     "Farming Expense",
+			"sub_category": "Labour",
+			"amount":       decimal.NewFromFloat(amount),
+			"date":         row.Date,
+			"name":         strings.TrimSpace(row.Name),
+			"mobile":       mob,
+			"narration":    narr,
+		}
+		res := db.Model(&models.IncomeExpense{}).
+			Where("user_id = ? AND id = ?", uid, *row.IncomeExpenseID).
+			Updates(updates)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			// Link was orphaned — recreate.
+			ie, err := createLaborExpenseIE(uid, row.Name, row.Mobile, amount, row.Date, row.Narration)
+			if err != nil {
+				return err
+			}
+			row.IncomeExpenseID = &ie.ID
+			return laborDB.Model(row).Update("income_expense_id", ie.ID).Error
+		}
+		return nil
+	}
+
+	ie, err := createLaborExpenseIE(uid, row.Name, row.Mobile, amount, row.Date, row.Narration)
+	if err != nil {
+		return err
+	}
+	row.IncomeExpenseID = &ie.ID
+	return laborDB.Model(row).Update("income_expense_id", ie.ID).Error
+}
+
+// syncLaborFromLinkedIE pushes I&E edits onto the labour payment that owns this IE.
+func syncLaborFromLinkedIE(uid uint, ie *models.IncomeExpense) {
+	if laborDB == nil || ie == nil || ie.ID == 0 {
+		return
+	}
+	var labor models.Labor
+	err := scopeByUserID(laborDB.Model(&models.Labor{}), uid).
+		Where("income_expense_id = ?", ie.ID).
+		First(&labor).Error
+	if err != nil {
+		return
+	}
+	// Payment amount is stored as wage with hours=1.
+	labor.Name = strings.TrimSpace(ie.Name)
+	labor.Wage = ie.Amount
+	labor.Hours = decimal.NewFromInt(1)
+	labor.Date = ie.Date
+	mob := strings.TrimSpace(ie.Mobile)
+	labor.Mobile = &mob
+	if ie.Narration != nil {
+		labor.Narration = strings.TrimSpace(*ie.Narration)
+	} else {
+		labor.Narration = ""
+	}
+	if normalizeLaborEntryKind(labor.EntryKind) != "payment" {
+		labor.EntryKind = "payment"
+	}
+	if err := laborDB.Save(&labor).Error; err != nil {
+		return
+	}
+	syncLaborShare(uid, labor, nil)
+}
+
+// deleteLaborLinkedToIE removes labour rows that mirror this income/expense id.
+func deleteLaborLinkedToIE(uid uint, ieID uint) {
+	if laborDB == nil || ieID == 0 {
+		return
+	}
+	var rows []models.Labor
+	if err := scopeByUserID(laborDB.Model(&models.Labor{}), uid).
+		Where("income_expense_id = ?", ieID).
+		Find(&rows).Error; err != nil {
+		return
+	}
+	for _, row := range rows {
+		cancelPendingLaborShares(row.ID)
+		_ = laborDB.Where("user_id = ? AND labor_id = ?", uid, row.ID).Delete(&models.LaborExtra{})
+		_ = laborDB.Delete(&row).Error
+	}
 }
 
 // createLaborPaymentRow creates a payment labour entry linked to a Farming Expense / Labour IE row.
@@ -559,15 +696,21 @@ func GetLabors(c *fiber.Ctx) error {
 	var rows []models.Labor
 	var total int64
 	q := scopeByUserID(laborDB.Model(&models.Labor{}), uid)
-	if m := c.Query("mobile"); m != "" {
+	// mobile = exact person. name is ILIKE for typeahead (labour entry),
+	// unless exact=1 (History one-person filter / balance-style match).
+	if m := strings.TrimSpace(c.Query("mobile")); m != "" {
 		q = q.Where("mobile = ?", m)
-	}
-	if name := strings.TrimSpace(c.Query("name")); name != "" {
-		q = q.Where("name ILIKE ?", "%"+name+"%")
+	} else if name := strings.TrimSpace(c.Query("name")); name != "" {
+		exact := c.Query("exact") == "1" || strings.EqualFold(c.Query("exact"), "true")
+		if exact {
+			q = q.Where("LOWER(TRIM(name)) = ?", strings.ToLower(name))
+		} else {
+			q = q.Where("name ILIKE ?", "%"+name+"%")
+		}
 	}
 	if search := strings.TrimSpace(c.Query("q")); search != "" {
 		like := "%" + search + "%"
-		q = q.Where("name ILIKE ? OR COALESCE(mobile,'') ILIKE ? OR location ILIKE ? OR narration ILIKE ?", like, like, like, like)
+		q = q.Where("name ILIKE ? OR mobile ILIKE ? OR location ILIKE ? OR narration ILIKE ?", like, like, like, like)
 	}
 	if shift := c.Query("shift"); shift != "" {
 		q = q.Where("shift = ?", shift)
@@ -637,6 +780,12 @@ func UpdateLabor(c *fiber.Ctx) error {
 	if err := laborDB.Save(&row).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to update labor record", "details": err.Error()})
 	}
+	if err := syncLaborLinkedIE(uid, &row); err != nil {
+		if fe, ok := err.(*fiber.Error); ok {
+			return c.Status(fe.Code).JSON(fiber.Map{"error": fe.Message})
+		}
+		return c.Status(500).JSON(fiber.Map{"error": "Labor updated but income/expense sync failed", "details": err.Error(), "data": row})
+	}
 	if extra, err := upsertLaborExtra(uid, row.ID, body.Rent, body.Food, body.Bonus); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Labor updated but extras failed", "details": err.Error(), "data": row})
 	} else {
@@ -657,6 +806,7 @@ func DeleteLabor(c *fiber.Ctx) error {
 	if err := scopeByUserID(laborDB.Model(&models.Labor{}), uid).
 		First(&existing, id).Error; err == nil {
 		cancelPendingLaborShares(existing.ID)
+		deleteLaborLinkedIE(uid, existing.IncomeExpenseID)
 	}
 	res := scopeByUserID(laborDB.Model(&models.Labor{}), uid).
 		Delete(&models.Labor{}, id)

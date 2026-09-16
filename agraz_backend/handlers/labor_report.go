@@ -11,10 +11,7 @@ import (
 )
 
 // personKeyExpr groups labour rows by mobile when present, else by lowercased name.
-const laborPersonKeyExpr = `CASE
-	WHEN mobile IS NOT NULL AND TRIM(mobile) <> '' THEN 'm:' || TRIM(mobile)
-	ELSE 'n:' || LOWER(TRIM(name))
-END`
+const laborPersonKeyExpr = models.LaborPersonKeySQL
 
 // laborWorkKindSQL matches accrued labour work only.
 // Payments, tallies, and opening (account reset) must not be added into hours.
@@ -23,13 +20,7 @@ const laborWorkKindSQL = `COALESCE(entry_kind,'payable') = 'payable'`
 const laborResetKindSQL = `COALESCE(entry_kind,'payable') IN ('tally','opening')`
 
 func laborPersonKeyExprOn(table string) string {
-	if table == "" {
-		return laborPersonKeyExpr
-	}
-	return fmt.Sprintf(`CASE
-	WHEN %[1]s.mobile IS NOT NULL AND TRIM(%[1]s.mobile) <> '' THEN 'm:' || TRIM(%[1]s.mobile)
-	ELSE 'n:' || LOWER(TRIM(%[1]s.name))
-END`, table)
+	return models.LaborPersonKeySQLOn(table)
 }
 
 func laborResetDistinctSQL() string {
@@ -150,10 +141,13 @@ func GetLaborPeoplePublic(c *fiber.Ctx) error {
 
 	if q != "" {
 		like := "%" + q + "%"
-		dbq = dbq.Having(
-			"MAX(labors.name) ILIKE ? OR COALESCE(MAX(labors.mobile),'') ILIKE ?",
-			like, like,
-		)
+		// Match any spelling/mobile on the person, then still total all of
+		// their rows. HAVING MAX(name) missed alternate names on the same mobile.
+		dbq = dbq.Where(fmt.Sprintf(`%s IN (
+			SELECT %s FROM labors AS s
+			WHERE s.user_id = ?
+			  AND (s.name ILIKE ? OR s.mobile ILIKE ?)
+		)`, pk, laborPersonKeyExprOn("s")), uid, like, like)
 	}
 
 	var rows []row
@@ -608,13 +602,13 @@ func laborPersonProfile(q *gorm.DB, mobile, name string) fiber.Map {
 	`).Scan(&r).Error
 
 	out := fiber.Map{
-		"name":          r.Name,
-		"gender":        r.Gender,
-		"last_date":     r.LastDate,
-		"last_category": r.LastCategory,
-		"last_location": r.LastLocation,
+		"name":           r.Name,
+		"gender":         r.Gender,
+		"last_date":      r.LastDate,
+		"last_category":  r.LastCategory,
+		"last_location":  r.LastLocation,
 		"last_work_type": r.LastWorkType,
-		"entry_count":   r.EntryCount,
+		"entry_count":    r.EntryCount,
 	}
 	if mobile != "" {
 		out["mobile"] = mobile

@@ -6,6 +6,7 @@ import 'api_service.dart';
 import 'app_theme.dart';
 import 'auth_token.dart';
 import 'dairy.dart';
+import 'dairy_parties.dart';
 import 'feedback_fab.dart';
 import 'l10n/app_l10n.dart';
 import 'login.dart';
@@ -28,10 +29,21 @@ String dairyOwnerKindLabel(String kind) {
 }
 
 class DairyOwnerPage extends StatefulWidget {
-  const DairyOwnerPage({super.key, this.skipBootstrap = false});
+  const DairyOwnerPage({
+    super.key,
+    this.skipBootstrap = false,
+    this.seedCustomers = const [],
+    this.seedEntries = const [],
+  });
 
   /// When true, skip login/API so widget tests can pump the Entry form.
   final bool skipBootstrap;
+
+  /// Saved customers used when [skipBootstrap] is true.
+  final List<Map<String, dynamic>> seedCustomers;
+
+  /// Saved milk rows used when [skipBootstrap] is true.
+  final List<Map<String, dynamic>> seedEntries;
 
   @override
   State<DairyOwnerPage> createState() => _DairyOwnerPageState();
@@ -65,6 +77,10 @@ class _DairyOwnerPageState extends State<DairyOwnerPage>
   Map<String, dynamic> _summary = {};
   List<Map<String, dynamic>> _customers = [];
   List<Map<String, dynamic>> _entries = [];
+  List<DairyParty> _parties = [];
+  List<DairyParty> _nameSuggestions = [];
+  bool _suppressIdentity = false;
+  bool _suppressSuggestions = false;
 
   bool get _isMilk =>
       _ownerKind == 'collected' || _ownerKind == 'sold';
@@ -78,8 +94,13 @@ class _DairyOwnerPageState extends State<DairyOwnerPage>
     });
     _qtyCtrl.addListener(_recalcAmount);
     _rateCtrl.addListener(_recalcAmount);
+    _nameCtrl.addListener(_onPartyIdentityChanged);
+    _mobileCtrl.addListener(_onPartyIdentityChanged);
     if (widget.skipBootstrap) {
       _loading = false;
+      _customers = List<Map<String, dynamic>>.from(widget.seedCustomers);
+      _entries = List<Map<String, dynamic>>.from(widget.seedEntries);
+      _rebuildParties();
     } else {
       _bootstrap();
     }
@@ -88,6 +109,8 @@ class _DairyOwnerPageState extends State<DairyOwnerPage>
   @override
   void dispose() {
     _tabs.dispose();
+    _nameCtrl.removeListener(_onPartyIdentityChanged);
+    _mobileCtrl.removeListener(_onPartyIdentityChanged);
     _nameCtrl.dispose();
     _mobileCtrl.dispose();
     _villageCtrl.dispose();
@@ -108,6 +131,75 @@ class _DairyOwnerPageState extends State<DairyOwnerPage>
     final rate = double.tryParse(_rateCtrl.text.trim()) ?? 0;
     final amt = qty * rate;
     if (amt > 0) _amountCtrl.text = amt.toStringAsFixed(2);
+  }
+
+  void _onPartyIdentityChanged() {
+    if (_suppressIdentity || !mounted) return;
+    _suppressSuggestions = false;
+    _refreshPartyIdentity();
+  }
+
+  void _rebuildParties() {
+    _parties = dairyPartiesFrom(entries: _entries, customers: _customers);
+  }
+
+  void _refreshPartyIdentity() {
+    if (_editingEntryId != null) {
+      if (_nameSuggestions.isNotEmpty) {
+        setState(() => _nameSuggestions = []);
+      }
+      return;
+    }
+    final name = _nameCtrl.text.trim();
+    final mobile = _mobileCtrl.text.trim();
+    final suggestions = _suppressSuggestions
+        ? <DairyParty>[]
+        : searchDairyParties(_parties, name: name, mobile: mobile);
+    final match = dairyMatchedParty(_parties, name: name, mobile: mobile);
+    if (match != null) _applyMatchedParty(match);
+    setState(() => _nameSuggestions = suggestions);
+  }
+
+  void _applyMatchedParty(DairyParty party) {
+    _suppressIdentity = true;
+    if (party.customerId != null) {
+      _selectedCustomerId = party.customerId;
+    }
+    if (party.name.isNotEmpty &&
+        dairyLast10(_mobileCtrl.text).length == 10 &&
+        _nameCtrl.text.trim().toLowerCase() != party.name.toLowerCase()) {
+      _nameCtrl.text = party.name;
+    }
+    if (party.mobile.isNotEmpty && _mobileCtrl.text.trim().isEmpty) {
+      _mobileCtrl.text = party.mobile;
+    }
+    if (party.village.isNotEmpty && _villageCtrl.text.trim().isEmpty) {
+      _villageCtrl.text = party.village;
+    }
+    if (_isMilk && party.lastRate > 0) {
+      _rateCtrl.text = dairyRateText(party.lastRate);
+      _recalcAmount();
+    }
+    _suppressIdentity = false;
+  }
+
+  void _selectParty(DairyParty party) {
+    _suppressIdentity = true;
+    _nameCtrl.text = party.name;
+    _nameCtrl.selection = TextSelection.collapsed(offset: party.name.length);
+    if (party.customerId != null) _selectedCustomerId = party.customerId;
+    if (party.mobile.isNotEmpty) _mobileCtrl.text = party.mobile;
+    if (party.village.isNotEmpty) _villageCtrl.text = party.village;
+    if (_isMilk && party.lastRate > 0) {
+      _rateCtrl.text = dairyRateText(party.lastRate);
+      _recalcAmount();
+    }
+    _suppressIdentity = false;
+    setState(() {
+      _nameSuggestions = [];
+      _suppressSuggestions = true;
+    });
+    FocusManager.instance.primaryFocus?.unfocus();
   }
 
   Future<bool> _ensureLogin() async {
@@ -140,6 +232,7 @@ class _DairyOwnerPageState extends State<DairyOwnerPage>
         _summary = summary;
         _customers = customers;
         _entries = entries;
+        _rebuildParties();
         _loading = false;
       });
     } catch (e) {
@@ -162,16 +255,38 @@ class _DairyOwnerPageState extends State<DairyOwnerPage>
   }
 
   void _applyCustomer(Map<String, dynamic> c) {
-    _selectedCustomerId = dairyNum(c['id']).toInt();
-    _nameCtrl.text = '${c['name'] ?? ''}';
-    _mobileCtrl.text = '${c['mobile'] ?? ''}';
-    _villageCtrl.text = '${c['village'] ?? ''}';
-    final rate = dairyNum(c['default_rate']);
-    if (rate > 0 && _rateCtrl.text.trim().isEmpty) {
-      _rateCtrl.text = rate.toStringAsFixed(2);
-      _recalcAmount();
+    final id = dairyNum(c['id']).toInt();
+    DairyParty? fromBook;
+    if (id > 0) {
+      for (final p in _parties) {
+        if (p.customerId == id) {
+          fromBook = p;
+          break;
+        }
+      }
     }
-    setState(() {});
+    fromBook ??= dairyMatchedParty(
+      _parties,
+      name: '${c['name'] ?? ''}',
+      mobile: '${c['mobile'] ?? ''}',
+    );
+    final lastRate = fromBook?.lastRate ??
+        (dairyNum(c['last_rate']) > 0
+            ? dairyNum(c['last_rate'])
+            : dairyNum(c['default_rate']));
+    _selectParty(DairyParty(
+      name: (fromBook?.name.isNotEmpty == true)
+          ? fromBook!.name
+          : '${c['name'] ?? ''}'.trim(),
+      mobile: (fromBook != null && fromBook.mobile.isNotEmpty)
+          ? fromBook.mobile
+          : '${c['mobile'] ?? ''}'.trim(),
+      village: (fromBook != null && fromBook.village.isNotEmpty)
+          ? fromBook.village
+          : '${c['village'] ?? ''}'.trim(),
+      lastRate: lastRate,
+      customerId: id > 0 ? id : fromBook?.customerId,
+    ));
   }
 
   Future<void> _saveEntry() async {
@@ -229,8 +344,10 @@ class _DairyOwnerPageState extends State<DairyOwnerPage>
   void _resetEntryForm() {
     _editingEntryId = null;
     _selectedCustomerId = null;
+    _suppressIdentity = true;
     _nameCtrl.clear();
     _mobileCtrl.clear();
+    _suppressIdentity = false;
     _villageCtrl.clear();
     _qtyCtrl.clear();
     _rateCtrl.clear();
@@ -239,9 +356,12 @@ class _DairyOwnerPageState extends State<DairyOwnerPage>
     _ownerKind = 'collected';
     _shift = 'morning';
     _date = DateTime.now();
+    _nameSuggestions = [];
+    _suppressSuggestions = false;
   }
 
   void _fillEntry(Map<String, dynamic> row) {
+    _suppressIdentity = true;
     _editingEntryId = dairyNum(row['id']).toInt();
     _ownerKind = '${row['owner_kind'] ?? 'collected'}';
     if (!_ownerKinds.contains(_ownerKind)) _ownerKind = 'collected';
@@ -261,6 +381,9 @@ class _DairyOwnerPageState extends State<DairyOwnerPage>
     _date = DateTime.tryParse('${row['date']}') ?? DateTime.now();
     _selectedCustomerId = dairyNum(row['customer_id']).toInt();
     if (_selectedCustomerId == 0) _selectedCustomerId = null;
+    _nameSuggestions = [];
+    _suppressSuggestions = true;
+    _suppressIdentity = false;
     _tabs.animateTo(0);
     setState(() {});
   }
@@ -528,6 +651,10 @@ class _DairyOwnerPageState extends State<DairyOwnerPage>
                   label: tr('Customer name'),
                   icon: Icons.person_rounded,
                   required: true,
+                ),
+                dairyPartySuggestionList(
+                  parties: _nameSuggestions,
+                  onSelect: _selectParty,
                 ),
                 const SizedBox(height: 12),
                 AppField(
