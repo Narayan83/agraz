@@ -2044,7 +2044,15 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
                             ),
                           ),
                           IconButton(
+                            tooltip: tr('Edit'),
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(Icons.edit_outlined,
+                                color: AppColors.info, size: 20),
+                            onPressed: () => _editEntry(e),
+                          ),
+                          IconButton(
                             tooltip: tr('Delete'),
+                            visualDensity: VisualDensity.compact,
                             icon: const Icon(Icons.delete_outline_rounded,
                                 color: AppColors.expense, size: 20),
                             onPressed: () => _deleteEntry(e),
@@ -2573,7 +2581,18 @@ class _LaborEntriesDetailPageState extends State<_LaborEntriesDetailPage> {
                 ),
               ),
               IconButton(
+                tooltip: tr('Edit'),
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(
+                  Icons.edit_outlined,
+                  color: AppColors.info,
+                  size: 20,
+                ),
+                onPressed: () => _editEntry(e),
+              ),
+              IconButton(
                 tooltip: tr('Delete'),
+                visualDensity: VisualDensity.compact,
                 icon: const Icon(
                   Icons.delete_outline_rounded,
                   color: AppColors.expense,
@@ -2952,7 +2971,18 @@ class _LaborPeriodDetailPageState extends State<_LaborPeriodDetailPage> {
                                       ),
                                     ),
                                     IconButton(
+                                      tooltip: tr('Edit'),
+                                      visualDensity: VisualDensity.compact,
+                                      icon: const Icon(
+                                        Icons.edit_outlined,
+                                        color: AppColors.info,
+                                        size: 20,
+                                      ),
+                                      onPressed: () => _editEntry(e),
+                                    ),
+                                    IconButton(
                                       tooltip: tr('Delete'),
+                                      visualDensity: VisualDensity.compact,
                                       icon: const Icon(
                                         Icons.delete_outline_rounded,
                                         color: AppColors.expense,
@@ -3211,6 +3241,43 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
   Future<void> _editEntry(Map<String, dynamic> entry) async {
     final changed = await showLaborEntryEditDialog(context, entry, _api);
     if (changed == true) _load();
+  }
+
+  Future<void> _deleteEntry(Map<String, dynamic> entry) async {
+    final id = entry['id'];
+    final intId = id is int ? id : int.tryParse('$id');
+    if (intId == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('Delete labour entry?')),
+        content: Text(tr('This cannot be undone.')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(tr('Cancel')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.expense),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(tr('Delete')),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final deleted = await _api.deleteLabor(intId);
+    if (!mounted) return;
+    if (deleted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr('Labour entry deleted'))),
+      );
+      _load();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr('Failed to delete labour entry'))),
+      );
+    }
   }
 
   Future<void> _exportExcel() async {
@@ -3742,6 +3809,36 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                                             fontWeight: FontWeight.w800,
                                             color: kindColor,
                                           ),
+                                        ),
+                                        IconButton(
+                                          tooltip: tr('Edit'),
+                                          visualDensity: VisualDensity.compact,
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 32,
+                                            minHeight: 32,
+                                          ),
+                                          icon: const Icon(
+                                            Icons.edit_outlined,
+                                            size: 18,
+                                            color: AppColors.info,
+                                          ),
+                                          onPressed: () => _editEntry(e),
+                                        ),
+                                        IconButton(
+                                          tooltip: tr('Delete'),
+                                          visualDensity: VisualDensity.compact,
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 32,
+                                            minHeight: 32,
+                                          ),
+                                          icon: const Icon(
+                                            Icons.delete_outline_rounded,
+                                            size: 18,
+                                            color: AppColors.expense,
+                                          ),
+                                          onPressed: () => _deleteEntry(e),
                                         ),
                                       ],
                                     ),

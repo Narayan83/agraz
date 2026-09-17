@@ -314,14 +314,34 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   }
 
   void _applySuggestion(Map<String, dynamic> row) {
+    _nameSearchDebounce?.cancel();
+    final name = row['name']?.toString() ?? '';
+    final mobile = row['mobile']?.toString() ?? '';
     setState(() {
-      _applyTransactionDetails(row);
+      if (name.isNotEmpty) {
+        _nameController.text = name;
+        _nameController.selection =
+            TextSelection.collapsed(offset: _nameController.text.length);
+      }
+      if (mobile.isNotEmpty) {
+        _mobileController.text = mobile;
+      }
+      _villageController.text = row['village']?.toString() ?? '';
+      _postController.text = row['post']?.toString() ?? '';
+      _talukController.text = row['taluk']?.toString() ?? '';
+      _districtController.text = row['district']?.toString() ?? '';
+      _extraAddressController.text =
+          row['extra_address']?.toString() ??
+              row['extraAddress']?.toString() ??
+              '';
+      _pincodeController.text = row['pincode']?.toString() ?? '';
       _nameSuggestions = [];
       _showNameSuggestions = false;
     });
-    final mobile = _mobileController.text.trim();
-    if (mobile.length == 10) {
-      _loadPartyBalance(mobile);
+    FocusManager.instance.primaryFocus?.unfocus();
+    final mob = _mobileController.text.trim();
+    if (mob.length == 10) {
+      _loadPartyBalance(mob);
     }
   }
 

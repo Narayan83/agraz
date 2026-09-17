@@ -1058,6 +1058,37 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     setState(() => _pending.removeAt(index));
   }
 
+  String _rateText(double v) {
+    return v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
+  }
+
+  void _editPending(int index) {
+    if (index < 0 || index >= _pending.length) return;
+    final row = _pending[index];
+    _suppressIdentityListener = true;
+    _nameController.text = row.name;
+    _mobileController.text = row.mobile ?? '';
+    _suppressIdentityListener = false;
+    _daysHourController.text = _rateText(row.daysHour);
+    _rateController.text = _rateText(row.rate);
+    setState(() {
+      if (!_categories.contains(row.category)) {
+        _categories.add(row.category);
+      }
+      _selectedCategory = row.category;
+      _selectedShift = row.shift;
+      _selectedGender = row.gender;
+      _extraRent = row.rent;
+      _extraFood = row.food;
+      _extraBonus = row.bonus;
+      _pending.removeAt(index);
+    });
+    _applyRateForSelectedCategory();
+    // Keep the edited rate the user had (don't overwrite with category default).
+    _rateController.text = _rateText(row.rate);
+    _showSnack(tr('Edit pending entry — tap Add Labourer to re-add'));
+  }
+
   Future<void> _submitPayment() async {
     final name = _nameController.text.trim();
     final mobile = _mobileController.text.trim();
@@ -2378,18 +2409,38 @@ class _LaborManagementPageState extends State<LaborManagementPage>
                 ],
               ),
               const SizedBox(width: 4),
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(
-                  minWidth: 32,
-                  minHeight: 32,
-                ),
-                icon: const Icon(
-                  Icons.close_rounded,
-                  size: 18,
-                  color: AppColors.expense,
-                ),
-                onPressed: () => _removePending(index),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: tr('Edit'),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                      size: 18,
+                      color: AppColors.info,
+                    ),
+                    onPressed: () => _editPending(index),
+                  ),
+                  IconButton(
+                    tooltip: tr('Delete'),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      size: 18,
+                      color: AppColors.expense,
+                    ),
+                    onPressed: () => _removePending(index),
+                  ),
+                ],
               ),
             ],
           ),
