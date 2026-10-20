@@ -75,17 +75,22 @@ func SeedAppContents() {
 	}
 }
 
-// SeedToolsMenus adds Feedback, Entry Analytics, Organizations, and App Contents to admin menus.
+// SeedToolsMenus adds admin-only Tools menus (analytics, CMS, cross-user views).
 func SeedToolsMenus() {
 	menus := []models.Menu{
 		{MenuName: "Tools", URL: "/tools", Icon: "Wrench", SortOrder: 8, IsActive: true, MenuType: "main", Children: []models.Menu{
-			{MenuName: "Feedback", URL: "/feedback", Icon: "MessageSquare", SortOrder: 1, IsActive: true, MenuType: "main"},
-			{MenuName: "Entry Analytics", URL: "/entry-analytics", Icon: "Activity", SortOrder: 2, IsActive: true, MenuType: "main"},
-			{MenuName: "Organizations", URL: "/organizations", Icon: "Building2", SortOrder: 3, IsActive: true, MenuType: "main"},
-			{MenuName: "App Contents", URL: "/app-contents", Icon: "FileText", SortOrder: 4, IsActive: true, MenuType: "main"},
-			{MenuName: "Dairy", URL: "/dairy", Icon: "Milk", SortOrder: 5, IsActive: true, MenuType: "main"},
-			{MenuName: "Documents", URL: "/documents", Icon: "FolderOpen", SortOrder: 6, IsActive: true, MenuType: "main"},
-			{MenuName: "Achievers Lobby", URL: "/achievers-lobby", Icon: "Trophy", SortOrder: 8, IsActive: true, MenuType: "main"},
+			{MenuName: "Service Registrations", URL: "/service-registrations", Icon: "ClipboardList", SortOrder: 1, IsActive: true, MenuType: "main"},
+			{MenuName: "Government Facilities", URL: "/gov-facilities", Icon: "Landmark", SortOrder: 2, IsActive: true, MenuType: "main"},
+			{MenuName: "Market Reports", URL: "/market-reports", Icon: "BarChart3", SortOrder: 3, IsActive: true, MenuType: "main"},
+			{MenuName: "Feedback", URL: "/feedback", Icon: "MessageSquare", SortOrder: 4, IsActive: true, MenuType: "main"},
+			{MenuName: "Entry Analytics", URL: "/entry-analytics", Icon: "Activity", SortOrder: 5, IsActive: true, MenuType: "main"},
+			{MenuName: "Organizations", URL: "/organizations", Icon: "Building2", SortOrder: 6, IsActive: true, MenuType: "main"},
+			{MenuName: "App Contents", URL: "/app-contents", Icon: "FileText", SortOrder: 7, IsActive: true, MenuType: "main"},
+			{MenuName: "Dairy", URL: "/dairy", Icon: "Milk", SortOrder: 8, IsActive: true, MenuType: "main"},
+			{MenuName: "Documents", URL: "/documents", Icon: "FolderOpen", SortOrder: 9, IsActive: true, MenuType: "main"},
+			{MenuName: "RTC Entry", URL: "/rtc-entry", Icon: "Map", SortOrder: 10, IsActive: true, MenuType: "main"},
+			{MenuName: "Event Manage", URL: "/events", Icon: "CalendarDays", SortOrder: 11, IsActive: true, MenuType: "main"},
+			{MenuName: "Achievers Lobby", URL: "/achievers-lobby", Icon: "Trophy", SortOrder: 12, IsActive: true, MenuType: "main"},
 		}},
 	}
 
@@ -98,10 +103,9 @@ func SeedToolsMenus() {
 				fmt.Printf("Seeded Menu: %s\n", m.MenuName)
 			}
 		} else {
-			ensureToolsChild(existing.ID, "Organizations", "/organizations", "Building2", 3)
-			ensureToolsChild(existing.ID, "Dairy", "/dairy", "Milk", 5)
-			ensureToolsChild(existing.ID, "Documents", "/documents", "FolderOpen", 6)
-			ensureToolsChild(existing.ID, "Achievers Lobby", "/achievers-lobby", "Trophy", 8)
+			for _, ch := range m.Children {
+				ensureToolsChild(existing.ID, ch.MenuName, ch.URL, ch.Icon, ch.SortOrder)
+			}
 		}
 	}
 }

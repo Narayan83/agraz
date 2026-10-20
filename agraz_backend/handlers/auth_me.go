@@ -59,6 +59,29 @@ func accountSessionPayload(loginUser models.User) fiber.Map {
 			"active":        loginUser.Active,
 		}
 	}
+
+	// Roles for the logged-in member (used by admin UI for staff vs User menus).
+	var mappings []models.UserRoleMapping
+	_ = userDB.Where("user_id = ?", loginUser.ID).Find(&mappings).Error
+	roleIDs := make([]uint, 0, len(mappings))
+	for _, m := range mappings {
+		roleIDs = append(roleIDs, m.RoleID)
+	}
+	rolesOut := make([]fiber.Map, 0)
+	if len(roleIDs) > 0 {
+		var roles []models.Role
+		if err := userDB.Where("id IN ?", roleIDs).Find(&roles).Error; err == nil {
+			for _, r := range roles {
+				rolesOut = append(rolesOut, fiber.Map{
+					"id":          r.ID,
+					"role_name":   r.RoleName,
+					"RoleName":    r.RoleName,
+					"description": r.Description,
+				})
+			}
+		}
+	}
+	out["roles"] = rolesOut
 	return out
 }
 

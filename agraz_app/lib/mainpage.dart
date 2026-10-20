@@ -42,6 +42,14 @@ import 'faq_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'family_members_page.dart';
 import 'offline_sync.dart';
+import 'contract_manage/contract_hub.dart';
+import 'contract_manage/cm_entity_page.dart';
+import 'contract_manage/cm_project_list.dart';
+import 'contract_manage/cm_purchases_page.dart';
+import 'contract_manage/cm_payments_page.dart';
+import 'contract_manage/cm_stock_report_page.dart';
+import 'contract_manage/cm_customer_summary_page.dart';
+import 'contract_manage/cm_assets_page.dart';
 
 const _prefsUserCreatedAt = 'agraz_user_created_at';
 const _freeYearDays = 365;
@@ -667,6 +675,8 @@ class _MainPageState extends State<MainPage> {
                         feature: AppFeatureCatalog.feedback,
                       ),
                     ),
+                  _drawerSectionLabel(tr('CONTRACT')),
+                  _buildContractManageDrawerSection(),
                   _drawerSectionLabel(tr('ACCOUNT')),
                   if (_featureEnabled(AppFeatureCatalog.profile))
                     _drawerTile(
@@ -785,6 +795,52 @@ class _MainPageState extends State<MainPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 16, 6),
       child: Text(label, style: AppText.caption),
+    );
+  }
+
+  /// New Contract Manage parent + children. Does not alter existing MENU tiles.
+  Widget _buildContractManageDrawerSection() {
+    Widget sub(IconData icon, String title, Widget page) {
+      return ListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.only(left: 56, right: 16),
+        leading: Icon(icon, size: 18, color: AppColors.primaryDark),
+        title: Text(title, style: const TextStyle(fontSize: 13.5)),
+        onTap: () => _openProtected(page, closeDrawer: true),
+      );
+    }
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
+        childrenPadding: EdgeInsets.zero,
+        leading: TintedIcon(
+          icon: Icons.construction_rounded,
+          color: AppColors.primaryDark,
+          boxSize: 36,
+          size: 18,
+          radius: 10,
+        ),
+        title: Text(
+          tr('Contract Manage'),
+          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+        ),
+        children: [
+          sub(Icons.dashboard_customize_rounded, tr('Overview'), const ContractManageHubPage()),
+          sub(Icons.apartment_rounded, tr('Projects'), const CmProjectListPage()),
+          sub(Icons.people_alt_rounded, tr('Customers'), const CmCustomersPage()),
+          sub(Icons.groups_rounded, tr('Labour Suppliers'), const CmLabourSuppliersPage()),
+          sub(Icons.engineering_rounded, tr('Labours'), const CmLaboursPage()),
+          sub(Icons.store_mall_directory_rounded, tr('Dealers'), const CmDealersPage()),
+          sub(Icons.inventory_2_rounded, tr('Materials'), const CmMaterialsPage()),
+          sub(Icons.account_balance_wallet_rounded, tr('Payments'), const CmPaymentsPage()),
+          sub(Icons.shopping_cart_rounded, tr('Purchases / Stock'), const CmPurchasesPage()),
+          sub(Icons.bar_chart_rounded, tr('Stock Report'), const CmStockReportPage()),
+          sub(Icons.summarize_rounded, tr('Customer Summary'), const CmCustomerSummaryPage()),
+          sub(Icons.agriculture_rounded, tr('Assets'), const CmAssetsPage()),
+        ],
+      ),
     );
   }
 

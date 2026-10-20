@@ -35,11 +35,15 @@ import {
   FolderOpen,
   CalendarDays,
   Trophy,
+  Wallet,
+  Briefcase,
+  Wrench,
 } from "lucide-react";
 import "./Sidebar.css";
 
 import { getMyMenus } from "../../api/api";
 import { logoutAndRedirect } from "../../lib/authStorage";
+import { isStaffUser } from "../../lib/transactions";
 
 const iconMap = {
   LayoutDashboard: <LayoutDashboard size={18} strokeWidth={1.75} />,
@@ -73,6 +77,9 @@ const iconMap = {
   FolderOpen: <FolderOpen size={18} strokeWidth={1.75} />,
   CalendarDays: <CalendarDays size={18} strokeWidth={1.75} />,
   Trophy: <Trophy size={18} strokeWidth={1.75} />,
+  Wallet: <Wallet size={18} strokeWidth={1.75} />,
+  Briefcase: <Briefcase size={18} strokeWidth={1.75} />,
+  Wrench: <Wrench size={18} strokeWidth={1.75} />,
 };
 
 /** Normalize menu rows from `/my-menus` (snake_case + occasional PascalCase). */
@@ -187,30 +194,28 @@ const DEFAULT_ADMIN_NAV = [
   },
 ];
 
-const HARD_CODED_SERVICE_NAV = [
-  { menu_name: "Service Registrations", url: "/service-registrations", icon: "ClipboardList" },
-  { menu_name: "Government Facilities", url: "/gov-facilities", icon: "Landmark" },
-];
-
-/**
- * Fallback Tools links (also seed these in Menu Management /my-menus if using DB menus):
- * - Feedback → /feedback (icon: MessageSquare)
- * - Entry Analytics → /entry-analytics (icon: Activity)
- * - App Contents → /app-contents (icon: FileText)
- */
-const HARD_CODED_TOOLS_NAV = [
-  { menu_name: "Feedback", url: "/feedback", icon: "MessageSquare" },
-  { menu_name: "Entry Analytics", url: "/entry-analytics", icon: "Activity" },
-  { menu_name: "Organizations", url: "/organizations", icon: "Building2" },
-  { menu_name: "App Contents", url: "/app-contents", icon: "FileText" },
-  { menu_name: "RTC Entry", url: "/rtc-entry", icon: "Map" },
-  { menu_name: "Dairy", url: "/dairy", icon: "Milk" },
-  { menu_name: "Documents", url: "/documents", icon: "FolderOpen" },
-  { menu_name: "Event Manage", url: "/events", icon: "CalendarDays" },
-  { menu_name: "Achievers Lobby", url: "/achievers-lobby", icon: "Trophy" },
-];
-
 const LOGOUT_NAV_ITEM = { menu_name: "Logout", url: "/logout", icon: "LogOut" };
+
+const USER_FALLBACK_NAV = [
+  {
+    menu_name: "Transactions",
+    url: "/transactions",
+    icon: "Wallet",
+    children: [
+      { menu_name: "Income & Expenses", url: "/transactions/income-expense", icon: "Wallet" },
+      { menu_name: "Manage Organization", url: "/transactions/organizations", icon: "Building2" },
+      { menu_name: "Labour Entry", url: "/transactions/labour", icon: "Briefcase" },
+      { menu_name: "Labour Work Entry", url: "/transactions/labour-work", icon: "ClipboardList" },
+      { menu_name: "Dairy", url: "/transactions/dairy", icon: "Milk" },
+      { menu_name: "Dairy Owner", url: "/transactions/dairy-owner", icon: "Milk" },
+      { menu_name: "Notes", url: "/transactions/notes", icon: "FileText" },
+      { menu_name: "Future Plans", url: "/transactions/future-plans", icon: "CalendarDays" },
+      { menu_name: "RTC Entry", url: "/transactions/rtc", icon: "Map" },
+      { menu_name: "Documents", url: "/transactions/documents", icon: "FolderOpen" },
+      { menu_name: "Event Manage", url: "/transactions/events", icon: "CalendarDays" },
+    ],
+  },
+];
 
 const SidebarItem = ({
   item,
@@ -348,38 +353,36 @@ const Sidebar = ({ isOpen, isMobile, setMobileOpen, mobileOpen, setOpen }) => {
   useEffect(() => {
     const fetchMenus = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem("token");
         if (!token) return;
 
         const data = await getMyMenus();
         const raw = Array.isArray(data) ? data : data.data || [];
         let normalized = raw.map(normalizeMenuItem).filter(Boolean);
-        const hasUserList = (items) =>
-          items.some(
-            (i) =>
-              i.url === "/users" ||
-              (Array.isArray(i.children) && i.children.some((c) => c.url === "/users"))
-          );
         if (!normalized.length) {
-          normalized = DEFAULT_ADMIN_NAV.map(normalizeMenuItem).filter(Boolean);
-        } else if (!hasUserList(normalized)) {
-          const userGroup = DEFAULT_ADMIN_NAV.find((i) => i.url === "/admin-master");
-          if (userGroup) normalized = [...normalized, normalizeMenuItem(userGroup)].filter(Boolean);
+          // Staff keep admin fallback; common users only get Transactions.
+          normalized = (isStaffUser(user) ? DEFAULT_ADMIN_NAV : USER_FALLBACK_NAV)
+            .map(normalizeMenuItem)
+            .filter(Boolean);
         }
         setMenus(normalized);
       } catch (err) {
         console.error("Error fetching menus:", err);
-        setMenus(DEFAULT_ADMIN_NAV.map(normalizeMenuItem).filter(Boolean));
+        setMenus(
+          (isStaffUser(user) ? DEFAULT_ADMIN_NAV : USER_FALLBACK_NAV)
+            .map(normalizeMenuItem)
+            .filter(Boolean)
+        );
         if (err.response?.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/agraz_admin/login';
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          window.location.href = "/agraz_admin/login";
         }
       }
     };
 
     fetchMenus();
-  }, []);
+  }, [user]);
 
   return (
     <>
@@ -417,40 +420,8 @@ const Sidebar = ({ isOpen, isMobile, setMobileOpen, mobileOpen, setOpen }) => {
                 expandSidebar={setOpen}
               />
             ))}
-            {HARD_CODED_SERVICE_NAV.map((raw) => {
-              const item = normalizeMenuItem(raw);
-              if (!item) return null;
-              return (
-                <SidebarItem
-                  key={`static-${item.url}`}
-                  item={item}
-                  isOpen={isOpen}
-                  isMobile={isMobile}
-                  toggleSidebar={toggleMobile}
-                  expandSidebar={setOpen}
-                />
-              );
-            })}
           </div>
 
-          <div className="nav-group">
-            {(isOpen || isMobile) && <span className="nav-label">Tools</span>}
-            {HARD_CODED_TOOLS_NAV.map((raw) => {
-              const item = normalizeMenuItem(raw);
-              if (!item) return null;
-              return (
-                <SidebarItem
-                  key={`tools-${item.url}`}
-                  item={item}
-                  isOpen={isOpen}
-                  isMobile={isMobile}
-                  toggleSidebar={toggleMobile}
-                  expandSidebar={setOpen}
-                />
-              );
-            })}
-          </div>
-          
           <div className="nav-group">
             {(isOpen || isMobile) && <span className="nav-label">Settings</span>}
             <SidebarItem
@@ -470,7 +441,11 @@ const Sidebar = ({ isOpen, isMobile, setMobileOpen, mobileOpen, setOpen }) => {
               <div className="avatar">{userInitials}</div>
               <div className="details">
                 <span className="name">{displayName}</span>
-                <span className="role">{(user?.Roles && user.Roles.length > 0) ? user.Roles[0].RoleName : "Admin"}</span>
+                <span className="role">
+                  {(user?.Roles && user.Roles.length > 0)
+                    ? (user.Roles[0].RoleName || user.Roles[0].role_name)
+                    : (isStaffUser(user) ? "Admin" : "User")}
+                </span>
               </div>
             </div>
           )}

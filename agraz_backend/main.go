@@ -47,6 +47,7 @@ func init() {
 		&models.OrgLedger{},
 		&models.OrgTransaction{},
 		&models.AppFeedback{},
+		&models.AppFeedbackDeletionLog{},
 		&models.AppContent{},
 		&models.EcomCategory{},
 		&models.EcomSubCategory{},
@@ -77,6 +78,20 @@ func init() {
 		&models.WeatherDaily{},
 		&models.AchieversLobbyCategory{},
 		&models.AchieversLobbyItem{},
+		&models.CmProject{},
+		&models.CmCustomer{},
+		&models.CmDealer{},
+		&models.CmLabourSupplier{},
+		&models.CmLabour{},
+		&models.CmMaterial{},
+		&models.CmPurchase{},
+		&models.CmPurchaseItem{},
+		&models.CmStockBalance{},
+		&models.CmPayment{},
+		&models.CmAsset{},
+		&models.CmLabourWork{},
+		&models.CmStockIssue{},
+		&models.CmAuditLog{},
 	)
 	if err := models.EnsureLaborSearchIndexes(initializers.DB); err != nil {
 		log.Printf("Labor search indexes: %v", err)
@@ -119,6 +134,7 @@ func main() {
 	handler.SetEventDB(initializers.DB)
 	handler.SetWeatherDB(initializers.DB)
 	handler.SetAchieversLobbyDB(initializers.DB)
+	handler.SetContractManageDB(initializers.DB)
 	handler.StartWeatherScheduler()
 
 	// set up fiber (large body limit for multi-image uploads)
@@ -303,6 +319,56 @@ func main() {
 	api.Get("/future_plans/:id", handler.GetFuturePlan)
 	api.Put("/future_plans/:id", handler.UpdateFuturePlan)
 	api.Delete("/future_plans/:id", handler.DeleteFuturePlan)
+
+	// Contract Manage (civil contractor module)
+	api.Get("/contract/dashboard", handler.GetCmDashboard)
+	api.Get("/contract/projects", handler.ListCmProjects)
+	api.Post("/contract/projects", handler.CreateCmProject)
+	api.Get("/contract/projects/:id", handler.GetCmProject)
+	api.Get("/contract/projects/:id/ledger", handler.GetCmProjectLedger)
+	api.Put("/contract/projects/:id", handler.UpdateCmProject)
+	api.Delete("/contract/projects/:id", handler.DeleteCmProject)
+	api.Get("/contract/customers", handler.ListCmCustomers)
+	api.Post("/contract/customers", handler.CreateCmCustomer)
+	api.Put("/contract/customers/:id", handler.UpdateCmCustomer)
+	api.Delete("/contract/customers/:id", handler.DeleteCmCustomer)
+	api.Get("/contract/customers/:id/summary", handler.GetCmCustomerSummary)
+	api.Get("/contract/dealers", handler.ListCmDealers)
+	api.Post("/contract/dealers", handler.CreateCmDealer)
+	api.Put("/contract/dealers/:id", handler.UpdateCmDealer)
+	api.Delete("/contract/dealers/:id", handler.DeleteCmDealer)
+	api.Get("/contract/labour-suppliers", handler.ListCmLabourSuppliers)
+	api.Post("/contract/labour-suppliers", handler.CreateCmLabourSupplier)
+	api.Put("/contract/labour-suppliers/:id", handler.UpdateCmLabourSupplier)
+	api.Delete("/contract/labour-suppliers/:id", handler.DeleteCmLabourSupplier)
+	api.Get("/contract/labours", handler.ListCmLabours)
+	api.Post("/contract/labours", handler.CreateCmLabour)
+	api.Put("/contract/labours/:id", handler.UpdateCmLabour)
+	api.Delete("/contract/labours/:id", handler.DeleteCmLabour)
+	api.Get("/contract/materials", handler.ListCmMaterials)
+	api.Post("/contract/materials", handler.CreateCmMaterial)
+	api.Put("/contract/materials/:id", handler.UpdateCmMaterial)
+	api.Delete("/contract/materials/:id", handler.DeleteCmMaterial)
+	api.Get("/contract/purchases", handler.ListCmPurchases)
+	api.Post("/contract/purchases", handler.CreateCmPurchase)
+	api.Delete("/contract/purchases/:id", handler.DeleteCmPurchase)
+	api.Get("/contract/stock-report", handler.GetCmStockReport)
+	api.Get("/contract/stock-issues", handler.ListCmStockIssues)
+	api.Post("/contract/stock-issues", handler.CreateCmStockIssue)
+	api.Delete("/contract/stock-issues/:id", handler.DeleteCmStockIssue)
+	api.Get("/contract/labour-works", handler.ListCmLabourWorks)
+	api.Post("/contract/labour-works", handler.CreateCmLabourWork)
+	api.Put("/contract/labour-works/:id", handler.UpdateCmLabourWork)
+	api.Delete("/contract/labour-works/:id", handler.DeleteCmLabourWork)
+	api.Get("/contract/payments", handler.ListCmPayments)
+	api.Post("/contract/payments", handler.CreateCmPayment)
+	api.Put("/contract/payments/:id", handler.UpdateCmPayment)
+	api.Delete("/contract/payments/:id", handler.DeleteCmPayment)
+	api.Get("/contract/assets", handler.ListCmAssets)
+	api.Post("/contract/assets", handler.CreateCmAsset)
+	api.Put("/contract/assets/:id", handler.UpdateCmAsset)
+	api.Delete("/contract/assets/:id", handler.DeleteCmAsset)
+	api.Get("/contract/audit-logs", handler.ListCmAuditLogs)
 
 	// Labour self work-entry (receivable / receipt)
 	// Reverse labour confirmation (farmer → labourer)
@@ -515,7 +581,12 @@ func main() {
 
 	// Admin feedback
 	api.Get("/admin/feedbacks", handler.AdminListFeedback)
+	api.Get("/admin/feedbacks/deletion-logs", handler.AdminListFeedbackDeletionLogs)
+	api.Post("/admin/feedbacks/deletion-logs/:id/revoke", handler.AdminRevokeFeedbackDeletion)
+	api.Post("/admin/feedbacks/import-app-survey", handler.AdminImportAppSurvey)
 	api.Patch("/admin/feedbacks/:id/verify", handler.AdminSetFeedbackVerified)
+	api.Put("/admin/feedbacks/:id", handler.AdminUpdateFeedback)
+	api.Delete("/admin/feedbacks/:id", handler.AdminDeleteFeedback)
 
 	// Admin app content CMS
 	api.Get("/admin/app_contents", handler.AdminListAppContents)

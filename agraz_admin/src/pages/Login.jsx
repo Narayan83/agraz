@@ -7,6 +7,7 @@ import {
   verifyResetCode,
   resetPasswordWithCode,
 } from '../api/api';
+import { isStaffUser } from '../lib/transactions';
 import './Login.css';
 
 const Login = () => {
@@ -40,7 +41,8 @@ const Login = () => {
       const data = await loginUser(email.trim(), password);
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
-      navigate('/home');
+      // Common users land on Transactions; staff keep the admin dashboard.
+      navigate(isStaffUser(data.user) ? '/home' : '/transactions');
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {

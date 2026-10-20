@@ -115,6 +115,12 @@ func CreateUser(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create user", "details": err.Error()})
 	}
 
+	// Default role for newly created accounts (web parity with mobile register).
+	var role models.Role
+	if err := userDB.Where("role_name = ?", "User").First(&role).Error; err == nil {
+		_ = userDB.Create(&models.UserRoleMapping{UserID: user.ID, RoleID: role.ID}).Error
+	}
+
 	return c.Status(201).JSON(user)
 }
 

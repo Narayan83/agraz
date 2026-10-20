@@ -580,6 +580,26 @@ export const setAdminFeedbackVerified = async (id, verified) => {
   const response = await api.patch(`/admin/feedbacks/${id}/verify`, { verified: Boolean(verified) });
   return response.data;
 };
+export const updateAdminFeedback = async (id, payload) => {
+  const response = await api.put(`/admin/feedbacks/${id}`, payload);
+  return response.data;
+};
+export const deleteAdminFeedback = async (id) => {
+  const response = await api.delete(`/admin/feedbacks/${id}`);
+  return response.data;
+};
+export const getAdminFeedbackDeletionLogs = async (params = {}) => {
+  const response = await api.get('/admin/feedbacks/deletion-logs', { params });
+  return response.data;
+};
+export const revokeAdminFeedbackDeletion = async (id) => {
+  const response = await api.post(`/admin/feedbacks/deletion-logs/${id}/revoke`);
+  return response.data;
+};
+export const importAdminAppSurvey = async (payload = {}) => {
+  const response = await api.post('/admin/feedbacks/import-app-survey', payload);
+  return response.data;
+};
 
 // Admin entry analytics
 export const getAdminEntryAnalytics = async (params = {}) => {
@@ -736,5 +756,133 @@ export const updateAdminLobbyCategory = async (id, data) =>
   (await api.put(`/admin/achievers-lobby/categories/${id}`, data)).data;
 export const deleteAdminLobbyCategory = async (id) =>
   (await api.delete(`/admin/achievers-lobby/categories/${id}`)).data;
+
+// --- User-scoped Transactions (same APIs as the mobile app) ---
+export const getIncomeExpenses = async (params = {}) =>
+  (await api.get('/income_expense', { params })).data;
+export const createIncomeExpense = async (data) =>
+  (await api.post('/income_expense', data)).data;
+export const deleteIncomeExpense = async (id) =>
+  (await api.delete(`/income_expense/${id}`)).data;
+
+export const getMyOrganizations = async (params = {}) =>
+  (await api.get('/organizations', { params })).data;
+export const createMyOrganization = async (data) =>
+  (await api.post('/organizations', data)).data;
+export const updateMyOrganization = async (id, data) =>
+  (await api.put(`/organizations/${id}`, data)).data;
+export const deleteMyOrganization = async (id) =>
+  (await api.delete(`/organizations/${id}`)).data;
+export const getMyOrgLedgers = async (params = {}) =>
+  (await api.get('/org_ledgers', { params })).data;
+export const createMyOrgLedger = async (data) =>
+  (await api.post('/org_ledgers', data)).data;
+export const getMyOrgTransactions = async (params = {}) =>
+  (await api.get('/org_transactions', { params })).data;
+export const createMyOrgTransaction = async (data) =>
+  (await api.post('/org_transactions', data)).data;
+export const deleteMyOrgTransaction = async (id) =>
+  (await api.delete(`/org_transactions/${id}`)).data;
+
+export const getMyLabors = async (params = {}) =>
+  (await api.get('/labors', { params })).data;
+export const createMyLabor = async (data) =>
+  (await api.post('/labors', data)).data;
+export const deleteMyLabor = async (id) =>
+  (await api.delete(`/labors/${id}`)).data;
+export const getMyLaborWorks = async (params = {}) =>
+  (await api.get('/labor_works', { params })).data;
+export const createMyLaborWork = async (data) =>
+  (await api.post('/labor_works', data)).data;
+export const deleteMyLaborWork = async (id) =>
+  (await api.delete(`/labor_works/${id}`)).data;
+
+export const getMyDairySummary = async (params = {}) =>
+  (await api.get('/dairy/summary', { params })).data;
+export const getMyDairyEntries = async (params = {}) =>
+  (await api.get('/dairy/entries', { params })).data;
+export const createMyDairyEntry = async (data) =>
+  (await api.post('/dairy/entries', data)).data;
+export const deleteMyDairyEntry = async (id) =>
+  (await api.delete(`/dairy/entries/${id}`)).data;
+export const getMyDairyCustomers = async (params = {}) =>
+  (await api.get('/dairy/owner/customers', { params })).data;
+export const createMyDairyCustomer = async (data) =>
+  (await api.post('/dairy/owner/customers', data)).data;
+export const getMyOwnerDairyEntries = async (params = {}) =>
+  (await api.get('/dairy/owner/entries', { params })).data;
+export const createMyOwnerDairyEntry = async (data) =>
+  (await api.post('/dairy/owner/entries', data)).data;
+export const deleteMyOwnerDairyEntry = async (id) =>
+  (await api.delete(`/dairy/owner/entries/${id}`)).data;
+
+export const getMyDiaryEntries = async (params = {}) =>
+  (await api.get('/diary/entries', { params })).data;
+export const createMyDiaryEntry = async (data) =>
+  (await api.post('/diary/entries', data)).data;
+export const deleteMyDiaryEntry = async (id) =>
+  (await api.delete(`/diary/entries/${id}`)).data;
+
+export const getMyFuturePlans = async (params = {}) =>
+  (await api.get('/future_plans', { params })).data;
+export const createMyFuturePlan = async (data) =>
+  (await api.post('/future_plans', data)).data;
+export const deleteMyFuturePlan = async (id) =>
+  (await api.delete(`/future_plans/${id}`)).data;
+
+export const getMyLandRtcs = async (params = {}) =>
+  (await api.get('/land_rtcs', { params })).data;
+export const createMyLandRtc = async (data) =>
+  (await api.post('/land_rtcs', data)).data;
+export const updateMyLandRtc = async (id, data) =>
+  (await api.put(`/land_rtcs/${id}`, data)).data;
+export const deleteMyLandRtc = async (id) =>
+  (await api.delete(`/land_rtcs/${id}`)).data;
+export const uploadMyLandRtcDocument = async (file) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  return (await api.post('/land_rtcs/upload', fd)).data;
+};
+
+export const browseMyDocuments = async (params = {}) =>
+  (await api.get('/documents/browse', { params })).data;
+export const createMyDocumentFolder = async (data) =>
+  (await api.post('/documents/folders', data)).data;
+export const deleteMyDocumentFolder = async (id) =>
+  (await api.delete(`/documents/folders/${id}`)).data;
+export const createMyDocument = async (data) =>
+  (await api.post('/documents', data)).data;
+export const deleteMyDocument = async (id) =>
+  (await api.delete(`/documents/${id}`)).data;
+export const uploadMyDocumentImages = async (files) => {
+  const fd = new FormData();
+  for (const f of files) fd.append('images', f);
+  return (await api.post('/documents/upload', fd)).data;
+};
+
+export const getMyEvents = async (params = {}) =>
+  (await api.get('/events', { params })).data;
+export const createMyEvent = async (data) =>
+  (await api.post('/events', data)).data;
+export const updateMyEvent = async (id, data) =>
+  (await api.put(`/events/${id}`, data)).data;
+export const deleteMyEvent = async (id) =>
+  (await api.delete(`/events/${id}`)).data;
+
+// --- Contract Manage (civil contractor) ---
+export const cmList = async (path, params = {}) =>
+  (await api.get(`/contract/${path}`, { params })).data;
+export const cmCreate = async (path, data) =>
+  (await api.post(`/contract/${path}`, data)).data;
+export const cmUpdate = async (path, id, data) =>
+  (await api.put(`/contract/${path}/${id}`, data)).data;
+export const cmDelete = async (path, id) =>
+  (await api.delete(`/contract/${path}/${id}`)).data;
+export const cmCustomerSummary = async (id) =>
+  (await api.get(`/contract/customers/${id}/summary`)).data;
+export const cmStockReport = async (params = {}) =>
+  (await api.get('/contract/stock-report', { params })).data;
+export const cmDashboard = async () =>
+  (await api.get('/contract/dashboard')).data;
 
 export default api;

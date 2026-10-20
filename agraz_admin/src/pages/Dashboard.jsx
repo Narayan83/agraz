@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import {
   Users,
   Shield,
@@ -16,6 +16,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { getDashboardStats } from "../api/api";
+import { isStaffUser, readStoredUser } from "../lib/transactions";
 import "./Dashboard.css";
 
 const StatCard = ({ label, value, hint, hintTone = "positive", icon, color, loading }) => (
@@ -67,6 +68,8 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const user = readStoredUser();
+  const staff = isStaffUser(user);
 
   const loadStats = async () => {
     setLoading(true);
@@ -89,8 +92,13 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
+    if (!staff) return;
     loadStats();
-  }, []);
+  }, [staff]);
+
+  if (!staff) {
+    return <Navigate to="/transactions" replace />;
+  }
 
   const recentActivity = stats?.recent_activity ?? [];
   const isVendorDash = Boolean(stats?.is_vendor_dashboard);

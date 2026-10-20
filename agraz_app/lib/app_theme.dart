@@ -46,6 +46,7 @@ class AppColors {
 
   // Misc
   static const Color border = Color(0xFFE3EAE6);
+  static const Color fieldBorder = Color(0xFF9AA7A0);
 
   static const List<Color> headerGradient = [
     Color(0xFF0B4630),
@@ -447,6 +448,7 @@ class SectionTitle extends StatelessWidget {
   final String title;
   final String? subtitle;
   final Color color;
+  final bool tintedIcon;
 
   const SectionTitle({
     super.key,
@@ -454,6 +456,7 @@ class SectionTitle extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.color = AppColors.primary,
+    this.tintedIcon = true,
   });
 
   @override
@@ -461,7 +464,13 @@ class SectionTitle extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TintedIcon(icon: icon, color: color, boxSize: 30, size: 16, radius: 9),
+        if (tintedIcon)
+          TintedIcon(icon: icon, color: color, boxSize: 30, size: 16, radius: 9)
+        else
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(icon, color: color, size: 22),
+          ),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -469,7 +478,7 @@ class SectionTitle extends StatelessWidget {
             children: [
               Text(tr(title), style: AppText.title),
               if (subtitle != null) ...[
-                const SizedBox(height: 1),
+                const SizedBox(height: 2),
                 Text(tr(subtitle!), style: AppText.small),
               ],
             ],
@@ -796,6 +805,396 @@ class AppDropdown extends StatelessWidget {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Flatter outlined fields — labels above, thin borders, less chrome          */
+/* -------------------------------------------------------------------------- */
+
+class AppFieldStyle {
+  AppFieldStyle._();
+
+  static const double radius = 10;
+  static const double labelGap = 8;
+
+  static InputDecoration outlined({
+    String? hint,
+    IconData? icon,
+    Widget? suffixIcon,
+    BoxConstraints? suffixIconConstraints,
+  }) {
+    const border = OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(radius)),
+      borderSide: BorderSide(color: AppColors.fieldBorder, width: 1.2),
+    );
+    return InputDecoration(
+      filled: true,
+      fillColor: AppColors.surface,
+      hintText: hint,
+      hintStyle: const TextStyle(
+        color: AppColors.textMuted,
+        fontSize: 14,
+        fontWeight: FontWeight.w400,
+      ),
+      prefixIcon: icon == null
+          ? null
+          : Icon(icon, size: 20, color: AppColors.primary),
+      prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 0),
+      suffixIcon: suffixIcon,
+      suffixIconConstraints: suffixIconConstraints,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: border,
+      enabledBorder: border,
+      disabledBorder: border,
+      focusedBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(radius)),
+        borderSide: BorderSide(color: AppColors.primary, width: 1.2),
+      ),
+      errorBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(radius)),
+        borderSide: BorderSide(color: AppColors.expense, width: 1),
+      ),
+      focusedErrorBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(radius)),
+        borderSide: BorderSide(color: AppColors.expense, width: 1.2),
+      ),
+    );
+  }
+
+  static BoxDecoration get box => BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: AppColors.fieldBorder, width: 1.2),
+      );
+}
+
+class FieldLabel extends StatelessWidget {
+  final String text;
+  final Widget? trailing;
+
+  const FieldLabel(this.text, {super.key, this.trailing});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppFieldStyle.labelGap),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              tr(text),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                height: 1.2,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          if (trailing != null) trailing!,
+        ],
+      ),
+    );
+  }
+}
+
+class OutlinedAppField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final String? hint;
+  final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
+  final void Function(String)? onChanged;
+  final FormFieldSetter<String>? onSaved;
+  final List<TextInputFormatter>? inputFormatters;
+  final int maxLines;
+  final int? minLines;
+  final bool required;
+  final bool enabled;
+  final VoidCallback? onTap;
+  final Widget? suffix;
+  final Widget? labelTrailing;
+
+  const OutlinedAppField({
+    super.key,
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.hint,
+    this.keyboardType,
+    this.validator,
+    this.onChanged,
+    this.onSaved,
+    this.inputFormatters,
+    this.maxLines = 1,
+    this.minLines,
+    this.required = false,
+    this.enabled = true,
+    this.onTap,
+    this.suffix,
+    this.labelTrailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cap = maxLines < 1 ? 1 : maxLines;
+    final fallbackMin = cap > 1 ? (cap < 3 ? cap : 3) : 1;
+    final linesMin = (minLines ?? fallbackMin).clamp(1, cap).toInt();
+    final multi = cap > 1 || linesMin > 1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FieldLabel(required ? '$label *' : label, trailing: labelTrailing),
+        TextFormField(
+          controller: controller,
+          onTap: onTap,
+          enabled: enabled,
+          keyboardType: multi ? TextInputType.multiline : keyboardType,
+          minLines: linesMin,
+          maxLines: cap,
+          inputFormatters: inputFormatters,
+          validator: validator,
+          onChanged: onChanged,
+          onSaved: onSaved,
+          style: const TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textPrimary,
+          ),
+          decoration: AppFieldStyle.outlined(
+            hint: hint == null ? null : tr(hint!),
+            icon: icon,
+            suffixIcon: suffix,
+            suffixIconConstraints: suffix == null
+                ? null
+                : const BoxConstraints(minWidth: 0, minHeight: 0),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class OutlinedAppDropdown extends StatelessWidget {
+  final String label;
+  final String? value;
+  final List<String> items;
+  final IconData icon;
+  final ValueChanged<String?> onChanged;
+  final String? Function(String?)? validator;
+  final bool required;
+  final VoidCallback? onAdd;
+  final String addLabel;
+  final Widget? labelTrailing;
+
+  const OutlinedAppDropdown({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.icon,
+    required this.onChanged,
+    this.validator,
+    this.required = false,
+    this.onAdd,
+    this.addLabel = 'Add',
+    this.labelTrailing,
+  });
+
+  static const _addSentinel = '__outlined_add__';
+
+  @override
+  Widget build(BuildContext context) {
+    final selected =
+        (value == null || !items.contains(value)) ? null : value;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FieldLabel(required ? '$label *' : label, trailing: labelTrailing),
+        DropdownButtonFormField<String>(
+          key: ValueKey('odd-$label-$selected'),
+          initialValue: selected,
+          onChanged: (v) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (v == _addSentinel) {
+                onAdd?.call();
+                return;
+              }
+              onChanged(v);
+            });
+          },
+          isExpanded: true,
+          validator: validator ??
+              (required
+                  ? (v) => (v == null || v.isEmpty)
+                      ? trf('Please select {0}', [tr(label)])
+                      : null
+                  : null),
+          decoration: AppFieldStyle.outlined(icon: icon),
+          style: const TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textPrimary,
+          ),
+          dropdownColor: AppColors.surface,
+          icon: const Icon(
+            Icons.expand_more_rounded,
+            color: AppColors.textMuted,
+          ),
+          items: [
+            ...items.map(
+              (e) => DropdownMenuItem(
+                value: e,
+                child: Text(tr(e), overflow: TextOverflow.ellipsis),
+              ),
+            ),
+            if (onAdd != null)
+              DropdownMenuItem(
+                value: _addSentinel,
+                child: Text(
+                  tr(addLabel),
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class SegmentedPair extends StatelessWidget {
+  final String leftLabel;
+  final IconData leftIcon;
+  final VoidCallback onLeft;
+  final String rightLabel;
+  final IconData rightIcon;
+  final VoidCallback onRight;
+  final bool leftSelected;
+
+  const SegmentedPair({
+    super.key,
+    required this.leftLabel,
+    required this.leftIcon,
+    required this.onLeft,
+    required this.rightLabel,
+    required this.rightIcon,
+    required this.onRight,
+    this.leftSelected = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.primarySoft,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _seg(
+              label: leftLabel,
+              icon: leftIcon,
+              selected: leftSelected,
+              onTap: onLeft,
+            ),
+          ),
+          Expanded(
+            child: _seg(
+              label: rightLabel,
+              icon: rightIcon,
+              selected: !leftSelected,
+              onTap: onRight,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _seg({
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: selected ? AppColors.surface : Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? AppColors.primary : AppColors.textMuted,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  tr(label),
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? AppColors.textPrimary : AppColors.textMuted,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class QuietIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final String? tooltip;
+  final Color color;
+
+  const QuietIconButton({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    this.tooltip,
+    this.color = AppColors.primary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final button = SizedBox(
+      height: 48,
+      width: 48,
+      child: Material(
+        color: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: const BorderSide(color: AppColors.fieldBorder, width: 1.2),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Icon(icon, color: color, size: 20),
+        ),
+      ),
+    );
+    return tooltip == null ? button : Tooltip(message: tooltip, child: button);
+  }
+}
+
 class PrimaryButton extends StatelessWidget {
   final String label;
   final IconData? icon;
@@ -803,6 +1202,7 @@ class PrimaryButton extends StatelessWidget {
   final bool loading;
   final double height;
   final List<Color> gradient;
+  final bool flat;
 
   const PrimaryButton({
     super.key,
@@ -812,23 +1212,28 @@ class PrimaryButton extends StatelessWidget {
     this.loading = false,
     this.height = 54,
     this.gradient = AppColors.buttonGradient,
+    this.flat = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null && !loading;
+    final radius = flat ? 10.0 : 16.0;
     return SizedBox(
       height: height,
       width: double.infinity,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: gradient,
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: enabled
+          color: flat ? (enabled ? AppColors.primary : AppColors.primary.withValues(alpha: 0.55)) : null,
+          gradient: flat
+              ? null
+              : LinearGradient(
+                  colors: gradient,
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+          borderRadius: BorderRadius.circular(radius),
+          boxShadow: enabled && !flat
               ? [
                   BoxShadow(
                     color: AppColors.primary.withValues(alpha: 0.28),
@@ -840,9 +1245,9 @@ class PrimaryButton extends StatelessWidget {
         ),
         child: Material(
           color: Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(radius),
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(radius),
             onTap: enabled ? onPressed : null,
             child: Center(
               child: loading

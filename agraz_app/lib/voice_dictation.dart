@@ -115,12 +115,14 @@ class VoiceMicButton extends StatelessWidget {
   final String fieldId;
   final TextEditingController controller;
   final VoidCallback? onTextChanged;
+  final bool compact;
 
   const VoiceMicButton({
     super.key,
     required this.fieldId,
     required this.controller,
     this.onTextChanged,
+    this.compact = false,
   });
 
   Future<void> _tap(BuildContext context) async {
@@ -147,10 +149,15 @@ class VoiceMicButton extends StatelessWidget {
         return IconButton(
           tooltip: active ? tr('Stop listening') : tr('Speak to type'),
           onPressed: () => _tap(context),
+          visualDensity: compact ? VisualDensity.compact : VisualDensity.standard,
+          padding: compact ? const EdgeInsets.all(8) : null,
+          constraints: compact
+              ? const BoxConstraints(minWidth: 40, minHeight: 40)
+              : null,
           icon: Icon(
             active ? Icons.mic_rounded : Icons.mic_none_rounded,
             color: active ? AppColors.expense : AppColors.primary,
-            size: 22,
+            size: compact ? 20 : 22,
           ),
         );
       },
