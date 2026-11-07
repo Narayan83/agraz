@@ -15,6 +15,9 @@ class AgrazHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
     final client = super.createHttpClient(context);
+    // Without these, a stalled TLS/DNS path can leave UI forever on "Loading…".
+    client.connectionTimeout = const Duration(seconds: 12);
+    client.idleTimeout = const Duration(seconds: 30);
     client.connectionFactory = (Uri uri, String? proxyHost, int? proxyPort) async {
       // Leave proxy handling to the default stack.
       if (proxyHost != null) {

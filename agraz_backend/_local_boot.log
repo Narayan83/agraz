@@ -1,0 +1,110 @@
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/app_content_seed.go:116 [35;1mrecord not found
+[0m[33m[0.535ms] [34;1m[rows:0][0m SELECT * FROM "menus" WHERE menu_name = 'Service Registrations' AND url = '/service-registrations' ORDER BY "menus"."id" LIMIT 1
+Seeded Menu: Service Registrations
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/app_content_seed.go:116 [35;1mrecord not found
+[0m[33m[1.064ms] [34;1m[rows:0][0m SELECT * FROM "menus" WHERE menu_name = 'Government Facilities' AND url = '/gov-facilities' ORDER BY "menus"."id" LIMIT 1
+Seeded Menu: Government Facilities
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/app_content_seed.go:116 [35;1mrecord not found
+[0m[33m[0.000ms] [34;1m[rows:0][0m SELECT * FROM "menus" WHERE menu_name = 'Documents' AND url = '/documents' ORDER BY "menus"."id" LIMIT 1
+Seeded Menu: Documents
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/app_content_seed.go:116 [35;1mrecord not found
+[0m[33m[0.510ms] [34;1m[rows:0][0m SELECT * FROM "menus" WHERE menu_name = 'RTC Entry' AND url = '/rtc-entry' ORDER BY "menus"."id" LIMIT 1
+Seeded Menu: RTC Entry
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/app_content_seed.go:116 [35;1mrecord not found
+[0m[33m[1.279ms] [34;1m[rows:0][0m SELECT * FROM "menus" WHERE menu_name = 'Event Manage' AND url = '/events' ORDER BY "menus"."id" LIMIT 1
+Seeded Menu: Event Manage
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/app_content_seed.go:116 [35;1mrecord not found
+[0m[33m[0.911ms] [34;1m[rows:0][0m SELECT * FROM "menus" WHERE menu_name = 'Achievers Lobby' AND url = '/achievers-lobby' ORDER BY "menus"."id" LIMIT 1
+Seeded Menu: Achievers Lobby
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/app_content_seed.go:116 [35;1mrecord not found
+[0m[33m[0.868ms] [34;1m[rows:0][0m SELECT * FROM "menus" WHERE menu_name = 'Advertisements' AND url = '/advertisements' ORDER BY "menus"."id" LIMIT 1
+Seeded Menu: Advertisements
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/transactions_menus_seed.go:45 [35;1mrecord not found
+[0m[33m[0.507ms] [34;1m[rows:0][0m SELECT * FROM "menus" WHERE menu_name = 'Transactions' AND url = '/transactions' ORDER BY "menus"."id" LIMIT 1
+Seeded Menu: Transactions
+Seeded User role permissions for Transactions (12 menus)
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/contract_manage_menus_seed.go:40 [35;1mrecord not found
+[0m[33m[0.513ms] [34;1m[rows:0][0m SELECT * FROM "menus" WHERE menu_name = 'Contract Manage' AND url = '/contract-manage' ORDER BY "menus"."id" LIMIT 1
+Seeded Menu: Contract Manage
+Seeded User role permissions for Contract Manage (15 menus)
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/app_content_seed.go:60 [35;1mrecord not found
+[0m[33m[0.509ms] [34;1m[rows:0][0m SELECT * FROM "app_contents" WHERE menu_key = 'documents' ORDER BY "app_contents"."id" LIMIT 1
+Seeded AppContent: documents
+Seeded advertisement: Smart Farming, Simplified
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/achievers_lobby_seed.go:36 [35;1mrecord not found
+[0m[33m[1.076ms] [34;1m[rows:0][0m SELECT * FROM "achievers_lobby_categories" WHERE tenant_id = 1 AND kind = 'achiever' AND name = 'Agriculture' ORDER BY "achievers_lobby_categories"."id" LIMIT 1
+Seeded AchieversLobbyCategory: achiever / Agriculture
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/achievers_lobby_seed.go:36 [35;1mrecord not found
+[0m[33m[1.559ms] [34;1m[rows:0][0m SELECT * FROM "achievers_lobby_categories" WHERE tenant_id = 1 AND kind = 'achiever' AND name = 'Dairy' ORDER BY "achievers_lobby_categories"."id" LIMIT 1
+Seeded AchieversLobbyCategory: achiever / Dairy
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/achievers_lobby_seed.go:36 [35;1mrecord not found
+[0m[33m[0.508ms] [34;1m[rows:0][0m SELECT * FROM "achievers_lobby_categories" WHERE tenant_id = 1 AND kind = 'achiever' AND name = 'Education' ORDER BY "achievers_lobby_categories"."id" LIMIT 1
+Seeded AchieversLobbyCategory: achiever / Education
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/achievers_lobby_seed.go:36 [35;1mrecord not found
+[0m[33m[0.514ms] [34;1m[rows:0][0m SELECT * FROM "achievers_lobby_categories" WHERE tenant_id = 1 AND kind = 'achiever' AND name = 'Community' ORDER BY "achievers_lobby_categories"."id" LIMIT 1
+Seeded AchieversLobbyCategory: achiever / Community
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/achievers_lobby_seed.go:36 [35;1mrecord not found
+[0m[33m[1.046ms] [34;1m[rows:0][0m SELECT * FROM "achievers_lobby_categories" WHERE tenant_id = 1 AND kind = 'achiever' AND name = 'Sports' ORDER BY "achievers_lobby_categories"."id" LIMIT 1
+Seeded AchieversLobbyCategory: achiever / Sports
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/achievers_lobby_seed.go:36 [35;1mrecord not found
+[0m[33m[0.508ms] [34;1m[rows:0][0m SELECT * FROM "achievers_lobby_categories" WHERE tenant_id = 1 AND kind = 'achiever' AND name = 'Entrepreneurship' ORDER BY "achievers_lobby_categories"."id" LIMIT 1
+Seeded AchieversLobbyCategory: achiever / Entrepreneurship
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/achievers_lobby_seed.go:36 [35;1mrecord not found
+[0m[33m[0.551ms] [34;1m[rows:0][0m SELECT * FROM "achievers_lobby_categories" WHERE tenant_id = 1 AND kind = 'achiever' AND name = 'Other' ORDER BY "achievers_lobby_categories"."id" LIMIT 1
+Seeded AchieversLobbyCategory: achiever / Other
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/achievers_lobby_seed.go:36 [35;1mrecord not found
+[0m[33m[0.513ms] [34;1m[rows:0][0m SELECT * FROM "achievers_lobby_categories" WHERE tenant_id = 1 AND kind = 'innovation' AND name = 'Farming Method' ORDER BY "achievers_lobby_categories"."id" LIMIT 1
+Seeded AchieversLobbyCategory: innovation / Farming Method
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/achievers_lobby_seed.go:36 [35;1mrecord not found
+[0m[33m[1.171ms] [34;1m[rows:0][0m SELECT * FROM "achievers_lobby_categories" WHERE tenant_id = 1 AND kind = 'innovation' AND name = 'Machinery' ORDER BY "achievers_lobby_categories"."id" LIMIT 1
+Seeded AchieversLobbyCategory: innovation / Machinery
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/achievers_lobby_seed.go:36 [35;1mrecord not found
+[0m[33m[1.027ms] [34;1m[rows:0][0m SELECT * FROM "achievers_lobby_categories" WHERE tenant_id = 1 AND kind = 'innovation' AND name = 'Processing' ORDER BY "achievers_lobby_categories"."id" LIMIT 1
+Seeded AchieversLobbyCategory: innovation / Processing
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/achievers_lobby_seed.go:36 [35;1mrecord not found
+[0m[33m[0.507ms] [34;1m[rows:0][0m SELECT * FROM "achievers_lobby_categories" WHERE tenant_id = 1 AND kind = 'innovation' AND name = 'Irrigation' ORDER BY "achievers_lobby_categories"."id" LIMIT 1
+Seeded AchieversLobbyCategory: innovation / Irrigation
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/achievers_lobby_seed.go:36 [35;1mrecord not found
+[0m[33m[0.507ms] [34;1m[rows:0][0m SELECT * FROM "achievers_lobby_categories" WHERE tenant_id = 1 AND kind = 'innovation' AND name = 'Organic' ORDER BY "achievers_lobby_categories"."id" LIMIT 1
+Seeded AchieversLobbyCategory: innovation / Organic
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/achievers_lobby_seed.go:36 [35;1mrecord not found
+[0m[33m[1.048ms] [34;1m[rows:0][0m SELECT * FROM "achievers_lobby_categories" WHERE tenant_id = 1 AND kind = 'innovation' AND name = 'Digital' ORDER BY "achievers_lobby_categories"."id" LIMIT 1
+Seeded AchieversLobbyCategory: innovation / Digital
+
+2026/10/29 16:34:57 [31;1mD:/fullstack/others/app_agraz/agraz_backend/seeds/achievers_lobby_seed.go:36 [35;1mrecord not found
+[0m[33m[0.509ms] [34;1m[rows:0][0m SELECT * FROM "achievers_lobby_categories" WHERE tenant_id = 1 AND kind = 'innovation' AND name = 'Other' ORDER BY "achievers_lobby_categories"."id" LIMIT 1
+Seeded AchieversLobbyCategory: innovation / Other
+Hello welcome, main is runnings
+
+ ┌───────────────────────────────────────────────────┐ 
+ │                   Fiber v2.52.8                   │ 
+ │               http://127.0.0.1:8000               │ 
+ │       (bound on host 0.0.0.0 and port 8000)       │ 
+ │                                                   │ 
+ │ Handlers ........... 563  Processes ........... 1 │ 
+ │ Prefork ....... Disabled  PID ............. 24216 │ 
+ └───────────────────────────────────────────────────┘ 
+

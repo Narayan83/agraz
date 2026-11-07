@@ -60,6 +60,7 @@ func main() {
 		&models.EcomCart{},
 		&models.EcomCartItem{},
 		&models.StorefrontBannerSlide{},
+		&models.Advertisement{},
 		&models.GovDepartment{},
 		&models.GovCrop{},
 		&models.GovFacility{},

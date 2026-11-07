@@ -9,7 +9,10 @@ import 'app_theme.dart';
 import 'l10n/app_l10n.dart';
 
 class ServiceListingPage extends StatefulWidget {
-  const ServiceListingPage({super.key});
+  const ServiceListingPage({super.key, this.embedded = false});
+
+  /// When true, omit AppBar so the page can sit inside Home tabs.
+  final bool embedded;
 
   @override
   State<ServiceListingPage> createState() => _ServiceListingPageState();
@@ -84,28 +87,7 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
     final grouped = _grouped();
     final mains = grouped.keys.toList();
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: GradientAppBar(
-        title: tr('General Services'),
-        actions: withFeedbackAction(
-          context,
-          menu: 'services',
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.add_rounded),
-              tooltip: tr('Register Service'),
-              onPressed: _openRegister,
-            ),
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded),
-              tooltip: tr('Refresh'),
-              onPressed: () => _load(q: _currentQuery()),
-            ),
-          ],
-        ),
-      ),
-      body: Column(
+    final content = Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -207,7 +189,34 @@ class _ServiceListingPageState extends State<ServiceListingPage> {
             ),
           ),
         ],
+      );
+
+    if (widget.embedded) {
+      return ColoredBox(color: const Color(0xFFF2F6F3), child: content);
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: GradientAppBar(
+        title: tr('General Services'),
+        actions: withFeedbackAction(
+          context,
+          menu: 'services',
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              tooltip: tr('Register Service'),
+              onPressed: _openRegister,
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              tooltip: tr('Refresh'),
+              onPressed: () => _load(q: _currentQuery()),
+            ),
+          ],
+        ),
       ),
+      body: content,
     );
   }
 }

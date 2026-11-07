@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'config.dart';
+
+const _marketTimeout = Duration(seconds: 20);
 
 Map<String, String> _marketHeaders() {
   final headers = <String, String>{
@@ -18,8 +22,11 @@ Future<List<dynamic>> _getList(String path, [Map<String, String>? query]) async 
     final uri = Uri.parse('${normalizedBaseUrl()}$path').replace(
       queryParameters: query == null || query.isEmpty ? null : query,
     );
-    final response = await http.get(uri, headers: _marketHeaders());
+    final response = await http
+        .get(uri, headers: _marketHeaders())
+        .timeout(_marketTimeout);
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      debugPrint('market GET $path -> ${response.statusCode}');
       return [];
     }
     final decoded = jsonDecode(response.body);
@@ -28,8 +35,12 @@ Future<List<dynamic>> _getList(String path, [Map<String, String>? query]) async 
     }
     if (decoded is List) return decoded;
     return [];
-  } catch (_) {
-    return [];
+  } on TimeoutException catch (e) {
+    debugPrint('market GET $path timeout: $e');
+    rethrow;
+  } catch (e) {
+    debugPrint('market GET $path failed: $e');
+    rethrow;
   }
 }
 
@@ -38,15 +49,22 @@ Future<Map<String, dynamic>> _getMap(String path, [Map<String, String>? query]) 
     final uri = Uri.parse('${normalizedBaseUrl()}$path').replace(
       queryParameters: query == null || query.isEmpty ? null : query,
     );
-    final response = await http.get(uri, headers: _marketHeaders());
+    final response = await http
+        .get(uri, headers: _marketHeaders())
+        .timeout(_marketTimeout);
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      debugPrint('market GET $path -> ${response.statusCode}');
       return {};
     }
     final decoded = jsonDecode(response.body);
     if (decoded is Map) return Map<String, dynamic>.from(decoded);
     return {};
-  } catch (_) {
-    return {};
+  } on TimeoutException catch (e) {
+    debugPrint('market GET $path timeout: $e');
+    rethrow;
+  } catch (e) {
+    debugPrint('market GET $path failed: $e');
+    rethrow;
   }
 }
 
@@ -92,6 +110,28 @@ Future<List<Map<String, dynamic>>> fetchMarketDailyPrices({
   if (taluk != null && taluk.isNotEmpty) qp['taluk'] = taluk;
   final list = await _getList('/api/market/daily-prices', qp);
   return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+}
+
+/// Newest price date on the server (API orders `date DESC`). Null if none.
+Future<DateTime?> fetchLatestMarketPriceDate({
+  int? agentId,
+  int? apmcId,
+  int? varietyId,
+  String? taluk,
+}) async {
+  final list = await fetchMarketDailyPrices(
+    agentId: agentId,
+    apmcId: apmcId,
+    varietyId: varietyId,
+    taluk: taluk,
+    limit: 1,
+  );
+  if (list.isEmpty) return null;
+  final raw = list.first['date']?.toString() ?? '';
+  if (raw.length < 10) return null;
+  final parsed = DateTime.tryParse(raw.substring(0, 10));
+  if (parsed == null) return null;
+  return DateTime(parsed.year, parsed.month, parsed.day);
 }
 
 Future<Map<String, dynamic>> fetchMarketAnalytics({

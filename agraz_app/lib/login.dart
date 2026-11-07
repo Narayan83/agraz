@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl_phone_field/intl_phone_field.dart';
 import 'auth_token.dart';
 import 'config.dart';
 import 'mainpage.dart';
@@ -24,8 +25,9 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  String? _fullPhoneNumber;
   bool _rememberMe = false;
   bool _obscurePassword = true;
   bool _isLoading = false;
@@ -52,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void dispose() {
     _animCtrl.dispose();
-    _usernameController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -61,19 +63,35 @@ class _LoginScreenState extends State<LoginScreen>
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
-        final email = _usernameController.text.trim();
+        // IntlPhoneField.completeNumber includes country code (e.g. 919999999999).
+        // Seeded/admin mobiles are often stored as 10 digits; registered users may
+        // include 91. Try full digits first, then last-10 on 401.
+        final phoneFull =
+            (_fullPhoneNumber ?? _phoneController.text)
+                .replaceAll(RegExp(r'[^0-9]'), '');
+        final phoneLast10 = phoneFull.length > 10
+            ? phoneFull.substring(phoneFull.length - 10)
+            : phoneFull;
         final password = _passwordController.text;
         final url = Uri.parse('$BASE_URL/api/login');
         final headers = <String, String>{'Content-Type': 'application/json'};
         mergeTenantHeaders(headers);
-        final response = await http.post(
-          url,
-          headers: headers,
-          body: jsonEncode({
-            "email": email,
-            "password": password,
-          }),
-        );
+
+        Future<http.Response> postLogin(String phone) {
+          return http.post(
+            url,
+            headers: headers,
+            body: jsonEncode({
+              "phone": phone,
+              "password": password,
+            }),
+          );
+        }
+
+        var response = await postLogin(phoneFull);
+        if (response.statusCode == 401 && phoneLast10 != phoneFull) {
+          response = await postLogin(phoneLast10);
+        }
         if (!mounted) return;
 
         if (response.statusCode == 200) {
@@ -240,17 +258,27 @@ class _LoginScreenState extends State<LoginScreen>
                               textAlign: TextAlign.center,
                             ),
                             SizedBox(height: 28),
-                            TextFormField(
-                              controller: _usernameController,
-                              keyboardType: TextInputType.emailAddress,
+                            IntlPhoneField(
+                              controller: _phoneController,
+                              disableLengthCheck: true,
+                              initialCountryCode: 'IN',
                               decoration: InputDecoration(
-                                labelText: tr('Email'),
-                                prefixIcon: Icon(Icons.person_outline_rounded),
+                                labelText: tr('Mobile Number'),
+                                counterText: '',
+                                prefixIcon: Icon(Icons.phone_outlined),
                               ),
-                              validator: (value) =>
-                                  value == null || value.isEmpty
-                                      ? tr('Enter your email')
-                                      : null,
+                              onChanged: (phone) {
+                                setState(
+                                  () => _fullPhoneNumber = phone.completeNumber,
+                                );
+                              },
+                              validator: (phone) {
+                                if (phone == null ||
+                                    phone.completeNumber.isEmpty) {
+                                  return tr('Enter your mobile number');
+                                }
+                                return null;
+                              },
                             ),
                             SizedBox(height: 14),
                             TextFormField(

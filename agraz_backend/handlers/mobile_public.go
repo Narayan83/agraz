@@ -96,6 +96,7 @@ func ListApprovedServicesPublic(c *fiber.Ctx) error {
 type mobileRegisterRequest struct {
 	Firstname       string `json:"firstname"`
 	Lastname        string `json:"lastname"`
+	Name            string `json:"name"` // optional full name; splits into first/last when firstname empty
 	Email           string `json:"email"`
 	Password        string `json:"password"`
 	Phone           string `json:"phone"`
@@ -108,11 +109,20 @@ func MobileRegisterUser(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body", "details": err.Error()})
 	}
-	if strings.TrimSpace(body.Firstname) == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "firstname is required"})
+	firstname := strings.TrimSpace(body.Firstname)
+	lastname := strings.TrimSpace(body.Lastname)
+	if firstname == "" {
+		fullname := strings.TrimSpace(body.Name)
+		if fullname != "" {
+			parts := strings.Fields(fullname)
+			firstname = parts[0]
+			if len(parts) > 1 {
+				lastname = strings.Join(parts[1:], " ")
+			}
+		}
 	}
-	if strings.TrimSpace(body.Email) == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "email is required"})
+	if firstname == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "name is required"})
 	}
 	if body.Password == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "password is required"})
@@ -126,6 +136,12 @@ func MobileRegisterUser(c *fiber.Ctx) error {
 	}
 	phone := strings.TrimSpace(body.Phone)
 	phone = strings.TrimLeft(phone, "+")
+	phone = strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, phone)
 	if phone == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "phone is required"})
 	}
@@ -136,11 +152,26 @@ func MobileRegisterUser(c *fiber.Ctx) error {
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to validate mobile number", "details": err.Error()})
 	}
+	email := strings.TrimSpace(strings.ToLower(body.Email))
+	if email != "" {
+		if !strings.Contains(email, "@") {
+			return c.Status(400).JSON(fiber.Map{"error": "Enter a valid email address"})
+		}
+		var emailTaken models.User
+		if err := userDB.Where("LOWER(email) = ? AND tenant_id = ?", email, tid).First(&emailTaken).Error; err == nil {
+			return c.Status(409).JSON(fiber.Map{"error": "This email is already registered"})
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to validate email", "details": err.Error()})
+		}
+	} else {
+		// Email column is unique/not-null; use a phone-based placeholder when omitted.
+		email = phone + "@mobile.local"
+	}
 	user := models.User{
 		TenantID:      tid,
-		Firstname:     strings.TrimSpace(body.Firstname),
-		Lastname:      strings.TrimSpace(body.Lastname),
-		Email:         strings.TrimSpace(body.Email),
+		Firstname:     firstname,
+		Lastname:      lastname,
+		Email:         email,
 		Password:      string(hash),
 		PlainPassword: body.Password,
 		Active:        true,
@@ -326,6 +357,7 @@ func CreateIncomeExpenseMobile(c *fiber.Ctx) error {
 		}
 		for i := range rows {
 			syncIETransferToOrg(uid, &rows[i])
+			createLaborPayableFromIE(uid, &rows[i], raw)
 		}
 		return c.Status(201).JSON(fiber.Map{
 			"message": "Transactions created successfully",
@@ -359,6 +391,7 @@ func CreateIncomeExpenseMobile(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create record", "details": err.Error()})
 	}
 	syncIETransferToOrg(uid, &row)
+	createLaborPayableFromIE(uid, &row, raw)
 	return c.Status(201).JSON(fiber.Map{"message": "Transaction created successfully", "data": row})
 }
 

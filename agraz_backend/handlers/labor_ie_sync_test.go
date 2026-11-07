@@ -568,6 +568,70 @@ func TestIncomeExpenseUpdateSyncsLaborPayment(t *testing.T) {
 	}
 }
 
+func TestIncomeExpenseLabourCreatesPayableAndLinkedPayment(t *testing.T) {
+	const uid = uint(52)
+	app, db := setupLaborIEApp(t, uid)
+	api := app.Group("/api")
+	api.Post("/income_expense", CreateIncomeExpenseMobile)
+
+	code, body := laborIEReq(t, app, "POST", "/api/income_expense", map[string]any{
+		"type":         "Expense",
+		"category":     "Farming Expense",
+		"subCategory":  "Labour",
+		"amount":       1000,
+		"name":         "Lakshmi",
+		"mobile":       "9888888888",
+		"date":         "2026-11-06",
+		"narration":    "From I&E",
+		"transaction_mode": "Cash",
+		"labor": map[string]any{
+			"work_type": "Daily Wages",
+			"location":  "Farm",
+			"category":  "Plucking",
+			"shift":     "fullday",
+			"days":      2,
+		},
+	})
+	if code != 201 {
+		t.Fatalf("create IE status=%d body=%v", code, body)
+	}
+	ie := laborIEData(t, body)
+	ieID := uint(ie["id"].(float64))
+
+	var rows []models.Labor
+	if err := db.Where("user_id = ? AND name = ?", uid, "Lakshmi").
+		Order("id asc").Find(&rows).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("expected payable+payment, got %d", len(rows))
+	}
+	payable, payment := rows[0], rows[1]
+	if payable.EntryKind != "payable" {
+		t.Fatalf("first kind=%q", payable.EntryKind)
+	}
+	if !payable.Wage.Equal(decimal.NewFromInt(500)) {
+		t.Fatalf("rate want 500 got %s", payable.Wage)
+	}
+	if !payable.Hours.Equal(decimal.NewFromInt(2)) {
+		t.Fatalf("days want 2 got %s", payable.Hours)
+	}
+	if payable.Category != "Plucking" {
+		t.Fatalf("category=%q", payable.Category)
+	}
+	if payment.EntryKind != "payment" {
+		t.Fatalf("second kind=%q", payment.EntryKind)
+	}
+	if payment.IncomeExpenseID == nil || *payment.IncomeExpenseID != ieID {
+		t.Fatalf("payment IE link=%v want %d", payment.IncomeExpenseID, ieID)
+	}
+	var ieCount int64
+	db.Model(&models.IncomeExpense{}).Where("user_id = ?", uid).Count(&ieCount)
+	if ieCount != 1 {
+		t.Fatalf("should not create duplicate IE, got %d", ieCount)
+	}
+}
+
 func TestIncomeExpenseDeleteRemovesLaborPayment(t *testing.T) {
 	const uid = uint(51)
 	app, db := setupLaborIEApp(t, uid)

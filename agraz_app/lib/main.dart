@@ -67,11 +67,16 @@ class MyApp extends StatelessWidget {
             '/login': (context) => const LoginScreen(),
             '/registration': (context) => const RegistrationPage(),
             '/main': (context) => const MainPage(),
+            '/main/market': (context) => const MainPage(initialTabIndex: 0),
+            '/main/buy-sell': (context) => const MainPage(initialTabIndex: 1),
+            '/main/services': (context) => const MainPage(initialTabIndex: 2),
             '/receipt_payment': (context) => const IncomeExpensePage(),
             '/category_create': (context) => const CategoryManagementPage(),
             '/subcategory_create': (context) =>
                 const SubcategoryManagementPage(),
             '/services': (context) => const ServiceListingPage(),
+            '/buy-sell': (context) => const MainPage(initialTabIndex: 1),
+            '/market-report': (context) => const MainPage(initialTabIndex: 0),
             '/reset-password': (context) => const ResetPasswordPage(),
           },
         );

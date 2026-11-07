@@ -36,7 +36,10 @@ class BuySellApp extends StatelessWidget {
 }
 
 class BuySellPage extends StatefulWidget {
-  const BuySellPage({super.key});
+  const BuySellPage({super.key, this.embedded = false});
+
+  /// When true, omit AppBar so the page can sit inside Home tabs.
+  final bool embedded;
 
   @override
   State<BuySellPage> createState() => _BuySellPageState();
@@ -79,6 +82,73 @@ class _BuySellPageState extends State<BuySellPage> {
 
   @override
   Widget build(BuildContext context) {
+    final body = _currentIndex == 0
+        ? RefreshIndicator(
+            onRefresh: _loadItems,
+            child: _buildBrowseBody(context),
+          )
+        : const MyItemsPage();
+
+    if (widget.embedded) {
+      return ColoredBox(
+        color: const Color(0xFFF2F6F3),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      readOnly: true,
+                      onTap: () {
+                        showSearch(
+                          context: context,
+                          delegate: ItemSearch(List.of(_items)),
+                        );
+                      },
+                      decoration: InputDecoration(
+                        hintText: tr('Search crops, seeds, tools'),
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        isDense: true,
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF14603F),
+                      minimumSize: const Size(44, 44),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const AddItemPage()),
+                      ).then((value) {
+                        if (value != null) {
+                          setState(() => _items.add(value));
+                        }
+                      });
+                    },
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(tr('Post ad')),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(child: body),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: GradientAppBar(
         title: tr('Buy & Sell'),
@@ -110,13 +180,7 @@ class _BuySellPageState extends State<BuySellPage> {
           ],
         ),
       ),
-      body:
-          _currentIndex == 0
-              ? RefreshIndicator(
-                onRefresh: _loadItems,
-                child: _buildBrowseBody(context),
-              )
-              : const MyItemsPage(),
+      body: body,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {

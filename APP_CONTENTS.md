@@ -10,7 +10,29 @@ Some menus need login. The main account can hide some menus for family members.
 
 ## Home
 
-This is the first page after opening the app. You see farm pictures, short cuts to all menus, and Help.
+The home screen shows a compact AgRaz header, an **advertisement slider** (managed from the Admin Panel), a free-trial strip, quick actions (Income & Expense, Organizations, Labour, Work Entry, Daily Log), and three tabs:
+
+1. **Market Report** — today’s rates table and price comparison chart  
+2. **Buy & Sell** — listings browse / post ad  
+3. **Services** — approved service providers near you  
+
+A weather bar stays pinned at the bottom. Open Market / Buy & Sell / Services from the tabs, side menu, or routes `/main/market`, `/main/buy-sell`, `/main/services`.
+
+### Admin: how to add a home advertisement
+
+1. Sign in to the admin panel as Admin / Super Admin.  
+2. Open **Tools → Advertisements** (or `/advertisements`).  
+3. Click **New advertisement**, upload a JPG/PNG/WebP image (recommended **1170×312**, max **2 MB**), set title / optional subtitle & tag, optional link (none, https URL, or in-app screen), optional start/end dates, and Active.  
+4. Save. Active ads (within date window) appear on the mobile slider via `GET /api/advertisements/active` (cached ~5 minutes).  
+5. Reorder with the up/down controls; deactivate or delete from the list. At most **10** ads can be active at once.
+
+API (auth JWT required for admin routes):
+
+- `GET /api/advertisements/active` — public mobile list  
+- `POST /api/advertisements/:id/impression` / `…/click` — counters  
+- `GET|POST /api/admin/advertisements`, `PUT …/:id`, `PATCH …/:id/status`, `PUT …/reorder`, `DELETE …/:id`
+
+Schema is created by GORM AutoMigrate on backend start (`advertisements` table). Default seed: “Smart Farming, Simplified”.
 
 ---
 

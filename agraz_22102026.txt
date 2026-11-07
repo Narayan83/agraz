@@ -1,0 +1,6 @@
+1) login.. merge first and last name-- 
+2) copy right-- all data are secured--all data will be encrypted
+3) after app-update it should not ask for login again
+4) location not storing correctly.. Vinayak hegde--vinjai79@gmail.com added tota.. on 10/10/2026 transaction shows tota as location,, but if I go to enter "tota" is not available --this is sample
+5)rtc read only  web link
+6) 

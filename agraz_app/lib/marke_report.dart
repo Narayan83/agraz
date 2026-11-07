@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
@@ -8,14 +10,21 @@ import 'market_report_service.dart';
 import 'l10n/app_l10n.dart';
 
 class RatesComparisonPage extends StatefulWidget {
-  const RatesComparisonPage({super.key});
+  const RatesComparisonPage({super.key, this.embedded = false});
+
+  /// When true, omit Scaffold/AppHeader so the page can sit inside Home tabs.
+  final bool embedded;
 
   @override
   State<RatesComparisonPage> createState() => _RatesComparisonPageState();
 }
 
 class _RatesComparisonPageState extends State<RatesComparisonPage> {
-  DateTime _selectedDate = DateTime(2026, 8, 6);
+  DateTime _selectedDate = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    DateTime.now().day,
+  );
   bool _loading = true;
   String? _error;
 
@@ -54,6 +63,13 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
 
   String _iso(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  bool _isToday(DateTime d) => _isSameDay(d, DateTime.now());
 
   double _num(dynamic v) {
     if (v == null) return 0;
@@ -103,9 +119,11 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
   }
 
   Future<void> _bootstrap() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
+      _selectedDate = _dateOnly(DateTime.now());
     });
     try {
       final results = await Future.wait([
@@ -114,20 +132,37 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
         fetchMarketVarieties(),
         fetchMarketTaluks(),
       ]);
+      if (!mounted) return;
       _agents = results[0] as List<Map<String, dynamic>>;
       _apmcs = results[1] as List<Map<String, dynamic>>;
       _varieties = results[2] as List<Map<String, dynamic>>;
       _taluks = results[3] as List<String>;
       await _loadData();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = _friendlyError(e);
         _loading = false;
       });
     }
   }
 
-  Future<void> _loadData() async {
+  String _friendlyError(Object e) {
+    if (e is TimeoutException) {
+      return tr('Could not reach market server. Check internet and try again.');
+    }
+    final s = e.toString();
+    if (s.contains('SocketException') ||
+        s.contains('Failed host lookup') ||
+        s.contains('Connection refused') ||
+        s.contains('Network is unreachable')) {
+      return tr('Could not reach market server. Check internet and try again.');
+    }
+    return s;
+  }
+
+  Future<void> _loadData({bool allowLatestFallback = true}) async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
@@ -159,15 +194,37 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
           taluk: _taluk,
         ),
       ]);
+      if (!mounted) return;
+
+      final dayPrices = results[0];
+      // No rates for today → show the most recent day that has rates.
+      if (dayPrices.isEmpty &&
+          allowLatestFallback &&
+          _isToday(_selectedDate)) {
+        final latest = await fetchLatestMarketPriceDate(
+          agentId: _agentId,
+          apmcId: _apmcId,
+          varietyId: _varietyId,
+          taluk: _taluk,
+        );
+        if (!mounted) return;
+        if (latest != null && !_isSameDay(latest, _selectedDate)) {
+          _selectedDate = latest;
+          await _loadData(allowLatestFallback: false);
+          return;
+        }
+      }
+
       setState(() {
-        _dayPrices = results[0];
+        _dayPrices = dayPrices;
         _history = results[1];
         _qty = results[2];
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = _friendlyError(e);
         _loading = false;
       });
     }
@@ -180,9 +237,11 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
     );
-    if (picked != null && picked != _selectedDate) {
-      setState(() => _selectedDate = picked);
-      await _loadData();
+    if (!mounted) return;
+    if (picked != null && !_isSameDay(picked, _selectedDate)) {
+      setState(() => _selectedDate = _dateOnly(picked));
+      // Manual pick keeps that day even if empty (no auto-fallback).
+      await _loadData(allowLatestFallback: false);
     }
   }
 
@@ -233,6 +292,55 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
 
   @override
   Widget build(BuildContext context) {
+    final scrollBody = RefreshIndicator(
+      onRefresh: _loadData,
+      color: AppColors.primary,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, widget.embedded ? 8 : 16, 16, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (!widget.embedded) ...[
+                    _buildFilters(context),
+                    const SizedBox(height: 14),
+                  ],
+                  if (_loading)
+                    _buildLoadingCard(context)
+                  else if (_error != null)
+                    _buildErrorCard(context)
+                  else ...[
+                    if (!widget.embedded) ...[
+                      _buildStats(context),
+                      const SizedBox(height: 14),
+                    ],
+                    _buildRatesCard(context),
+                    const SizedBox(height: 14),
+                    _buildComparisonCard(context),
+                    if (!widget.embedded) ...[
+                      const SizedBox(height: 14),
+                      _buildHistoryCard(context),
+                      if (_qty.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        _buildQuantityCard(context),
+                      ],
+                    ],
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (widget.embedded) {
+      return ColoredBox(color: const Color(0xFFF2F6F3), child: scrollBody);
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -250,46 +358,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
                 ),
               ),
             ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _loadData,
-                color: AppColors.primary,
-                child: CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildFilters(context),
-                            SizedBox(height: 14),
-                            if (_loading)
-                              _buildLoadingCard(context)
-                            else if (_error != null)
-                              _buildErrorCard(context)
-                            else ...[
-                              _buildStats(context),
-                              SizedBox(height: 14),
-                              _buildRatesCard(context),
-                              SizedBox(height: 14),
-                              _buildComparisonCard(context),
-                              SizedBox(height: 14),
-                              _buildHistoryCard(context),
-                              if (_qty.isNotEmpty) ...[
-                                SizedBox(height: 14),
-                                _buildQuantityCard(context),
-                              ],
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            Expanded(child: scrollBody),
           ],
         ),
       ),
@@ -429,7 +498,7 @@ class _RatesComparisonPageState extends State<RatesComparisonPage> {
                 style: TextStyle(fontSize: 12.5, color: ts.onSurfaceVariant)),
             SizedBox(height: 14),
             OutlinedButton.icon(
-              onPressed: _loadData,
+              onPressed: _bootstrap,
               icon: const Icon(Icons.refresh_rounded, size: 18),
               label: Text(tr('Try again')),
             ),

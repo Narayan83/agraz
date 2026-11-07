@@ -16,6 +16,7 @@ import (
 func Login(c *fiber.Ctx) error {
 	type LoginInput struct {
 		Email    string `json:"email"`
+		Phone    string `json:"phone"`
 		Password string `json:"password"`
 	}
 
@@ -25,23 +26,53 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	email := strings.TrimSpace(strings.ToLower(input.Email))
+	// Short username used by Contract Admin login screen.
+	if email == "admin" {
+		email = "admin@admin.com"
+	}
+	phone := strings.TrimSpace(input.Phone)
+	phone = strings.TrimLeft(phone, "+")
+	phone = strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, phone)
 	password := input.Password
-	if email == "" || password == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Email and password are required"})
+	if password == "" || (email == "" && phone == "") {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Mobile number (or email) and password are required"})
 	}
 
 	tid := tenantIDFromCtx(c)
 	var user models.User
-	// Case-insensitive email match (stored emails may vary in casing).
-	if err := userDB.Where("LOWER(email) = ? AND tenant_id = ?", email, tid).First(&user).Error; err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Invalid email or password"})
+	invalidMsg := "Invalid mobile number or password"
+	var err error
+	if phone != "" {
+		// App sends completeNumber with country code (e.g. 919999999999); seeded
+		// mobiles may be stored as 10 digits. Match on last 10 digits.
+		last10 := last10Phone(phone)
+		if len(last10) >= 10 {
+			err = userDB.Where(
+				"tenant_id = ? AND right(regexp_replace(coalesce(mobile_number,''), '[^0-9]', '', 'g'), 10) = ?",
+				tid, last10,
+			).First(&user).Error
+		} else {
+			err = userDB.Where("mobile_number = ? AND tenant_id = ?", phone, tid).First(&user).Error
+		}
+	} else {
+		invalidMsg = "Invalid email or password"
+		// Case-insensitive email match (stored emails may vary in casing).
+		err = userDB.Where("LOWER(email) = ? AND tenant_id = ?", email, tid).First(&user).Error
+	}
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": invalidMsg})
 	}
 
 	// Compare password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		// Fallback for plain text passwords (if any, during migration)
 		if user.Password != password {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Invalid email or password"})
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": invalidMsg})
 		}
 	}
 

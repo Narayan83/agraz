@@ -35,6 +35,7 @@ import {
   FolderOpen,
   CalendarDays,
   Trophy,
+  Megaphone,
   Wallet,
   Briefcase,
   Wrench,
@@ -77,6 +78,7 @@ const iconMap = {
   FolderOpen: <FolderOpen size={18} strokeWidth={1.75} />,
   CalendarDays: <CalendarDays size={18} strokeWidth={1.75} />,
   Trophy: <Trophy size={18} strokeWidth={1.75} />,
+  Megaphone: <Megaphone size={18} strokeWidth={1.75} />,
   Wallet: <Wallet size={18} strokeWidth={1.75} />,
   Briefcase: <Briefcase size={18} strokeWidth={1.75} />,
   Wrench: <Wrench size={18} strokeWidth={1.75} />,
@@ -157,6 +159,7 @@ function menuSubtreeActive(location, item) {
 
 const DEFAULT_ADMIN_NAV = [
   { menu_name: "Dashboard", url: "/home", icon: "LayoutDashboard" },
+  { menu_name: "Advertisements", url: "/advertisements", icon: "Megaphone" },
   {
     menu_name: "Store & Catalog",
     url: "/ecom-admin",
@@ -358,7 +361,15 @@ const Sidebar = ({ isOpen, isMobile, setMobileOpen, mobileOpen, setOpen }) => {
 
         const data = await getMyMenus();
         const raw = Array.isArray(data) ? data : data.data || [];
-        let normalized = raw.map(normalizeMenuItem).filter(Boolean);
+        // Contract Manage lives in the separate agraz_contract project — hide here.
+        const withoutContract = (items) =>
+          (items || [])
+            .filter((m) => !String(m?.url || "").includes("contract-manage"))
+            .map((m) => ({
+              ...m,
+              children: withoutContract(m.children || []),
+            }));
+        let normalized = withoutContract(raw.map(normalizeMenuItem).filter(Boolean));
         if (!normalized.length) {
           // Staff keep admin fallback; common users only get Transactions.
           normalized = (isStaffUser(user) ? DEFAULT_ADMIN_NAV : USER_FALLBACK_NAV)

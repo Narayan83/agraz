@@ -33,13 +33,13 @@ class AboutTeamPage extends StatelessWidget {
                 'Seetaram Hegde',
                 'Masters in Economics and MBA. Has 17 years of experience as a Data Scientist, proficient in AI/ML modeling.',
               ),
-              SizedBox(height: 30),
-              _buildTeamMember(
-                context,
-                'assets/images/narayan.jpg',
-                'Narayan Bhat',
-                'Masters in Data Science. Has 19 years of experience as a Data Scientist and in software development.',
-              ),
+              // SizedBox(height: 30),
+              // _buildTeamMember(
+              //   context,
+              //   'assets/images/narayan.jpg',
+              //   'Narayan Bhat',
+              //   'Masters in Data Science. Has 19 years of experience as a Data Scientist and in software development.',
+              // ),
               SizedBox(height: 20),
               Text(
                 'We work together to bring you the best experience!',

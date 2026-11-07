@@ -42,20 +42,19 @@ import 'faq_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'family_members_page.dart';
 import 'offline_sync.dart';
-import 'contract_manage/contract_hub.dart';
-import 'contract_manage/cm_entity_page.dart';
-import 'contract_manage/cm_project_list.dart';
-import 'contract_manage/cm_purchases_page.dart';
-import 'contract_manage/cm_payments_page.dart';
-import 'contract_manage/cm_stock_report_page.dart';
-import 'contract_manage/cm_customer_summary_page.dart';
-import 'contract_manage/cm_assets_page.dart';
+import 'home/home_advertisement_slider.dart';
+import 'home/home_weather_bar.dart';
+import 'advertisement_service.dart';
 
 const _prefsUserCreatedAt = 'agraz_user_created_at';
+const _prefsHomeTab = 'agraz_home_tab_index';
 const _freeYearDays = 365;
 
 class MainPage extends StatefulWidget {
-  const MainPage({super.key});
+  const MainPage({super.key, this.initialTabIndex = 0});
+
+  /// 0 = Market Report, 1 = Buy & Sell, 2 = Services
+  final int initialTabIndex;
 
   @override
   State<MainPage> createState() => _MainPageState();
@@ -75,12 +74,16 @@ class _ServiceFeature {
   });
 }
 
-class _MainPageState extends State<MainPage> {
+class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _isLoggedIn = false;
   int? _freeDaysRemaining;
   int _pendingLaborShares = 0;
   AccountSession _session = AccountSession.guest;
   Map<String, dynamic>? _latestLobby;
+
+  late TabController _homeTabController;
+  bool _chromeCollapsed = false;
 
   final List<String> _sliderImages = [
     'assets/images/areca.jpg',
@@ -91,26 +94,20 @@ class _MainPageState extends State<MainPage> {
   ];
 
   late PageController _pageController;
-  late Timer _autoSlideTimer;
+  Timer? _autoSlideTimer;
   int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
+    final initial = widget.initialTabIndex.clamp(0, 2);
+    _homeTabController = TabController(length: 3, vsync: this, initialIndex: initial);
+    _homeTabController.addListener(_onHomeTabChanged);
+    _restoreHomeTab(initial);
     _refreshAuthState();
     _loadLatestLobby();
     _currentPage = 0;
     _pageController = PageController(viewportFraction: 1.0);
-    _autoSlideTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      _currentPage++;
-      if (_pageController.hasClients) {
-        _pageController.animateToPage(
-          _currentPage,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-        );
-      }
-    });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final updating = await promptInAppUpdateIfNeeded(context);
@@ -118,9 +115,79 @@ class _MainPageState extends State<MainPage> {
     });
   }
 
+  Future<void> _restoreHomeTab(int fallback) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getInt(_prefsHomeTab);
+      if (saved != null && saved >= 0 && saved <= 2 && mounted) {
+        if (widget.initialTabIndex == 0) {
+          _homeTabController.index = saved;
+        }
+      } else if (fallback != 0 && mounted) {
+        await prefs.setInt(_prefsHomeTab, fallback);
+      }
+    } catch (_) {}
+  }
+
+  void _onHomeTabChanged() {
+    if (_homeTabController.indexIsChanging) return;
+    // Tab switches start at scroll offset 0 — expand chrome so the slider
+    // / quick actions stay reachable (user cannot scroll "further up").
+    if (_chromeCollapsed && mounted) {
+      setState(() => _chromeCollapsed = false);
+    }
+    SharedPreferences.getInstance().then((p) {
+      p.setInt(_prefsHomeTab, _homeTabController.index);
+    });
+  }
+
+  void _openHomeTab(int index) {
+    final i = index.clamp(0, 2);
+    _homeTabController.animateTo(i);
+  }
+
+  void _handleAdInAppLink(Advertisement ad) {
+    final route = (ad.linkValue ?? '').trim().toLowerCase().replaceAll('/', '');
+    switch (route) {
+      case 'market_report':
+      case 'market-report':
+        _openHomeTab(0);
+        break;
+      case 'buy_sell':
+      case 'buy-sell':
+        _openHomeTab(1);
+        break;
+      case 'services':
+        _openHomeTab(2);
+        break;
+      case 'weather':
+        _openModule(const WeatherReportPage());
+        break;
+      case 'income-expense':
+        _openProtected(const IncomeExpensePage(), feature: AppFeatureCatalog.incomeExpense);
+        break;
+      case 'organizations':
+        _openModule(const ManageOrganizationPage(), feature: AppFeatureCatalog.organization);
+        break;
+      case 'labour':
+        _openProtected(const LaborManagementPage(), feature: AppFeatureCatalog.labour);
+        break;
+      case 'work-entry':
+        _openProtected(const LabourWorkPage(), feature: AppFeatureCatalog.labourWork);
+        break;
+      case 'daily-log':
+        _openProtected(const DailySummaryPage(), feature: AppFeatureCatalog.dailySummary);
+        break;
+      default:
+        break;
+    }
+  }
+
   @override
   void dispose() {
-    _autoSlideTimer.cancel();
+    _homeTabController.removeListener(_onHomeTabChanged);
+    _homeTabController.dispose();
+    _autoSlideTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
@@ -225,13 +292,21 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
+  /// Close the side drawer without risking a pop of the home route.
+  void _closeDrawer() {
+    final scaffold = _scaffoldKey.currentState;
+    if (scaffold?.isDrawerOpen == true) {
+      scaffold!.closeDrawer();
+    }
+  }
+
   /// Opens [page] without requiring login (modules remain visible to guests).
   Future<void> _openModule(
     Widget page, {
     bool closeDrawer = false,
     String? feature,
   }) async {
-    if (closeDrawer) Navigator.pop(context);
+    if (closeDrawer) _closeDrawer();
     if (feature != null && !_featureEnabled(feature)) {
       _showFeatureDisabled();
       return;
@@ -251,7 +326,7 @@ class _MainPageState extends State<MainPage> {
     bool closeDrawer = false,
     String? feature,
   }) async {
-    if (closeDrawer) Navigator.pop(context);
+    if (closeDrawer) _closeDrawer();
     if (feature != null && !_featureEnabled(feature)) {
       _showFeatureDisabled();
       return;
@@ -314,14 +389,49 @@ class _MainPageState extends State<MainPage> {
     return ListenableBuilder(
       listenable: LocaleController.instance,
       builder: (context, _) => Scaffold(
-      appBar: GradientAppBar(
-        title: "AgRaz",
+      key: _scaffoldKey,
+      backgroundColor: const Color(0xFFF2F6F3),
+      appBar: AppBar(
+        toolbarHeight: 40,
+        elevation: 0,
+        centerTitle: true,
+        titleSpacing: 0,
+        iconTheme: const IconThemeData(color: Colors.white, size: 22),
+        leading: IconButton(
+          icon: const Icon(Icons.menu_rounded),
+          iconSize: 22,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          visualDensity: VisualDensity.compact,
+          tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        ),
+        title: Text(
+          tr('AgRaz'),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+            height: 1.1,
+          ),
+        ),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF14603F), Color(0xFF25865A)],
+            ),
+          ),
+        ),
         actions: withFeedbackAction(
           context,
           menu: 'home',
           actions: [
             IconButton(
               icon: const Icon(Icons.info_outline_rounded),
+              iconSize: 22,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              visualDensity: VisualDensity.compact,
               tooltip: tr('About Team'),
               onPressed: () {
                 Navigator.push(
@@ -333,6 +443,10 @@ class _MainPageState extends State<MainPage> {
             if (_featureEnabled(AppFeatureCatalog.settings))
               IconButton(
                 icon: const Icon(Icons.settings_rounded),
+                iconSize: 22,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                visualDensity: VisualDensity.compact,
                 tooltip: tr('Settings'),
                 onPressed: () => _openProtected(
                   const SettingsPage(),
@@ -343,90 +457,184 @@ class _MainPageState extends State<MainPage> {
         ),
       ),
       drawer: _buildDrawer(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showHelpCenter(context),
-        backgroundColor: AppColors.primary,
-        elevation: 4,
-        child: const Icon(Icons.help_rounded, color: Colors.white),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- Hero Section (Image Slider) ---
-            _buildHero(),
-            _buildFreeVersionNote(),
-            if (_isLoggedIn && _session.isSubUser) _buildFamilyAccountBanner(),
-            _buildQuickShortcuts(),
-            if (_featureEnabled(AppFeatureCatalog.achieversLobby))
-              _buildLatestLobbyBanner(),
-            if (_isLoggedIn)
-              ListenableBuilder(
-                listenable: OfflineSync.instance,
-                builder: (context, _) => _buildOfflineSyncBanner(),
-              ),
-            if (_isLoggedIn &&
-                _pendingLaborShares > 0 &&
-                _featureEnabled(AppFeatureCatalog.labourWork))
-              _buildLaborShareBanner(),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 16),
-                  // --- What is AgRaz? ---
-                  _buildAboutCard(),
-                  SizedBox(height: 28),
-                  // --- Services ---
-                  _buildSectionHeader('Our Services for Farmers'),
-                  SizedBox(height: 14),
-                  _buildServicesGrid(),
-                  SizedBox(height: 28),
-                  // --- Why Choose AgRaz? ---
-                  _buildSectionHeader('Why Choose AgRaz?'),
-                  SizedBox(height: 14),
-                  _buildWhyChooseCard(
-                    icon: Icons.auto_awesome_rounded,
-                    text: tr('AI-driven insights tailored to your farm'),
-                    color: AppColors.accent,
-                    index: '01',
+      body: Column(
+        children: [
+          // Ads stay pinned — collapsing them made tabs fill the screen with
+          // no way to scroll the slider back into view at offset 0.
+          HomeAdvertisementSlider(onInAppLink: _handleAdInAppLink),
+          AnimatedCrossFade(
+            firstChild: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildFreeVersionNote(),
+                if (_isLoggedIn && _session.isSubUser) _buildFamilyAccountBanner(),
+                _buildHomeQuickActions(),
+                if (_isLoggedIn)
+                  ListenableBuilder(
+                    listenable: OfflineSync.instance,
+                    builder: (context, _) => _buildOfflineSyncBanner(),
                   ),
-                  _buildWhyChooseCard(
-                    icon: Icons.wifi_off_rounded,
-                    text: tr('Works offline & syncs automatically'),
-                    color: AppColors.info,
-                    index: '02',
-                  ),
-                  _buildWhyChooseCard(
-                    icon: Icons.language_rounded,
-                    text: tr('Available in local languages'),
-                    color: AppColors.warning,
-                    index: '03',
-                  ),
-                  _buildWhyChooseCard(
-                    icon: Icons.verified_rounded,
-                    text: tr('Backed by agriculture experts'),
-                    color: AppColors.primary,
-                    index: '04',
-                  ),
-                  _buildWhyChooseCard(
-                    icon: Icons.shield_rounded,
-                    text: tr('Secure and farmer-first design'),
-                    color: AppColors.expense,
-                    index: '05',
-                  ),
-                  SizedBox(height: 28),
-                  // --- Let AgRaz Work For You ---
-                  _buildCtaCard(),
-                  SizedBox(height: 30),
+              ],
+            ),
+            secondChild: const SizedBox(width: double.infinity, height: 0),
+            crossFadeState: _chromeCollapsed
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 220),
+          ),
+          Material(
+            color: Colors.white,
+            elevation: 1,
+            child: TabBar(
+              controller: _homeTabController,
+              labelColor: const Color(0xFF14603F),
+              unselectedLabelColor: AppColors.textSecondary,
+              indicatorColor: const Color(0xFFF0A030),
+              indicatorWeight: 3,
+              labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              tabs: [
+                Tab(text: tr('Market Report')),
+                Tab(text: tr('Buy & Sell')),
+                Tab(text: tr('Services')),
+              ],
+            ),
+          ),
+          Expanded(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (n) {
+                if (n.metrics.axis != Axis.vertical) return false;
+                if (n is ScrollUpdateNotification) {
+                  final dy = n.scrollDelta ?? 0;
+                  final atTop = n.metrics.pixels <= 12;
+                  if (dy > 6 && !_chromeCollapsed && !atTop) {
+                    setState(() => _chromeCollapsed = true);
+                  } else if (_chromeCollapsed && (dy < -6 || atTop)) {
+                    setState(() => _chromeCollapsed = false);
+                  }
+                }
+                return false;
+              },
+              child: TabBarView(
+                controller: _homeTabController,
+                children: const [
+                  RatesComparisonPage(embedded: true),
+                  BuySellPage(embedded: true),
+                  ServiceListingPage(embedded: true),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+          HomeWeatherBar(
+            onTap: () => _openModule(const WeatherReportPage()),
+          ),
+        ],
       ),
     ),
+    );
+  }
+
+  Widget _buildHomeQuickActions() {
+    final items = <({
+      IconData icon,
+      String label,
+      Color color,
+      String feature,
+      VoidCallback open,
+    })>[
+      (
+        icon: Icons.account_balance_wallet_rounded,
+        label: tr('Income & Expense'),
+        color: AppColors.income,
+        feature: AppFeatureCatalog.incomeExpense,
+        open: () => _openProtected(
+          const IncomeExpensePage(),
+          feature: AppFeatureCatalog.incomeExpense,
+        ),
+      ),
+      (
+        icon: Icons.business_rounded,
+        label: tr('Organizations'),
+        color: AppColors.primaryLight,
+        feature: AppFeatureCatalog.organization,
+        open: () => _openModule(
+          const ManageOrganizationPage(),
+          feature: AppFeatureCatalog.organization,
+        ),
+      ),
+      (
+        icon: Icons.engineering_rounded,
+        label: tr('Labour'),
+        color: AppColors.warning,
+        feature: AppFeatureCatalog.labour,
+        open: () => _openProtected(
+          const LaborManagementPage(),
+          feature: AppFeatureCatalog.labour,
+        ),
+      ),
+      (
+        icon: Icons.handshake_rounded,
+        label: tr('Work Entry'),
+        color: AppColors.primaryLight,
+        feature: AppFeatureCatalog.labourWork,
+        open: () => _openProtected(
+          const LabourWorkPage(),
+          feature: AppFeatureCatalog.labourWork,
+        ),
+      ),
+      (
+        icon: Icons.summarize_rounded,
+        label: tr('Daily Log'),
+        color: AppColors.info,
+        feature: AppFeatureCatalog.dailySummary,
+        open: () => _openProtected(
+          const DailySummaryPage(),
+          feature: AppFeatureCatalog.dailySummary,
+        ),
+      ),
+    ].where((e) => _featureEnabled(e.feature)).toList();
+
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 86,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, i) {
+          final item = items[i];
+          return InkWell(
+            onTap: item.open,
+            borderRadius: BorderRadius.circular(14),
+            child: SizedBox(
+              width: 72,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: item.color.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(item.icon, color: item.color, size: 22),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    item.label,
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11, height: 1.1),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -452,7 +660,7 @@ class _MainPageState extends State<MainPage> {
                     Icons.home_filled,
                     tr('Home'),
                     AppColors.primary,
-                    () => Navigator.pop(context),
+                    _closeDrawer,
                     active: true,
                   ),
                   if (_featureEnabled(AppFeatureCatalog.incomeExpense))
@@ -593,7 +801,7 @@ class _MainPageState extends State<MainPage> {
                       tr('Buy & Sell'),
                       AppColors.primaryLight,
                       () => _openModule(
-                        const BuySellApp(),
+                        const BuySellPage(),
                         closeDrawer: true,
                         feature: AppFeatureCatalog.buySell,
                       ),
@@ -675,8 +883,6 @@ class _MainPageState extends State<MainPage> {
                         feature: AppFeatureCatalog.feedback,
                       ),
                     ),
-                  _drawerSectionLabel(tr('CONTRACT')),
-                  _buildContractManageDrawerSection(),
                   _drawerSectionLabel(tr('ACCOUNT')),
                   if (_featureEnabled(AppFeatureCatalog.profile))
                     _drawerTile(
@@ -717,7 +923,7 @@ class _MainPageState extends State<MainPage> {
                     tr('About Team'),
                     AppColors.primaryLight,
                     () {
-                      Navigator.pop(context);
+                      _closeDrawer();
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -798,52 +1004,6 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  /// New Contract Manage parent + children. Does not alter existing MENU tiles.
-  Widget _buildContractManageDrawerSection() {
-    Widget sub(IconData icon, String title, Widget page) {
-      return ListTile(
-        dense: true,
-        contentPadding: const EdgeInsets.only(left: 56, right: 16),
-        leading: Icon(icon, size: 18, color: AppColors.primaryDark),
-        title: Text(title, style: const TextStyle(fontSize: 13.5)),
-        onTap: () => _openProtected(page, closeDrawer: true),
-      );
-    }
-
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
-        childrenPadding: EdgeInsets.zero,
-        leading: TintedIcon(
-          icon: Icons.construction_rounded,
-          color: AppColors.primaryDark,
-          boxSize: 36,
-          size: 18,
-          radius: 10,
-        ),
-        title: Text(
-          tr('Contract Manage'),
-          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
-        ),
-        children: [
-          sub(Icons.dashboard_customize_rounded, tr('Overview'), const ContractManageHubPage()),
-          sub(Icons.apartment_rounded, tr('Projects'), const CmProjectListPage()),
-          sub(Icons.people_alt_rounded, tr('Customers'), const CmCustomersPage()),
-          sub(Icons.groups_rounded, tr('Labour Suppliers'), const CmLabourSuppliersPage()),
-          sub(Icons.engineering_rounded, tr('Labours'), const CmLaboursPage()),
-          sub(Icons.store_mall_directory_rounded, tr('Dealers'), const CmDealersPage()),
-          sub(Icons.inventory_2_rounded, tr('Materials'), const CmMaterialsPage()),
-          sub(Icons.account_balance_wallet_rounded, tr('Payments'), const CmPaymentsPage()),
-          sub(Icons.shopping_cart_rounded, tr('Purchases / Stock'), const CmPurchasesPage()),
-          sub(Icons.bar_chart_rounded, tr('Stock Report'), const CmStockReportPage()),
-          sub(Icons.summarize_rounded, tr('Customer Summary'), const CmCustomerSummaryPage()),
-          sub(Icons.agriculture_rounded, tr('Assets'), const CmAssetsPage()),
-        ],
-      ),
-    );
-  }
-
   Widget _drawerTile(
     IconData icon,
     String title,
@@ -914,7 +1074,7 @@ class _MainPageState extends State<MainPage> {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          Navigator.pop(context);
+          _closeDrawer();
           _goToLogin();
         },
         child: Padding(
@@ -988,7 +1148,7 @@ class _MainPageState extends State<MainPage> {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
-          Navigator.pop(context);
+          _closeDrawer();
           _showLogoutConfirmationDialog(context);
         },
         child: Padding(
@@ -1067,17 +1227,18 @@ class _MainPageState extends State<MainPage> {
     final label = days == 1
         ? trf('Enjoy free version for {0} day', [days])
         : trf('Enjoy free version for {0} days', [days]);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-      child: Center(
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.red,
-          ),
+    return Container(
+      height: 28,
+      width: double.infinity,
+      alignment: Alignment.center,
+      color: const Color(0xFFFDECEC),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFFDC2626),
         ),
       ),
     );
@@ -1334,7 +1495,7 @@ class _MainPageState extends State<MainPage> {
         color: AppColors.primaryLight,
         feature: AppFeatureCatalog.buySell,
         open: () => _openModule(
-          const BuySellApp(),
+          const BuySellPage(),
           feature: AppFeatureCatalog.buySell,
         ),
       ),

@@ -13,14 +13,14 @@ import 'l10n/locale_controller.dart';
 class AppColors {
   AppColors._();
 
-  // Brand
-  static const Color primary = Color(0xFF17714B);
+  // Brand (home redesign tokens: primary #14603F, accent #F0A030, page #F2F6F3)
+  static const Color primary = Color(0xFF14603F);
   static const Color primaryDark = Color(0xFF105A3C);
   static const Color primaryDeep = Color(0xFF0B4630);
-  static const Color primaryLight = Color(0xFF2E9265);
+  static const Color primaryLight = Color(0xFF25865A);
   static const Color primarySoft = Color(0xFFE3F3EA);
 
-  static const Color accent = Color(0xFFE9A13B);
+  static const Color accent = Color(0xFFF0A030);
   static const Color accentSoft = Color(0xFFFCF2E1);
 
   // Semantic
@@ -34,7 +34,7 @@ class AppColors {
   static const Color warningSoft = Color(0xFFFCF0E1);
 
   // Surfaces
-  static const Color background = Color(0xFFF6F8F7);
+  static const Color background = Color(0xFFF2F6F3);
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceAlt = Color(0xFFEEF3F0);
   static const Color field = Color(0xFFF0F4F2);

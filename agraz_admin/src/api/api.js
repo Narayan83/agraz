@@ -370,6 +370,37 @@ export const reorderAdminStorefrontBanners = async (body) => {
   return response.data;
 };
 
+/** Home-screen advertisements (mobile slider) */
+export const listAdminAdvertisements = async (params = {}) => {
+  const response = await api.get("/admin/advertisements", { params });
+  return response.data;
+};
+
+export const createAdminAdvertisement = async (formData) => {
+  const response = await api.post("/admin/advertisements", formData);
+  return response.data;
+};
+
+export const updateAdminAdvertisement = async (id, formData) => {
+  const response = await api.put(`/admin/advertisements/${id}`, formData);
+  return response.data;
+};
+
+export const patchAdminAdvertisementStatus = async (id, is_active) => {
+  const response = await api.patch(`/admin/advertisements/${id}/status`, { is_active });
+  return response.data;
+};
+
+export const reorderAdminAdvertisements = async (ids) => {
+  const response = await api.put("/admin/advertisements/reorder", { ids });
+  return response.data;
+};
+
+export const deleteAdminAdvertisement = async (id) => {
+  const response = await api.delete(`/admin/advertisements/${id}`);
+  return response.data;
+};
+
 // Upload (already-cropped) e-commerce image to backend.
 // kind: "product" | "variant" | "hero"
 // file: Blob/File
@@ -868,21 +899,5 @@ export const updateMyEvent = async (id, data) =>
   (await api.put(`/events/${id}`, data)).data;
 export const deleteMyEvent = async (id) =>
   (await api.delete(`/events/${id}`)).data;
-
-// --- Contract Manage (civil contractor) ---
-export const cmList = async (path, params = {}) =>
-  (await api.get(`/contract/${path}`, { params })).data;
-export const cmCreate = async (path, data) =>
-  (await api.post(`/contract/${path}`, data)).data;
-export const cmUpdate = async (path, id, data) =>
-  (await api.put(`/contract/${path}/${id}`, data)).data;
-export const cmDelete = async (path, id) =>
-  (await api.delete(`/contract/${path}/${id}`)).data;
-export const cmCustomerSummary = async (id) =>
-  (await api.get(`/contract/customers/${id}/summary`)).data;
-export const cmStockReport = async (params = {}) =>
-  (await api.get('/contract/stock-report', { params })).data;
-export const cmDashboard = async () =>
-  (await api.get('/contract/dashboard')).data;
 
 export default api;

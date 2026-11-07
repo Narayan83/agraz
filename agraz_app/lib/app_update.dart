@@ -6,15 +6,14 @@ import 'package:in_app_update/in_app_update.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'app_theme.dart';
-import 'auth_token.dart';
 import 'l10n/app_l10n.dart';
 
 const _playStoreUrl =
     'https://play.google.com/store/apps/details?id=com.agraz.app';
 
 /// Checks Play Store for an update and asks the user before installing.
-/// Returns true if the user chose Update (session is cleared so the new
-/// build does not keep a stale login).
+/// Returns true if the user chose Update. Login session is kept across
+/// the update (JWT lives in SharedPreferences).
 /// Works only for installs from Play (prod / internal testing). Safe no-op elsewhere.
 Future<bool> promptInAppUpdateIfNeeded(BuildContext context) async {
   if (kIsWeb || !Platform.isAndroid) return false;
@@ -33,7 +32,7 @@ Future<bool> promptInAppUpdateIfNeeded(BuildContext context) async {
         title: Text(tr('Update available')),
         content: Text(
           tr(
-            'A new version of AgRaz is available. Update now without opening Play Store? You will be logged out so new features work after login.',
+            'A new version of AgRaz is available. Update now without opening Play Store?',
           ),
         ),
         actions: [
@@ -50,9 +49,6 @@ Future<bool> promptInAppUpdateIfNeeded(BuildContext context) async {
     );
 
     if (update != true || !context.mounted) return false;
-
-    // Stale JWT / cached session would hide new APIs after the update.
-    await clearAuthToken();
 
     if (info.immediateUpdateAllowed) {
       final result = await InAppUpdate.performImmediateUpdate();

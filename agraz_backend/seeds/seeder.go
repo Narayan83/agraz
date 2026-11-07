@@ -26,6 +26,8 @@ func SeedAll() {
 	EnsureDefaultUserRoleAssignments()
 	SeedAppContents()
 	SeedStorefrontBannerMenu()
+	SeedAdvertisementMenu()
+	SeedAdvertisements()
 	SeedGovFacilities()
 	SeedMarketReports()
 	SeedIncomeExpenses()

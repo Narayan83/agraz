@@ -20,7 +20,11 @@ class FeedbackIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       tooltip: tooltip ?? tr('Feedback'),
-      icon: Icon(Icons.feedback_outlined, color: color),
+      icon: Icon(Icons.feedback_outlined, color: color, size: 22),
+      iconSize: 22,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+      visualDensity: VisualDensity.compact,
       onPressed: () {
         Navigator.push(
           context,

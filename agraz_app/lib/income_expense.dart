@@ -11,6 +11,7 @@ import 'api_service.dart';
 import 'app_theme.dart';
 import 'auth_token.dart';
 import 'feedback_fab.dart';
+import 'labor_categories.dart';
 import 'l10n/app_l10n.dart';
 import 'voice_dictation.dart';
 
@@ -37,11 +38,15 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
   final _districtController = TextEditingController();
   final _extraAddressController = TextEditingController();
   final _pincodeController = TextEditingController();
+  final _labourDaysController = TextEditingController();
+  final _labourHeadController = TextEditingController();
 
   final List<String> receiptPaymentOptions = ['Income', 'Expense'];
   List<String> categories = [];
   List<String> subCategories = [];
+  List<String> _labourCategories = List<String>.from(kLaborWorkCategories);
   bool isLoading = false;
+  bool _labourDetailsOpen = true;
   List<Map<String, dynamic>> _organizations = [];
 
   /// Signed party balance (Income − Expense). Null when unknown / not loaded.
@@ -68,7 +73,9 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     super.initState();
     _formData.transactionDate = DateTime.now();
     _formData.transactionMode = 'Cash';
+    _formData.receiptPaymentType = 'Expense';
     _updateCategories();
+    _loadLabourCategories();
 
     _animController = AnimationController(
       vsync: this,
@@ -77,6 +84,18 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _animController.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrapLogin());
+  }
+
+  Future<void> _loadLabourCategories() async {
+    final cats = await loadLaborCategories();
+    if (!mounted) return;
+    setState(() {
+      _labourCategories = cats;
+      if (_formData.labourCategory != null &&
+          !_labourCategories.contains(_formData.labourCategory)) {
+        _labourCategories = [..._labourCategories, _formData.labourCategory!];
+      }
+    });
   }
 
   Future<void> _bootstrapLogin() async {
@@ -112,6 +131,8 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     _districtController.dispose();
     _extraAddressController.dispose();
     _pincodeController.dispose();
+    _labourDaysController.dispose();
+    _labourHeadController.dispose();
     super.dispose();
   }
 
@@ -127,6 +148,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     _formData.subCategory = null;
     _formData.subCategories = [];
     subCategories = [];
+    _resetLabourDetails();
   }
 
   void _updateSubCategories(String selectedCategory) {
@@ -137,7 +159,31 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       _formData.subCategory = null;
       _formData.subCategories = [];
       _formData.productLines = [];
+      _resetLabourDetails();
     });
+  }
+
+  void _resetLabourDetails() {
+    _formData.clearLabourDetails();
+    _labourDaysController.clear();
+    _labourHeadController.clear();
+    _labourDetailsOpen = true;
+  }
+
+  void _activateLabourDetails() {
+    _formData.ensureLabourDefaults();
+    _labourDaysController.text = _trimAmount(_formData.labourDays ?? 1);
+    _labourDetailsOpen = true;
+  }
+
+  void _applyLabourShiftDays(String shift) {
+    final v = switch (shift) {
+      'morning' || 'evening' => 0.5,
+      _ => 1.0,
+    };
+    _formData.labourShift = shift;
+    _formData.labourDays = v;
+    _labourDaysController.text = _trimAmount(v);
   }
 
   void _selectSubCategory(String option) {
@@ -149,6 +195,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
         _formData.subCategories = [];
         _formData.subCategory = null;
         _formData.productLines = [];
+        _resetLabourDetails();
         return;
       }
       final prev = _formData.subCategories.isEmpty
@@ -158,6 +205,11 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       _formData.subCategory = option;
       if (prev != option) {
         _formData.productLines = [];
+      }
+      if (option == 'Labour' && _formData.category == 'Farming Expense') {
+        _activateLabourDetails();
+      } else {
+        _resetLabourDetails();
       }
     });
   }
@@ -373,6 +425,13 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     _formData.pincode = _pincodeController.text.trim().isEmpty
         ? null
         : _pincodeController.text.trim();
+    if (_formData.isLabourExpense) {
+      _formData.labourDays =
+          double.tryParse(_labourDaysController.text.trim());
+      _formData.labourHead = _labourHeadController.text.trim().isEmpty
+          ? null
+          : _labourHeadController.text.trim();
+    }
   }
 
   Future<void> _showJwtExpiredDialog() async {
@@ -438,6 +497,8 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       _districtController,
       _extraAddressController,
       _pincodeController,
+      _labourDaysController,
+      _labourHeadController,
     ]);
 
     setState(() {
@@ -460,6 +521,7 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
       _clearPartyBalance();
       _formData.subCategories = [];
       _formData.productLines = [];
+      _resetLabourDetails();
       _updateCategories();
     });
   }
@@ -506,6 +568,37 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
         ),
       );
       return;
+    }
+    if (_formData.isLabourExpense) {
+      if ((_formData.name ?? '').trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr('Enter labourer name')),
+            backgroundColor: AppColors.expense,
+          ),
+        );
+        return;
+      }
+      final days = _formData.labourDays ?? 0;
+      if (days <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr('Enter valid days/hour')),
+            backgroundColor: AppColors.expense,
+          ),
+        );
+        return;
+      }
+      if (_formData.labourWorkType == 'Contract' &&
+          (_formData.labourHead ?? '').trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr('Labour head is required for Contract')),
+            backgroundColor: AppColors.expense,
+          ),
+        );
+        return;
+      }
     }
 
     // Saving requires a valid login.
@@ -720,8 +813,6 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _buildStepper(),
-                        const SizedBox(height: 14),
                         _buildBasicsCard(),
                         if (_formData.receiptPaymentType != null &&
                             categories.isNotEmpty) ...[
@@ -736,6 +827,10 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
                         if (_formData.canAddProductDetails) ...[
                           const SizedBox(height: 16),
                           _buildProductDetailsCard(),
+                        ],
+                        if (_formData.isLabourExpense) ...[
+                          const SizedBox(height: 16),
+                          _buildLabourDetailsCard(),
                         ],
                         const SizedBox(height: 16),
                         _buildPartyCard(),
@@ -753,79 +848,6 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildStepper() {
-    final typeDone = _formData.receiptPaymentType != null;
-    final detailsDone =
-        _formData.category != null && (_formData.amount ?? 0) > 0;
-    final partyDone = _nameController.text.trim().isNotEmpty ||
-        _mobileController.text.trim().isNotEmpty;
-
-    Widget step(String label, bool done) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOutCubic,
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: done ? AppColors.primary : AppColors.surface,
-              border: Border.all(
-                color: done ? AppColors.primary : AppColors.fieldBorder,
-                width: 1.2,
-              ),
-            ),
-            child: Icon(
-              done ? Icons.check_rounded : Icons.circle_outlined,
-              color: done ? Colors.white : AppColors.textMuted,
-              size: 15,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: done ? FontWeight.w700 : FontWeight.w500,
-              color: done ? AppColors.primary : AppColors.textMuted,
-            ),
-          ),
-        ],
-      );
-    }
-
-    Widget connector(bool done) {
-      return Expanded(
-        child: Container(
-          height: 2,
-          margin: const EdgeInsets.fromLTRB(6, 0, 6, 18),
-          decoration: BoxDecoration(
-            color: done
-                ? AppColors.primary.withValues(alpha: 0.35)
-                : AppColors.border,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: AppFieldStyle.box,
-      child: Row(
-        children: [
-          step(tr('Type'), typeDone),
-          connector(typeDone),
-          step(tr('Details'), detailsDone),
-          connector(detailsDone),
-          step(tr('Party'), partyDone),
-        ],
       ),
     );
   }
@@ -854,21 +876,56 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
           ],
         ),
         const SizedBox(height: 16),
-        OutlinedAppDropdown(
-          label: 'Mode',
-          value: _formData.transactionMode,
-          items: const ['Cash', 'Transfer'],
-          icon: Icons.account_balance_wallet_outlined,
-          onChanged: (v) {
-            setState(() {
-              _formData.transactionMode = v ?? 'Cash';
-              if (_formData.transactionMode != 'Transfer') {
-                _formData.organizationId = null;
-              } else if (_organizations.isEmpty) {
-                _loadOrganizations();
-              }
-            });
-          },
+        Row(
+          children: [
+            Text(
+              tr('Mode'),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                key: ValueKey('mode-${_formData.transactionMode}'),
+                isExpanded: true,
+                initialValue: _formData.transactionMode,
+                decoration: AppFieldStyle.outlined(
+                  icon: Icons.account_balance_wallet_outlined,
+                ),
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+                dropdownColor: AppColors.surface,
+                icon: const Icon(
+                  Icons.expand_more_rounded,
+                  color: AppColors.textMuted,
+                ),
+                items: ['Cash', 'Transfer']
+                    .map(
+                      (e) => DropdownMenuItem(
+                        value: e,
+                        child: Text(tr(e), overflow: TextOverflow.ellipsis),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) {
+                  setState(() {
+                    _formData.transactionMode = v ?? 'Cash';
+                    if (_formData.transactionMode != 'Transfer') {
+                      _formData.organizationId = null;
+                    } else if (_organizations.isEmpty) {
+                      _loadOrganizations();
+                    }
+                  });
+                },
+              ),
+            ),
+          ],
         ),
         if (_formData.transactionMode == 'Transfer') ...[
           const SizedBox(height: 16),
@@ -1253,21 +1310,192 @@ class _IncomeExpensePageState extends State<IncomeExpensePage>
     );
   }
 
+  Widget _buildLabourDetailsCard() {
+    final rate = _formData.labourRate;
+    final rateText = rate == null
+        ? '—'
+        : (rate == rate.roundToDouble()
+            ? rate.toStringAsFixed(0)
+            : rate.toStringAsFixed(2));
+    final isContract = _formData.labourWorkType == 'Contract';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: SectionTitle(
+                icon: Icons.groups_rounded,
+                title: 'Labour details',
+                tintedIcon: false,
+              ),
+            ),
+            TextButton(
+              onPressed: () =>
+                  setState(() => _labourDetailsOpen = !_labourDetailsOpen),
+              child: Text(
+                _labourDetailsOpen ? tr('Close') : tr('Edit'),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        if (!_labourDetailsOpen) ...[
+          const SizedBox(height: 8),
+          Text(
+            [
+              tr(_formData.labourWorkType ?? 'Daily Wages'),
+              tr(_formData.labourLocation ?? 'Farm'),
+              tr(_formData.labourCategory ?? 'Plucking'),
+              tr(_formData.labourShift ?? 'fullday'),
+              '${_trimAmount(_formData.labourDays ?? 1)} ${tr('days')}',
+              if (rate != null) '${tr('Rate')}: ₹$rateText',
+            ].join(' · '),
+            style: AppText.small,
+          ),
+        ] else ...[
+          const SizedBox(height: 12),
+          OutlinedAppDropdown(
+            label: 'Work Type',
+            value: _formData.labourWorkType ?? 'Daily Wages',
+            items: IncomeExpenseData.labourWorkTypes,
+            icon: Icons.work_outline_rounded,
+            onChanged: (v) => setState(() {
+              _formData.labourWorkType = v ?? 'Daily Wages';
+              if (_formData.labourWorkType != 'Contract') {
+                _labourHeadController.clear();
+                _formData.labourHead = null;
+              }
+            }),
+          ),
+          if (isContract) ...[
+            const SizedBox(height: 16),
+            OutlinedAppField(
+              controller: _labourHeadController,
+              label: 'Labour Head',
+              icon: Icons.supervisor_account_rounded,
+              onChanged: (v) => _formData.labourHead = v.trim(),
+            ),
+          ],
+          const SizedBox(height: 16),
+          OutlinedAppDropdown(
+            label: 'Location',
+            value: _formData.labourLocation ?? 'Farm',
+            items: IncomeExpenseData.labourLocations,
+            icon: Icons.location_on_rounded,
+            onChanged: (v) =>
+                setState(() => _formData.labourLocation = v ?? 'Farm'),
+          ),
+          const SizedBox(height: 16),
+          OutlinedAppDropdown(
+            label: 'Category',
+            value: _labourCategories.contains(_formData.labourCategory)
+                ? _formData.labourCategory
+                : (_labourCategories.isNotEmpty
+                    ? _labourCategories.first
+                    : 'Plucking'),
+            items: _labourCategories,
+            icon: Icons.grid_view_rounded,
+            onChanged: (v) =>
+                setState(() => _formData.labourCategory = v ?? 'Plucking'),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: OutlinedAppDropdown(
+                  label: 'Shift',
+                  value: _formData.labourShift ?? 'fullday',
+                  items: IncomeExpenseData.labourShifts,
+                  icon: Icons.wb_sunny_rounded,
+                  onChanged: (v) => setState(
+                    () => _applyLabourShiftDays(v ?? 'fullday'),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedAppField(
+                  controller: _labourDaysController,
+                  label: 'Days',
+                  icon: Icons.access_time_rounded,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  onChanged: (v) {
+                    setState(() {
+                      _formData.labourDays = double.tryParse(v.trim());
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: AppFieldStyle.box,
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.currency_rupee_rounded,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${tr('Rate')} = ${tr('Amount')} ÷ ${tr('Days')}',
+                    style: AppText.small,
+                  ),
+                ),
+                Text(
+                  rate == null ? '—' : '₹$rateText',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => setState(() => _labourDetailsOpen = false),
+              icon: const Icon(Icons.check_rounded, size: 18),
+              label: Text(tr('Close')),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildPartyCard() {
+    final labourParty = _formData.isLabourExpense;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionTitle(
           icon: Icons.person_outline_rounded,
-          title: 'Party',
+          title: labourParty ? 'Labour / Party' : 'Party',
           tintedIcon: false,
         ),
         const SizedBox(height: 16),
         OutlinedAppField(
           controller: _nameController,
-          label: 'Name',
-          hint: 'Name (optional, for search)',
+          label: labourParty ? 'Labour name' : 'Name',
+          hint: labourParty
+              ? 'Enter labourer name'
+              : 'Name (optional, for search)',
           icon: Icons.badge_rounded,
+          required: labourParty,
           onChanged: _onNameChanged,
           onSaved: (v) => _formData.name = v?.trim() ?? '',
           suffix: VoiceMicButton(

@@ -54,8 +54,7 @@ class RegistrationPage extends StatefulWidget {
 class _RegistrationPageState extends State<RegistrationPage>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _firstnameController = TextEditingController();
-  final TextEditingController _lastnameController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _contactNoController = TextEditingController();
@@ -90,14 +89,21 @@ class _RegistrationPageState extends State<RegistrationPage>
   @override
   void dispose() {
     _animCtrl.dispose();
-    _firstnameController.dispose();
-    _lastnameController.dispose();
+    _nameController.dispose();
     _emailController.dispose();
     _dobController.dispose();
     _contactNoController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  /// Split a full name into first + last for the API (lastname may be empty).
+  (String, String) _splitName(String fullName) {
+    final parts = fullName.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return ('', '');
+    if (parts.length == 1) return (parts.first, '');
+    return (parts.first, parts.sublist(1).join(' '));
   }
 
   String _formatDate(DateTime date) {
@@ -129,9 +135,10 @@ class _RegistrationPageState extends State<RegistrationPage>
     setState(() => _isLoading = true);
 
     try {
+      final (firstname, lastname) = _splitName(_nameController.text);
       final payload = {
-        'firstname': _firstnameController.text.trim(),
-        'lastname': _lastnameController.text.trim(),
+        'firstname': firstname,
+        'lastname': lastname,
         'email': _emailController.text.trim(),
         'phone': _fullPhoneNumber?.replaceAll(RegExp(r'[^0-9]'), '') ?? '',
         'password': _passwordController.text,
@@ -321,57 +328,24 @@ class _RegistrationPageState extends State<RegistrationPage>
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             TextFormField(
-                              controller: _firstnameController,
+                              controller: _nameController,
                               textCapitalization: TextCapitalization.words,
                               decoration: InputDecoration(
-                                labelText: tr('First Name'),
+                                labelText: tr('Full Name'),
                                 prefixIcon: Icon(Icons.person_outline_rounded),
                               ),
                               validator: (value) =>
-                                  value == null || value.isEmpty
-                                      ? 'First name is required'
+                                  value == null || value.trim().isEmpty
+                                      ? tr('Name is required')
                                       : null,
                             ),
-                            SizedBox(height: 12),
-                            TextFormField(
-                              controller: _lastnameController,
-                              textCapitalization: TextCapitalization.words,
-                              decoration: InputDecoration(
-                                labelText: tr('Last Name'),
-                                prefixIcon: Icon(Icons.person_outline_rounded),
-                              ),
-                              validator: (value) =>
-                                  value == null || value.isEmpty
-                                      ? 'Last name is required'
-                                      : null,
-                            ),
-                            SizedBox(height: 12),
-                            TextFormField(
-                              controller: _emailController,
-                              keyboardType: TextInputType.emailAddress,
-                              decoration: InputDecoration(
-                                labelText: tr('Email'),
-                                prefixIcon: Icon(Icons.email_outlined),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Enter a valid email address';
-                                }
-                                if (!value.contains('@')) {
-                                  return 'Enter a valid email address';
-                                }
-                                return null;
-                              },
-                            ),
-                            SizedBox(height: 12),
-                            _buildDatePicker(),
                             SizedBox(height: 12),
                             IntlPhoneField(
                               controller: _contactNoController,
                               disableLengthCheck: true,
                               initialCountryCode: 'IN',
                               decoration: InputDecoration(
-                                labelText: tr('Phone Number'),
+                                labelText: tr('Mobile Number'),
                                 counterText: '',
                                 prefixIcon: Icon(Icons.phone_outlined),
                               ),
@@ -383,11 +357,30 @@ class _RegistrationPageState extends State<RegistrationPage>
                               validator: (phone) {
                                 if (phone == null ||
                                     phone.completeNumber.isEmpty) {
-                                  return 'Phone number is required';
+                                  return tr('Phone number is required');
                                 }
                                 return null;
                               },
                             ),
+                            SizedBox(height: 12),
+                            TextFormField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              decoration: InputDecoration(
+                                labelText: tr('Email (optional)'),
+                                prefixIcon: Icon(Icons.email_outlined),
+                              ),
+                              validator: (value) {
+                                final v = value?.trim() ?? '';
+                                if (v.isEmpty) return null;
+                                if (!v.contains('@')) {
+                                  return tr('Enter a valid email address');
+                                }
+                                return null;
+                              },
+                            ),
+                            SizedBox(height: 12),
+                            _buildDatePicker(),
                             SizedBox(height: 12),
                             _buildPasswordField(
                               _passwordController,

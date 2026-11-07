@@ -91,6 +91,7 @@ func SeedToolsMenus() {
 			{MenuName: "RTC Entry", URL: "/rtc-entry", Icon: "Map", SortOrder: 10, IsActive: true, MenuType: "main"},
 			{MenuName: "Event Manage", URL: "/events", Icon: "CalendarDays", SortOrder: 11, IsActive: true, MenuType: "main"},
 			{MenuName: "Achievers Lobby", URL: "/achievers-lobby", Icon: "Trophy", SortOrder: 12, IsActive: true, MenuType: "main"},
+			{MenuName: "Advertisements", URL: "/advertisements", Icon: "Megaphone", SortOrder: 13, IsActive: true, MenuType: "main"},
 		}},
 	}
 

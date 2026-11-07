@@ -115,7 +115,63 @@ class IncomeExpenseData {
   /// Farm income product detail lines (arecanut varieties, etc.).
   List<FarmIncomeProductLine> productLines = [];
 
+  /// Labour detail fields when Farming Expense → Labour is selected.
+  /// Rate is derived as amount / labourDays (not stored separately).
+  String? labourWorkType;
+  String? labourLocation;
+  String? labourCategory;
+  String? labourShift;
+  double? labourDays;
+  String? labourHead;
+
   static const List<String> productUnits = ['kg', 'bag', 'ltr', 'pc', 'load'];
+
+  static const List<String> labourWorkTypes = ['Daily Wages', 'Contract'];
+  static const List<String> labourShifts = [
+    'fullday',
+    'morning',
+    'evening',
+    'night',
+  ];
+  static const List<String> labourLocations = [
+    'Farm',
+    'Warehouse',
+    'Processing Unit',
+    'Field',
+  ];
+
+  bool get isLabourExpense =>
+      receiptPaymentType == 'Expense' &&
+      category == 'Farming Expense' &&
+      effectiveSubCategories.contains('Labour');
+
+  /// Amount ÷ days for labour rate. Null when inputs are incomplete.
+  double? get labourRate {
+    final amt = amount ?? 0;
+    final days = labourDays ?? 0;
+    if (amt <= 0 || days <= 0) return null;
+    return amt / days;
+  }
+
+  void clearLabourDetails() {
+    labourWorkType = null;
+    labourLocation = null;
+    labourCategory = null;
+    labourShift = null;
+    labourDays = null;
+    labourHead = null;
+  }
+
+  void ensureLabourDefaults() {
+    labourWorkType ??= 'Daily Wages';
+    labourLocation ??= 'Farm';
+    labourCategory ??= 'Plucking';
+    labourShift ??= 'fullday';
+    labourDays ??= switch (labourShift) {
+      'morning' || 'evening' => 0.5,
+      _ => 1.0,
+    };
+  }
 
   /// Crops under Farming Income that support product-detail lines.
   static const List<String> farmCropSubCategories = [
@@ -332,6 +388,20 @@ class IncomeExpenseData {
       final lines = productLines.map((e) => e.toJson()).toList();
       map['product_lines'] = lines;
       map['productLines'] = lines;
+    }
+    if (isLabourExpense) {
+      ensureLabourDefaults();
+      final rate = labourRate;
+      map['labor'] = {
+        'work_type': labourWorkType ?? 'Daily Wages',
+        'location': labourLocation ?? 'Farm',
+        'category': labourCategory ?? 'Plucking',
+        'shift': labourShift ?? 'fullday',
+        'days': labourDays ?? 1.0,
+        if (rate != null) 'rate': rate,
+        if ((labourHead ?? '').trim().isNotEmpty)
+          'labour_head': labourHead!.trim(),
+      };
     }
     return map;
   }

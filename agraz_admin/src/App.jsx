@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import RolePermissions from "./pages/RolePermissions";
@@ -26,6 +26,7 @@ import DairyAdmin from "./pages/DairyAdmin";
 import DocumentsAdmin from "./pages/DocumentsAdmin";
 import EventsAdmin from "./pages/EventsAdmin";
 import AchieversLobbyAdmin from "./pages/AchieversLobbyAdmin";
+import AdvertisementsAdmin from "./pages/AdvertisementsAdmin";
 import TransactionsHub from "./pages/transactions/TransactionsHub";
 import IncomeExpenseEntry from "./pages/transactions/IncomeExpenseEntry";
 import OrganizationsEntry from "./pages/transactions/OrganizationsEntry";
@@ -38,34 +39,15 @@ import FuturePlansEntry from "./pages/transactions/FuturePlansEntry";
 import RtcEntry from "./pages/transactions/RtcEntry";
 import DocumentsEntry from "./pages/transactions/DocumentsEntry";
 import EventsEntry from "./pages/transactions/EventsEntry";
-import ContractManageHub from "./pages/contract/ContractManageHub";
-import {
-  CmCustomersPage,
-  CmDealersPage,
-  CmLabourSuppliersPage,
-  CmLaboursPage,
-  CmMaterialsPage,
-  CmAssetsPage,
-  CmPurchasesPage,
-  CmPaymentsPage,
-  CmStockReportPage,
-  CmCustomerSummaryPage,
-} from "./pages/contract/ContractPages";
-import { CmProjectsFullPage, CmProjectLedgerPage, CmAuditPage, CmLabourWorksPage, CmStockIssuesPage } from "./pages/contract/ContractTxnPages";
 import { logoutAndRedirect } from "./lib/authStorage";
 import "./App.css";
-
-const CmProjectLedgerRoute = () => {
-  const { id } = useParams();
-  return <CmProjectLedgerPage projectId={id} />;
-};
 
 /** Unknown URLs: stay logged-in users on hub; guests go to login (never wipe session). */
 const CatchAll = () => {
   const token = localStorage.getItem("token");
   const user = localStorage.getItem("user");
   const loggedIn = token && token !== "undefined" && user && user !== "undefined";
-  return <Navigate to={loggedIn ? "/contract-manage" : "/login"} replace />;
+  return <Navigate to={loggedIn ? "/home" : "/login"} replace />;
 };
 
 const routerBasename = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -122,6 +104,7 @@ function App() {
         <Route path="/documents" element={<ProtectedRoute><DocumentsAdmin /></ProtectedRoute>} />
         <Route path="/events" element={<ProtectedRoute><EventsAdmin /></ProtectedRoute>} />
         <Route path="/achievers-lobby" element={<ProtectedRoute><AchieversLobbyAdmin /></ProtectedRoute>} />
+        <Route path="/advertisements" element={<ProtectedRoute><AdvertisementsAdmin /></ProtectedRoute>} />
 
         <Route path="/transactions" element={<ProtectedRoute><TransactionsHub /></ProtectedRoute>} />
         <Route path="/transactions/income-expense" element={<ProtectedRoute><IncomeExpenseEntry /></ProtectedRoute>} />
@@ -135,23 +118,6 @@ function App() {
         <Route path="/transactions/rtc" element={<ProtectedRoute><RtcEntry /></ProtectedRoute>} />
         <Route path="/transactions/documents" element={<ProtectedRoute><DocumentsEntry /></ProtectedRoute>} />
         <Route path="/transactions/events" element={<ProtectedRoute><EventsEntry /></ProtectedRoute>} />
-
-        <Route path="/contract-manage" element={<ProtectedRoute><ContractManageHub /></ProtectedRoute>} />
-        <Route path="/contract-manage/projects" element={<ProtectedRoute><CmProjectsFullPage /></ProtectedRoute>} />
-        <Route path="/contract-manage/projects/:id" element={<ProtectedRoute><CmProjectLedgerRoute /></ProtectedRoute>} />
-        <Route path="/contract-manage/customers" element={<ProtectedRoute><CmCustomersPage /></ProtectedRoute>} />
-        <Route path="/contract-manage/customer-summary" element={<ProtectedRoute><CmCustomerSummaryPage /></ProtectedRoute>} />
-        <Route path="/contract-manage/dealers" element={<ProtectedRoute><CmDealersPage /></ProtectedRoute>} />
-        <Route path="/contract-manage/labour-suppliers" element={<ProtectedRoute><CmLabourSuppliersPage /></ProtectedRoute>} />
-        <Route path="/contract-manage/labours" element={<ProtectedRoute><CmLaboursPage /></ProtectedRoute>} />
-        <Route path="/contract-manage/labour-works" element={<ProtectedRoute><CmLabourWorksPage /></ProtectedRoute>} />
-        <Route path="/contract-manage/materials" element={<ProtectedRoute><CmMaterialsPage /></ProtectedRoute>} />
-        <Route path="/contract-manage/purchases" element={<ProtectedRoute><CmPurchasesPage /></ProtectedRoute>} />
-        <Route path="/contract-manage/stock-issues" element={<ProtectedRoute><CmStockIssuesPage /></ProtectedRoute>} />
-        <Route path="/contract-manage/stock-report" element={<ProtectedRoute><CmStockReportPage /></ProtectedRoute>} />
-        <Route path="/contract-manage/payments" element={<ProtectedRoute><CmPaymentsPage /></ProtectedRoute>} />
-        <Route path="/contract-manage/assets" element={<ProtectedRoute><CmAssetsPage /></ProtectedRoute>} />
-        <Route path="/contract-manage/audit" element={<ProtectedRoute><CmAuditPage /></ProtectedRoute>} />
 
         <Route path="/auditlogs" element={<ProtectedRoute><Placeholder title="Audit Logs" /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Placeholder title="My Profile" /></ProtectedRoute>} />

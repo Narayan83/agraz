@@ -496,6 +496,130 @@ func deleteLaborLinkedToIE(uid uint, ieID uint) {
 	}
 }
 
+// createLaborPayableFromIE mirrors a Farming Expense → Labour income/expense row into
+// labour management as a payable work entry. Rate = amount / days.
+// A linked payment row reuses the existing IE so balances settle without a duplicate expense.
+func createLaborPayableFromIE(uid uint, ie *models.IncomeExpense, raw map[string]interface{}) {
+	if laborDB == nil || ie == nil || ie.ID == 0 {
+		return
+	}
+	if ie.Type != "Expense" || ie.Category != "Farming Expense" || ie.SubCategory != "Labour" {
+		return
+	}
+	name := strings.TrimSpace(ie.Name)
+	if name == "" {
+		return
+	}
+	amount := ie.Amount.InexactFloat64()
+	if amount <= 0 {
+		return
+	}
+
+	workType := "Daily Wages"
+	location := "Farm"
+	category := "Plucking"
+	shift := "fullday"
+	labourHead := ""
+	days := 1.0
+
+	var laborMap map[string]interface{}
+	if v, ok := raw["labor"].(map[string]interface{}); ok {
+		laborMap = v
+	} else if v, ok := raw["labour"].(map[string]interface{}); ok {
+		laborMap = v
+	}
+	if laborMap != nil {
+		if s := strFromAny(laborMap["work_type"]); s != "" {
+			workType = s
+		}
+		if s := strFromAny(laborMap["location"]); s != "" {
+			location = s
+		}
+		if s := strFromAny(laborMap["category"]); s != "" {
+			category = s
+		}
+		if s := strFromAny(laborMap["shift"]); s != "" {
+			shift = s
+		}
+		if s := strFromAny(laborMap["labour_head"]); s != "" {
+			labourHead = s
+		}
+		if d, ok := toFloat64(laborMap["days"]); ok && d > 0 {
+			days = d
+		} else if d, ok := toFloat64(laborMap["hours"]); ok && d > 0 {
+			days = d
+		}
+	}
+	if !validWorkTypes[workType] {
+		workType = "Daily Wages"
+	}
+	if workType != "Contract" {
+		labourHead = ""
+	}
+	if workType == "Contract" && strings.TrimSpace(labourHead) == "" {
+		return
+	}
+	if days <= 0 {
+		days = 1
+	}
+	rate := amount / days
+
+	var mobile *string
+	if m := strings.TrimSpace(ie.Mobile); m != "" {
+		mobile = &m
+	}
+	narr := ""
+	if ie.Narration != nil {
+		narr = strings.TrimSpace(*ie.Narration)
+	}
+
+	payable := models.Labor{
+		UserID:          uid,
+		Name:            name,
+		Wage:            decimal.NewFromFloat(rate),
+		Hours:           decimal.NewFromFloat(days),
+		NumberOfLabours: 1,
+		Shift:           shift,
+		Category:        category,
+		Gender:          "Male",
+		WorkType:        workType,
+		LabourHead:      labourHead,
+		Location:        location,
+		Narration:       narr,
+		Date:            ie.Date,
+		Mobile:          mobile,
+		EntryKind:       "payable",
+	}
+	if err := laborDB.Create(&payable).Error; err != nil {
+		return
+	}
+	syncLaborShare(uid, payable, nil)
+
+	// Settlement payment linked to the IE already created by the expense form.
+	payment := models.Labor{
+		UserID:          uid,
+		Name:            name,
+		Wage:            decimal.NewFromFloat(amount),
+		Hours:           decimal.NewFromInt(1),
+		NumberOfLabours: 1,
+		Shift:           "fullday",
+		Category:        "Payment",
+		Gender:          "Male",
+		WorkType:        workType,
+		LabourHead:      labourHead,
+		Location:        location,
+		Narration:       narr,
+		Date:            ie.Date,
+		Mobile:          mobile,
+		EntryKind:       "payment",
+		IncomeExpenseID: &ie.ID,
+	}
+	if err := laborDB.Create(&payment).Error; err != nil {
+		return
+	}
+	syncLaborShare(uid, payment, nil)
+}
+
 // createLaborPaymentRow creates a payment labour entry linked to a Farming Expense / Labour IE row.
 func createLaborPaymentRow(uid uint, body *laborPayload, paidAmount float64) (*models.Labor, error) {
 	ie, err := createLaborExpenseIE(uid, body.Name, body.Mobile, paidAmount, body.Date.Time, body.Narration)

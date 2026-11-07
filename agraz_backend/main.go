@@ -61,6 +61,7 @@ func init() {
 		&models.EcomCart{},
 		&models.EcomCartItem{},
 		&models.StorefrontBannerSlide{},
+		&models.Advertisement{},
 		&models.GovDepartment{},
 		&models.GovCrop{},
 		&models.GovFacility{},
@@ -127,6 +128,7 @@ func main() {
 	handler.SetEcomDB(initializers.DB)
 	handler.SetVendorDB(initializers.DB)
 	handler.SetStorefrontBannerDB(initializers.DB)
+	handler.SetAdvertisementDB(initializers.DB)
 	handler.SetGovDB(initializers.DB)
 	handler.SetMarketDB(initializers.DB)
 	handler.SetLandRtcDB(initializers.DB)
@@ -179,6 +181,11 @@ func main() {
 	api.Get("/store/products/:id", handler.GetStoreProductByID)
 	api.Get("/store/vendors", handler.GetStoreVendors)
 	api.Get("/store/banners", handler.GetStoreBannersPublic)
+
+	// Home advertisements (public slider for Flutter)
+	api.Get("/advertisements/active", handler.GetActiveAdvertisementsPublic)
+	api.Post("/advertisements/:id/impression", handler.RecordAdvertisementImpressionPublic)
+	api.Post("/advertisements/:id/click", handler.RecordAdvertisementClickPublic)
 
 	// Government facilities (public browse for Flutter)
 	api.Get("/gov/departments", handler.GetGovDepartments)
@@ -527,6 +534,14 @@ func main() {
 	api.Put("/admin/storefront/banners/reorder", handler.AdminReorderStorefrontBanners)
 	api.Put("/admin/storefront/banners/:id", handler.AdminUpdateStorefrontBanner)
 	api.Delete("/admin/storefront/banners/:id", handler.AdminDeleteStorefrontBanner)
+
+	// Admin home advertisements
+	api.Get("/admin/advertisements", handler.AdminListAdvertisements)
+	api.Post("/admin/advertisements", handler.AdminCreateAdvertisement)
+	api.Put("/admin/advertisements/reorder", handler.AdminReorderAdvertisements)
+	api.Put("/admin/advertisements/:id", handler.AdminUpdateAdvertisement)
+	api.Patch("/admin/advertisements/:id/status", handler.AdminPatchAdvertisementStatus)
+	api.Delete("/admin/advertisements/:id", handler.AdminDeleteAdvertisement)
 
 	// Admin government facilities
 	api.Get("/admin/gov/departments", handler.AdminGetGovDepartments)
