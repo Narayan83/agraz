@@ -121,6 +121,7 @@ func GetLaborPeoplePublic(c *fiber.Ctx) error {
 	pay := `labors.entry_kind = 'payment'`
 	dbq := laborDB.Table("labors").
 		Where("labors.user_id = ?", uid).
+		Joins("LEFT JOIN labor_extras ex ON ex.labor_id = labors.id AND ex.user_id = labors.user_id").
 		Joins(fmt.Sprintf("LEFT JOIN (%s) r ON r.person_key = %s", laborResetDistinctSQL(), pk), uid).
 		Select(fmt.Sprintf(`
 			%s as person_key,
@@ -129,7 +130,7 @@ func GetLaborPeoplePublic(c *fiber.Ctx) error {
 			MAX(labors.gender) as gender,
 			COUNT(*) FILTER (WHERE (%s) AND (%s)) as entry_count,
 			COALESCE(SUM(CASE WHEN (%s) AND (%s) THEN labors.hours ELSE 0 END),0)::float8 as total_hours,
-			COALESCE(SUM(CASE WHEN (%s) AND (%s) THEN labors.wage * labors.hours ELSE 0 END),0)::float8
+			COALESCE(SUM(CASE WHEN (%s) AND (%s) THEN labors.wage * labors.hours + COALESCE(ex.rent,0) + COALESCE(ex.food,0) + COALESCE(ex.bonus,0) ELSE 0 END),0)::float8
 				+ COALESCE(MAX(CASE WHEN r.reset_kind = 'opening' AND r.reset_amt > 0 THEN r.reset_amt ELSE 0 END),0) as total_payable,
 			COALESCE(SUM(CASE WHEN (%s) AND (%s) THEN labors.wage * labors.hours ELSE 0 END),0)::float8
 				+ COALESCE(MAX(CASE WHEN r.reset_kind = 'opening' AND r.reset_amt < 0 THEN -r.reset_amt ELSE 0 END),0) as total_paid,
@@ -196,40 +197,28 @@ func GetLaborBalancePublic(c *fiber.Ctx) error {
 	base := scopeByUserID(laborDB.Model(&models.Labor{}), uid)
 	base = applyLaborPersonFilter(base, mobile, name)
 
-	sumsQ := base.Session(&gorm.Session{})
-	reset, hasReset := findLaborAccountReset(base.Session(&gorm.Session{}))
-	seedPayable, seedPaid := 0.0, 0.0
-	if hasReset {
-		seedPayable, seedPaid = laborSeedFromReset(reset.Kind, reset.Amt)
-		sumsQ = applyLaborAfterReset(sumsQ, reset)
-	}
-
-	type row struct {
-		Payable float64 `gorm:"column:payable"`
-		Paid    float64 `gorm:"column:paid"`
-	}
-	var r row
-	if err := sumsQ.Select(fmt.Sprintf(`
-		COALESCE(SUM(CASE WHEN %s THEN wage * hours ELSE 0 END),0)::float8 as payable,
-		COALESCE(SUM(CASE WHEN entry_kind = 'payment' THEN wage * hours ELSE 0 END),0)::float8 as paid
-	`, laborWorkKindSQL)).Scan(&r).Error; err != nil {
+	var rows []models.Labor
+	if err := base.Preload("Extra").Find(&rows).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-
-	balance := (seedPayable + r.Payable) - (seedPaid + r.Paid)
-	payableShown := balance
-	if payableShown < 0 {
-		payableShown = 0
+	totals := laborAccountTotals(rows, nil, nil)
+	balance := totals.Payable - totals.Paid
+	outstanding := balance
+	if outstanding < 0 {
+		outstanding = 0
 	}
 	receivable := 0.0
 	if balance < 0 {
 		receivable = -balance
 	}
 	return c.JSON(fiber.Map{
-		"payable":    payableShown,
-		"paid":       seedPaid + r.Paid,
-		"balance":    balance,
-		"receivable": receivable,
+		"payable":       outstanding,
+		"paid":          totals.Paid,
+		"total_payable": totals.Payable,
+		"total_paid":    totals.Paid,
+		"balance":       balance,
+		"receivable":    receivable,
+		"hours":         totals.Hours,
 	})
 }
 
@@ -328,12 +317,125 @@ func GetLaborReportsPublic(c *fiber.Ctx) error {
 
 func applyLaborPersonFilter(q *gorm.DB, mobile, name string) *gorm.DB {
 	if mobile != "" {
-		return q.Where("mobile = ?", mobile)
+		return q.Where("TRIM(mobile) = ?", strings.TrimSpace(mobile))
 	}
 	if name != "" {
-		return q.Where("LOWER(TRIM(name)) = ?", strings.ToLower(strings.TrimSpace(name)))
+		// Same split as the people directory: a phone number is its own account.
+		return q.Where(
+			"LOWER(TRIM(name)) = ? AND (mobile IS NULL OR TRIM(mobile) = '')",
+			strings.ToLower(strings.TrimSpace(name)),
+		)
 	}
 	return q
+}
+
+// laborAccountTotals is the balance shared by History and the entry screen.
+// Each mobile, or each name without a mobile, restarts at its latest opening
+// or tally. Work payable includes rent, food and bonus.
+func laborAccountTotals(rows []models.Labor, from, to *time.Time) laborMoneyTotals {
+	groups := map[string][]models.Labor{}
+	for _, row := range rows {
+		key := laborPersonKeyOf(row)
+		groups[key] = append(groups[key], row)
+	}
+	var out laborMoneyTotals
+	for _, g := range groups {
+		t := laborOneAccountTotals(g, from, to)
+		out.Payable += t.Payable
+		out.Paid += t.Paid
+		out.Hours += t.Hours
+	}
+	return out
+}
+
+type laborMoneyTotals struct {
+	Payable float64
+	Paid    float64
+	Hours   float64
+}
+
+func laborPersonKeyOf(row models.Labor) string {
+	if row.Mobile != nil {
+		if m := strings.TrimSpace(*row.Mobile); m != "" {
+			return "m:" + m
+		}
+	}
+	return "n:" + strings.ToLower(strings.TrimSpace(row.Name))
+}
+
+func laborCalendarDay(t time.Time) time.Time {
+	y, m, d := t.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+}
+
+func laborOneAccountTotals(rows []models.Labor, from, to *time.Time) laborMoneyTotals {
+	scoped := make([]models.Labor, 0, len(rows))
+	for _, r := range rows {
+		if from != nil || to != nil {
+			d := laborCalendarDay(r.Date)
+			if from != nil && d.Before(laborCalendarDay(*from)) {
+				continue
+			}
+			if to != nil && d.After(laborCalendarDay(*to)) {
+				continue
+			}
+		}
+		scoped = append(scoped, r)
+	}
+
+	resetIdx := -1
+	for i := range scoped {
+		if !isLaborResetKind(scoped[i].EntryKind) {
+			continue
+		}
+		if resetIdx < 0 || laborResetLater(scoped[i], scoped[resetIdx]) {
+			resetIdx = i
+		}
+	}
+
+	var payable, paid, hours float64
+	if resetIdx >= 0 {
+		reset := scoped[resetIdx]
+		amt := reset.Wage.InexactFloat64() * reset.Hours.InexactFloat64()
+		payable, paid = laborSeedFromReset(reset.EntryKind, amt)
+	}
+	for _, r := range scoped {
+		if resetIdx >= 0 {
+			d := laborCalendarDay(r.Date)
+			rd := laborCalendarDay(scoped[resetIdx].Date)
+			if d.Before(rd) || (d.Equal(rd) && r.ID <= scoped[resetIdx].ID) {
+				continue
+			}
+		}
+		amt := r.Wage.InexactFloat64() * r.Hours.InexactFloat64()
+		switch normalizeLaborEntryKind(r.EntryKind) {
+		case "payable":
+			extra := 0.0
+			if r.Extra != nil {
+				extra = r.Extra.Rent.InexactFloat64() + r.Extra.Food.InexactFloat64() + r.Extra.Bonus.InexactFloat64()
+			}
+			payable += amt + extra
+			hours += r.Hours.InexactFloat64()
+		case "payment":
+			if amt < 0 {
+				amt = -amt
+			}
+			paid += amt
+		}
+	}
+	return laborMoneyTotals{Payable: payable, Paid: paid, Hours: hours}
+}
+
+func laborResetLater(a, b models.Labor) bool {
+	da := laborCalendarDay(a.Date)
+	db := laborCalendarDay(b.Date)
+	if da.After(db) {
+		return true
+	}
+	if da.Equal(db) && a.ID >= b.ID {
+		return true
+	}
+	return false
 }
 
 type laborSumAgg struct {

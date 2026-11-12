@@ -823,11 +823,15 @@ func GetLabors(c *fiber.Ctx) error {
 	// mobile = exact person. name is ILIKE for typeahead (labour entry),
 	// unless exact=1 (History one-person filter / balance-style match).
 	if m := strings.TrimSpace(c.Query("mobile")); m != "" {
-		q = q.Where("mobile = ?", m)
+		q = q.Where("TRIM(mobile) = ?", m)
 	} else if name := strings.TrimSpace(c.Query("name")); name != "" {
 		exact := c.Query("exact") == "1" || strings.EqualFold(c.Query("exact"), "true")
 		if exact {
-			q = q.Where("LOWER(TRIM(name)) = ?", strings.ToLower(name))
+			// Name-only account. Rows that carry a mobile belong to that phone.
+			q = q.Where(
+				"LOWER(TRIM(name)) = ? AND (mobile IS NULL OR TRIM(mobile) = '')",
+				strings.ToLower(name),
+			)
 		} else {
 			q = q.Where("name ILIKE ?", "%"+name+"%")
 		}
@@ -851,11 +855,16 @@ func GetLabors(c *fiber.Ctx) error {
 	if ek := strings.TrimSpace(c.Query("entry_kind")); ek != "" {
 		q = q.Where("entry_kind = ?", normalizeLaborEntryKind(ek))
 	}
-	if from := c.Query("from"); from != "" {
+	if from := strings.TrimSpace(c.Query("from")); from != "" {
 		q = q.Where("date >= ?", from)
 	}
-	if to := c.Query("to"); to != "" {
-		q = q.Where("date <= ?", to)
+	if to := strings.TrimSpace(c.Query("to")); to != "" {
+		// A date-only "to" includes that whole day, not just midnight.
+		if t, err := time.Parse("2006-01-02", to); err == nil {
+			q = q.Where("date < ?", t.AddDate(0, 0, 1).Format("2006-01-02"))
+		} else {
+			q = q.Where("date <= ?", to)
+		}
 	}
 	if err := q.Count(&total).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})

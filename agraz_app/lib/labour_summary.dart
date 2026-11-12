@@ -18,6 +18,13 @@ String formatLaborHours(double n) => n == n.roundToDouble()
     ? n.toStringAsFixed(0)
     : n.toStringAsFixed(1);
 
+String formatLaborMoney(double v) {
+  final a = v.abs();
+  final text =
+      a == a.roundToDouble() ? a.toStringAsFixed(0) : a.toStringAsFixed(2);
+  return '₹$text';
+}
+
 class LaborTotals {
   final double work;
   final double paid;
@@ -30,6 +37,32 @@ double _asLaborNum(dynamic v) {
   if (v == null) return 0;
   if (v is num) return v.toDouble();
   return double.tryParse(v.toString()) ?? 0;
+}
+
+/// Rent + food + bonus stored on a labour row. These are part of what is owed.
+double laborEntryExtras(Map<String, dynamic> e) {
+  final extra = e['extra'];
+  if (extra is! Map) return 0;
+  return _asLaborNum(extra['rent']) +
+      _asLaborNum(extra['food']) +
+      _asLaborNum(extra['bonus']);
+}
+
+/// Money movement on one row. Work includes extras. Payments and openings do not.
+double laborEntryValue(Map<String, dynamic> e) {
+  final amt = _asLaborNum(e['wage']) * _asLaborNum(e['hours']);
+  if (laborIsWorkKind(e['entry_kind']?.toString())) {
+    return amt + laborEntryExtras(e);
+  }
+  return amt;
+}
+
+/// Same identity as the server: mobile when present, otherwise the name with no mobile.
+String laborAccountKey(Map<String, dynamic> e) {
+  final mobile = (e['mobile']?.toString() ?? '').trim();
+  if (mobile.isNotEmpty) return 'm:$mobile';
+  final name = (e['name']?.toString() ?? '').trim().toLowerCase();
+  return 'n:$name';
 }
 
 DateTime? _laborDay(dynamic v) {
@@ -71,7 +104,7 @@ LaborTotals summarizeLaborEntries(
           (d == resetDay && id >= resetId)) {
         resetDay = d;
         resetId = id;
-        final amt = _asLaborNum(e['wage']) * _asLaborNum(e['hours']);
+        final amt = laborEntryValue(e);
         if ((e['entry_kind']?.toString() ?? '').toLowerCase() == 'opening') {
           if (amt >= 0) {
             seedWork = amt;
@@ -103,7 +136,7 @@ LaborTotals summarizeLaborEntries(
         continue;
       }
     }
-    final amt = _asLaborNum(e['wage']) * _asLaborNum(e['hours']);
+    final amt = laborEntryValue(e);
     final kind = e['entry_kind']?.toString();
     if (laborIsWorkKind(kind)) {
       work += amt;
@@ -117,6 +150,43 @@ LaborTotals summarizeLaborEntries(
         paid += -amt;
       }
     }
+  }
+  return LaborTotals(work: work, paid: paid, hours: hours);
+}
+
+/// Balance for every labour account in [entries].
+/// Each mobile, or each name that has no mobile, is totalled on its own.
+/// A date window only includes rows inside it, then applies an opening/tally
+/// that falls inside that same window. With no window, the latest opening or
+/// tally restarts the whole account.
+LaborTotals summarizeLaborAccounts(
+  Iterable<Map<String, dynamic>> entries, {
+  DateTime? from,
+  DateTime? to,
+}) {
+  final groups = <String, List<Map<String, dynamic>>>{};
+  for (final e in entries) {
+    groups.putIfAbsent(laborAccountKey(e), () => []).add(e);
+  }
+  var work = 0.0, paid = 0.0, hours = 0.0;
+  final fromD =
+      from == null ? null : DateTime(from.year, from.month, from.day);
+  final toD = to == null ? null : DateTime(to.year, to.month, to.day);
+  for (final g in groups.values) {
+    final scoped = <Map<String, dynamic>>[];
+    for (final e in g) {
+      if (fromD != null || toD != null) {
+        final d = _laborDay(e['date']);
+        if (d == null) continue;
+        if (fromD != null && d.isBefore(fromD)) continue;
+        if (toD != null && d.isAfter(toD)) continue;
+      }
+      scoped.add(e);
+    }
+    final tot = summarizeLaborEntries(scoped, applyAccountReset: true);
+    work += tot.work;
+    paid += tot.paid;
+    hours += tot.hours;
   }
   return LaborTotals(work: work, paid: paid, hours: hours);
 }
@@ -213,11 +283,12 @@ bool laborEntryBelongsToPerson(
   required String name,
   String? mobile,
 }) {
-  final m = mobile?.trim();
+  final m = mobile?.trim() ?? '';
   final em = e['mobile']?.toString().trim() ?? '';
-  if (m != null && m.isNotEmpty) {
-    if (em.isNotEmpty) return em == m;
-  }
+  // A phone number is its own account, even when the spelling of the name differs.
+  if (m.isNotEmpty) return em == m;
+  // Name with no phone must not absorb rows that belong to a mobile account.
+  if (em.isNotEmpty) return false;
   final en = (e['name']?.toString() ?? '').trim().toLowerCase();
   return en == name.trim().toLowerCase();
 }
@@ -353,7 +424,7 @@ LaborPeriodStatement laborPeriodStatement(
         _laborDay(e['date']) == _laborDay(excludedOpening['date'])) {
       continue;
     }
-    final amt = _asLaborNum(e['wage']) * _asLaborNum(e['hours']);
+    final amt = laborEntryValue(e);
     final kind = e['entry_kind']?.toString();
     if (laborIsWorkKind(kind)) {
       work += amt;
@@ -1286,6 +1357,20 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
       _error = null;
     });
     try {
+      final entriesFuture = _api.fetchAllLabors(
+        mobile: _mobile,
+        name: _mobile == null ? widget.name : null,
+        exactName: _mobile == null,
+        category: _filterCategory,
+      );
+      final ledgerFuture =
+          _filterCategory == null || _filterCategory!.isEmpty
+              ? entriesFuture
+              : _api.fetchAllLabors(
+                  mobile: _mobile,
+                  name: _mobile == null ? widget.name : null,
+                  exactName: _mobile == null,
+                );
       final results = await Future.wait([
         _api.fetchLaborReports(
           year: _selectedMonth.year,
@@ -1295,36 +1380,28 @@ class _LabourerDetailPageState extends State<LabourerDetailPage>
           name: _mobile == null ? widget.name : null,
           category: _filterCategory,
         ),
-        _api.fetchLabors(
-          mobile: _mobile,
-          name: _mobile == null ? widget.name : null,
-          category: _filterCategory,
-          limit: 500,
-        ),
-        _api.fetchLaborBalance(
-          mobile: _mobile,
-          name: _mobile == null ? widget.name : widget.name,
-        ),
+        entriesFuture,
+        ledgerFuture,
         if (_mobile != null) _api.fetchLaborRates(mobile: _mobile),
       ]);
       if (!mounted) return;
-      final bal = results[2] as Map<String, dynamic>?;
+      bool mine(Map<String, dynamic> e) => laborEntryBelongsToPerson(
+            e,
+            name: widget.name,
+            mobile: _mobile,
+          );
+      final entries = (results[1] as List<Map<String, dynamic>>)
+          .where(mine)
+          .toList();
+      final ledger = (results[2] as List<Map<String, dynamic>>)
+          .where(mine)
+          .toList();
+      final net = summarizeLaborAccounts(ledger).net;
       setState(() {
         _report = results[0] as Map<String, dynamic>;
-        _entries = results[1] as List<Map<String, dynamic>>;
-        if (bal != null) {
-          _totalPayable = _num(bal['payable']);
-          _totalReceivable = _num(bal['receivable']);
-        } else {
-          final allSum = _map('summary');
-          final o = _outstandingFromTotals(
-            allSum['total_payable'],
-            allSum['total_paid'],
-            balance: allSum['balance'],
-          );
-          _totalPayable = o.$1;
-          _totalReceivable = o.$2;
-        }
+        _entries = entries;
+        _totalPayable = net > 0 ? net : 0;
+        _totalReceivable = net < 0 ? -net : 0;
         if (results.length > 3) {
           _rates = results[3] as List<Map<String, dynamic>>;
         }
@@ -3117,20 +3194,31 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
     final selected = _selectedPerson;
     final name = selected?['name']?.toString().trim();
     final mobile = selected?['mobile']?.toString().trim();
-    final rows = await _api.fetchLabors(
-      name: (name != null && name.isNotEmpty) ? name : null,
-      mobile: (mobile != null && mobile.isNotEmpty) ? mobile : null,
-      exactName: selected != null,
+    final hasMobile = mobile != null && mobile.isNotEmpty;
+    final rows = await _api.fetchAllLabors(
+      name: !hasMobile && name != null && name.isNotEmpty ? name : null,
+      mobile: hasMobile ? mobile : null,
+      exactName: selected != null && !hasMobile,
       from: _fromDate == null
           ? null
           : DateFormat('yyyy-MM-dd').format(_fromDate!),
       to: _toDate == null ? null : DateFormat('yyyy-MM-dd').format(_toDate!),
       category: _filterCategory,
-      limit: 300,
     );
     if (!mounted) return;
+    final scoped = selected == null
+        ? rows
+        : rows
+            .where(
+              (e) => laborEntryBelongsToPerson(
+                e,
+                name: name ?? '',
+                mobile: hasMobile ? mobile : null,
+              ),
+            )
+            .toList();
     setState(() {
-      _entries = rows;
+      _entries = scoped;
       _sortEntries();
       _loading = false;
     });
@@ -3292,31 +3380,14 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
     );
   }
 
-  double get _totalCredit {
-    var sum = 0.0;
-    for (final e in _entries) {
-      final kind = (e['entry_kind']?.toString() ?? 'payable').toLowerCase();
-      final amt = _num(e['wage']) * _num(e['hours']);
-      if (kind == 'payment' || kind == 'tally') continue;
-      if (kind == 'opening' && amt < 0) continue;
-      sum += amt;
-    }
-    return sum;
-  }
+  LaborTotals get _accountTotals => summarizeLaborAccounts(
+        _entries,
+        from: _fromDate,
+        to: _toDate,
+      );
 
-  double get _totalDebit {
-    var sum = 0.0;
-    for (final e in _entries) {
-      final kind = (e['entry_kind']?.toString() ?? 'payable').toLowerCase();
-      final amt = _num(e['wage']) * _num(e['hours']);
-      if (kind == 'payment' || (kind == 'opening' && amt < 0)) {
-        sum += amt.abs();
-      }
-    }
-    return sum;
-  }
-
-  String _money(double v) => '₹${v.toStringAsFixed(v == v.roundToDouble() ? 0 : 2)}';
+  String _money(double v) =>
+      '₹${v.toStringAsFixed(v == v.roundToDouble() ? 0 : 2)}';
 
   String _entryKindLabel(String? kind, [double amount = 0]) {
     final k = (kind ?? 'payable').toLowerCase();
@@ -3707,7 +3778,7 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                   Expanded(
                     child: _summaryBox(
                       tr('Payable'),
-                      _loading ? '…' : _money(_totalCredit),
+                      _loading ? '…' : _money(_accountTotals.work),
                       AppColors.income,
                       Icons.trending_up_rounded,
                     ),
@@ -3716,7 +3787,7 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                   Expanded(
                     child: _summaryBox(
                       tr('Payment'),
-                      _loading ? '…' : _money(_totalDebit),
+                      _loading ? '…' : _money(_accountTotals.paid),
                       AppColors.expense,
                       Icons.trending_down_rounded,
                     ),
@@ -3725,7 +3796,7 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                   Expanded(
                     child: _summaryBox(
                       tr('Balance'),
-                      _loading ? '…' : _money(_totalCredit - _totalDebit),
+                      _loading ? '…' : _money(_accountTotals.net),
                       AppColors.primary,
                       Icons.account_balance_wallet_rounded,
                     ),
@@ -3742,7 +3813,7 @@ class _LaborHistoryPageState extends State<LaborHistoryPage> {
                       ? tr('Loading…')
                       : laborNumberOfLabourText(
                           formatLaborHours(
-                              summarizeLaborEntries(_entries).hours)),
+                              _accountTotals.hours)),
                   style: AppText.caption,
                 ),
               ),

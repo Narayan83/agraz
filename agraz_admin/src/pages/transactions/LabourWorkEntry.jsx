@@ -21,6 +21,7 @@ const LabourWorkEntry = () => {
   const list = useTxnList(rows, {
     searchKeys: ['name', 'mobile', 'category', 'narration', 'shift'],
     defaultSort: 'date_desc',
+    nameKey: 'name',
   });
 
   const load = useCallback(async () => {
@@ -79,7 +80,7 @@ const LabourWorkEntry = () => {
         </button>
       </div>
 
-      <TxnToolbar list={list} placeholder="Search name, category…" />
+      <TxnToolbar list={list} nameSelect placeholder="Type a name, then select…" />
 
       <div className="sr-list-card">
         {loading ? (

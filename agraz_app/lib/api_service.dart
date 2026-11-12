@@ -363,11 +363,13 @@ class ApiService {
     String? entryKind,
     bool exactName = false,
     int limit = 100,
+    int page = 1,
   }) async {
     try {
       final uri = Uri.parse('$BASE_URL/api/labors').replace(
         queryParameters: {
           'limit': limit.toString(),
+          'page': page.toString(),
           if (mobile != null && mobile.isNotEmpty) 'mobile': mobile,
           if (name != null && name.isNotEmpty) 'name': name,
           if (exactName) 'exact': '1',
@@ -393,6 +395,45 @@ class ApiService {
       debugPrint('Error fetching labors: $e');
       return [];
     }
+  }
+
+  /// Every labour row for the filter. Balance must not stop at the first page.
+  Future<List<Map<String, dynamic>>> fetchAllLabors({
+    String? mobile,
+    String? name,
+    String? q,
+    String? from,
+    String? to,
+    String? category,
+    String? entryKind,
+    bool exactName = false,
+  }) async {
+    const pageSize = 400;
+    final all = <Map<String, dynamic>>[];
+    for (var page = 1; page <= 50; page++) {
+      final batch = await fetchLabors(
+        mobile: mobile,
+        name: name,
+        q: q,
+        from: from,
+        to: to,
+        category: category,
+        entryKind: entryKind,
+        exactName: exactName,
+        limit: pageSize,
+        page: page,
+      );
+      if (batch.isEmpty) break;
+      // A server that ignores page would repeat the first page forever.
+      if (page > 1 &&
+          batch.first['id'] != null &&
+          batch.first['id'] == all.first['id']) {
+        break;
+      }
+      all.addAll(batch);
+      if (batch.length < pageSize) break;
+    }
+    return all;
   }
 
   /// Payable / paid / balance / receivable for one labourer.

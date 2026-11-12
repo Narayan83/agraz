@@ -52,6 +52,56 @@ func getAnalyticsEntries(t *testing.T, app *fiber.App, path string) map[string]a
 	return body
 }
 
+func TestEntryAnalyticsSummaryCountsLaborIncomeAndFeedback(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:entry-analytics-summary-"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&models.IncomeExpense{}, &models.Labor{}, &models.AppFeedback{}, &models.User{}); err != nil {
+		t.Fatal(err)
+	}
+	SetIncomeExpenseDB(db)
+	SetLaborDB(db)
+	SetFeedbackDB(db)
+	SetUserDB(db)
+
+	user := models.User{Email: "farmer@example.com", Firstname: "Geeta", Lastname: "Patagar", Password: "x"}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatal(err)
+	}
+	day := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	if err := db.Create(&models.Labor{
+		UserID: user.ID, Name: "Geeta", Wage: decimal.NewFromInt(400), Hours: decimal.NewFromInt(1),
+		Shift: "fullday", Category: "Harvest", Date: day, EntryKind: "payable",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&models.IncomeExpense{
+		UserID: user.ID, Type: "Income", Category: "Crop", SubCategory: "Sale",
+		Amount: decimal.NewFromInt(250), Mobile: "9000000001", Date: day, Name: "Buyer", TransactionMode: "Cash",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&models.AppFeedback{
+		UserID: user.ID, UserName: "Geeta", Message: "ok",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	app := fiber.New()
+	app.Get("/api/admin/entry-analytics", AdminEntryAnalytics)
+	body := getAnalyticsEntries(t, app, "/api/admin/entry-analytics")
+	totals := body["totals"].(map[string]any)
+	if totals["labors"].(float64) != 1 || totals["income_expenses"].(float64) != 1 || totals["feedbacks"].(float64) != 1 {
+		t.Fatalf("unexpected totals: %v", totals)
+	}
+	if len(body["by_user"].([]any)) != 1 {
+		t.Fatalf("expected one user row, got %v", body["by_user"])
+	}
+}
+
 func TestEntryAnalyticsLaborReturnsAllRowsAndFiltersByPerson(t *testing.T) {
 	app, db := setupEntryAnalyticsEntriesApp(t)
 	day := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)

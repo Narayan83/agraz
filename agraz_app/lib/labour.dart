@@ -76,10 +76,9 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   /// Top mode: Payable / Labour Entry, Payment, or OB/Tally.
   String _entryMode = 'Payable';
   int _locationDropdownEpoch = 0;
-  /// Outstanding balance for selected labourer (green chip).
+  /// Outstanding balance for the selected labour account (green chip).
+  /// Positive means we still owe them. Negative means they were overpaid.
   double? _labourBalance;
-  double? _labourPayable;
-  double? _labourReceivable;
   /// Optional extras (rent/food/bonus) applied to next pending labourer.
   double _extraRent = 0;
   double _extraFood = 0;
@@ -213,8 +212,6 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       _nameSuggestions = [];
       _nameSuggestionGenders = {};
       _labourBalance = null;
-      _labourPayable = null;
-      _labourReceivable = null;
       return;
     }
     // Name typeahead uses /labors/people (same as History). Rates/balance load
@@ -236,8 +233,6 @@ class _LaborManagementPageState extends State<LaborManagementPage>
     _nameSuggestionGenders = {};
     _suppressSuggestions = false;
     _labourBalance = null;
-    _labourPayable = null;
-    _labourReceivable = null;
   }
 
   void _resetLabourEntryForm() {
@@ -279,33 +274,30 @@ class _LaborManagementPageState extends State<LaborManagementPage>
       if (mounted) {
         setState(() {
           _labourBalance = null;
-          _labourPayable = null;
-          _labourReceivable = null;
         });
       }
       return;
     }
-    final bal = await _api.fetchLaborBalance(
+    final rows = await _api.fetchAllLabors(
       mobile: m.isNotEmpty ? m : null,
       name: m.isEmpty ? n : null,
+      exactName: m.isEmpty,
     );
     if (!mounted) return;
+    if (_mobileController.text.trim() != m) return;
+    if (m.isEmpty && _nameController.text.trim() != n) return;
+    final mine = rows
+        .where(
+          (e) => laborEntryBelongsToPerson(
+            e,
+            name: n,
+            mobile: m.isNotEmpty ? m : null,
+          ),
+        )
+        .toList();
+    final totals = summarizeLaborAccounts(mine);
     setState(() {
-      if (bal == null) {
-        _labourBalance = null;
-        _labourPayable = null;
-        _labourReceivable = null;
-      } else {
-        _labourBalance = (bal['balance'] is num)
-            ? (bal['balance'] as num).toDouble()
-            : double.tryParse('${bal['balance']}');
-        _labourPayable = (bal['payable'] is num)
-            ? (bal['payable'] as num).toDouble()
-            : double.tryParse('${bal['payable']}');
-        _labourReceivable = (bal['receivable'] is num)
-            ? (bal['receivable'] as num).toDouble()
-            : double.tryParse('${bal['receivable']}');
-      }
+      _labourBalance = totals.net;
     });
   }
 
@@ -350,9 +342,10 @@ class _LaborManagementPageState extends State<LaborManagementPage>
         }
       }
       if (exact != null) {
-        final mob = exact['mobile']?.toString().trim() ?? '';
         await _loadRatesForLabourer(
-          mobile: mob.length == 10 ? mob : null,
+          mobile: _mobileController.text.trim().length == 10
+              ? _mobileController.text.trim()
+              : null,
           name: exact['name']?.toString().trim(),
         );
       }
@@ -2114,13 +2107,11 @@ class _LaborManagementPageState extends State<LaborManagementPage>
   }
 
   Widget _buildBalanceChip() {
-    final payable = _labourPayable ?? 0;
-    final receivable = _labourReceivable ?? 0;
-    final bal = _labourBalance ?? 0;
-    final label = receivable > 0
-        ? '${tr('Receivable')}: ₹${receivable.toStringAsFixed(0)}'
-        : '${tr('Payable')}: ₹${payable > 0 ? payable.toStringAsFixed(0) : bal.toStringAsFixed(0)}';
-    if (_labourBalance == null) return const SizedBox.shrink();
+    final bal = _labourBalance;
+    if (bal == null) return const SizedBox.shrink();
+    final label = bal < 0
+        ? '${tr('Receivable')}: ${formatLaborMoney(bal)}'
+        : '${tr('Payable')}: ${formatLaborMoney(bal)}';
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(

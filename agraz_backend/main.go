@@ -22,7 +22,7 @@ func init() {
 	// Ensure e-commerce tables exist on startup.
 	// This project uses AutoMigrate only in a separate migration entrypoint today,
 	// so we keep e-commerce initialization self-contained for the shopping cart feature.
-	_ = initializers.DB.AutoMigrate(
+	if err := initializers.DB.AutoMigrate(
 		&models.Tenant{},
 		&models.User{},
 		&models.PasswordResetCode{},
@@ -93,7 +93,9 @@ func init() {
 		&models.CmLabourWork{},
 		&models.CmStockIssue{},
 		&models.CmAuditLog{},
-	)
+	); err != nil {
+		log.Printf("schema migrate: %v", err)
+	}
 	if err := models.EnsureLaborSearchIndexes(initializers.DB); err != nil {
 		log.Printf("Labor search indexes: %v", err)
 	}
@@ -228,6 +230,7 @@ func main() {
 	api.Put("/me/password", handler.ChangeMyPassword)
 	api.Get("/my-menus", handler.GetCurrentUserMenuTree)
 	api.Get("/dashboard/stats", handler.GetDashboardStats)
+	api.Get("/admin/sql-backup", handler.DownloadSQLBackup)
 
 	api.Get("/daily_summary", handler.GetDailySummary)
 

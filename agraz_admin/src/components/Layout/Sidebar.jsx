@@ -39,12 +39,13 @@ import {
   Wallet,
   Briefcase,
   Wrench,
+  Database,
 } from "lucide-react";
 import "./Sidebar.css";
 
 import { getMyMenus } from "../../api/api";
 import { logoutAndRedirect } from "../../lib/authStorage";
-import { isStaffUser } from "../../lib/transactions";
+import { isStaffUser, isSuperAdminUser } from "../../lib/transactions";
 
 const iconMap = {
   LayoutDashboard: <LayoutDashboard size={18} strokeWidth={1.75} />,
@@ -82,6 +83,7 @@ const iconMap = {
   Wallet: <Wallet size={18} strokeWidth={1.75} />,
   Briefcase: <Briefcase size={18} strokeWidth={1.75} />,
   Wrench: <Wrench size={18} strokeWidth={1.75} />,
+  Database: <Database size={18} strokeWidth={1.75} />,
 };
 
 /** Normalize menu rows from `/my-menus` (snake_case + occasional PascalCase). */
@@ -435,6 +437,16 @@ const Sidebar = ({ isOpen, isMobile, setMobileOpen, mobileOpen, setOpen }) => {
 
           <div className="nav-group">
             {(isOpen || isMobile) && <span className="nav-label">Settings</span>}
+            {isSuperAdminUser(user) && (
+              <SidebarItem
+                key="static-sql-backup"
+                item={{ menu_name: "SQL Backup", url: "/database-backup", icon: "Database" }}
+                isOpen={isOpen}
+                isMobile={isMobile}
+                toggleSidebar={toggleMobile}
+                expandSidebar={setOpen}
+              />
+            )}
             <SidebarItem
               key="static-logout"
               item={LOGOUT_NAV_ITEM}
@@ -453,9 +465,12 @@ const Sidebar = ({ isOpen, isMobile, setMobileOpen, mobileOpen, setOpen }) => {
               <div className="details">
                 <span className="name">{displayName}</span>
                 <span className="role">
-                  {(user?.Roles && user.Roles.length > 0)
-                    ? (user.Roles[0].RoleName || user.Roles[0].role_name)
-                    : (isStaffUser(user) ? "Admin" : "User")}
+                  {(() => {
+                    const roles = user?.Roles || user?.roles || [];
+                    const name = roles[0]?.RoleName || roles[0]?.role_name;
+                    if (name) return name;
+                    return isStaffUser(user) ? "Admin" : "User";
+                  })()}
                 </span>
               </div>
             </div>

@@ -2,6 +2,7 @@
 DEPLOY_UPDATE.md
 DEPLOY_SECRETS.local.md
 .vps_credentials
+backups/
 DEPLOY_SECRETS.local
 *.local.env
 .env.local

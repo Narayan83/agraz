@@ -365,4 +365,130 @@ void main() {
     expect(laborPeopleMatchingQuery(people, ''), hasLength(3));
     expect(laborPeopleMatchingQuery(people, 'zzz'), isEmpty);
   });
+
+  test('name account does not include a different mobile ledger', () {
+    expect(
+      laborEntryBelongsToPerson(
+        {'name': 'Manjunath Patagar', 'mobile': '9876543210'},
+        name: 'Manjunath Patagar',
+      ),
+      isFalse,
+    );
+    expect(
+      laborEntryBelongsToPerson(
+        {'name': 'Manjunath Patagar', 'mobile': ''},
+        name: 'Manjunath Patagar',
+        mobile: '9876543210',
+      ),
+      isFalse,
+    );
+  });
+
+  test('rent food and bonus are part of the payable balance', () {
+    final t = summarizeLaborEntries([
+      {
+        'id': 1,
+        'entry_kind': 'payable',
+        'wage': 100,
+        'hours': 2,
+        'date': '2026-08-01',
+        'extra': {'rent': 50, 'food': 25, 'bonus': 25},
+      },
+      {
+        'id': 2,
+        'entry_kind': 'payment',
+        'wage': 100,
+        'hours': 1,
+        'date': '2026-08-02',
+      },
+    ], applyAccountReset: true);
+    expect(t.work, 300);
+    expect(t.paid, 100);
+    expect(t.net, 200);
+    expect(t.hours, 2);
+  });
+
+  test('each account restarts on its own opening and a date window stays inside the window', () {
+    final rows = [
+      {
+        'name': 'Manjunath Patagar',
+        'mobile': '',
+        'id': 1,
+        'entry_kind': 'payable',
+        'wage': 800,
+        'hours': 5,
+        'date': '2026-07-01',
+      },
+      {
+        'name': 'Manjunath Patagar',
+        'mobile': '',
+        'id': 2,
+        'entry_kind': 'opening',
+        'wage': 3000,
+        'hours': 1,
+        'date': '2026-08-01',
+      },
+      {
+        'name': 'Manjunath Patagar',
+        'mobile': '',
+        'id': 3,
+        'entry_kind': 'payable',
+        'wage': 400,
+        'hours': 1,
+        'date': '2026-08-04',
+        'extra': {'rent': 50, 'food': 0, 'bonus': 0},
+      },
+      {
+        'name': 'Manjunath Patagar',
+        'mobile': '',
+        'id': 4,
+        'entry_kind': 'payment',
+        'wage': 1000,
+        'hours': 1,
+        'date': '2026-08-10',
+      },
+      {
+        'name': 'Manjunath Patagar',
+        'mobile': '9999999999',
+        'id': 5,
+        'entry_kind': 'payment',
+        'wage': 9000,
+        'hours': 1,
+        'date': '2026-08-11',
+      },
+    ];
+    final all = summarizeLaborAccounts(rows);
+    // Name account: 3000 opening + 450 work - 1000 payment. Phone account: -9000.
+    expect(all.work, 3450);
+    expect(all.paid, 10000);
+    expect(all.net, 3450 - 10000);
+
+    final august = summarizeLaborAccounts(
+      rows,
+      from: DateTime(2026, 8, 1),
+      to: DateTime(2026, 8, 31),
+    );
+    expect(august.work, 3450);
+    expect(august.net, 3450 - 10000);
+
+    final september = summarizeLaborAccounts(
+      [
+        ...rows,
+        {
+          'name': 'Manjunath Patagar',
+          'mobile': '',
+          'id': 6,
+          'entry_kind': 'payable',
+          'wage': 200,
+          'hours': 1,
+          'date': '2026-09-02',
+        },
+      ],
+      from: DateTime(2026, 9, 1),
+      to: DateTime(2026, 9, 30),
+    );
+    expect(september.work, 200);
+    expect(september.paid, 0);
+    expect(september.net, 200);
+  });
 }

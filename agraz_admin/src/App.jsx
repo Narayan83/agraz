@@ -27,6 +27,7 @@ import DocumentsAdmin from "./pages/DocumentsAdmin";
 import EventsAdmin from "./pages/EventsAdmin";
 import AchieversLobbyAdmin from "./pages/AchieversLobbyAdmin";
 import AdvertisementsAdmin from "./pages/AdvertisementsAdmin";
+import DatabaseBackup from "./pages/DatabaseBackup";
 import TransactionsHub from "./pages/transactions/TransactionsHub";
 import IncomeExpenseEntry from "./pages/transactions/IncomeExpenseEntry";
 import OrganizationsEntry from "./pages/transactions/OrganizationsEntry";
@@ -75,7 +76,8 @@ function App() {
     <Router basename={routerBasename && routerBasename !== "/" ? routerBasename : undefined}>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/register-service" element={<PublicServiceRegister />} />
+        <Route path="/service_registration" element={<PublicServiceRegister />} />
+        <Route path="/register-service" element={<Navigate to="/service_registration" replace />} />
 
         <Route path="/" element={<Navigate to="/home" replace />} />
 
@@ -105,6 +107,7 @@ function App() {
         <Route path="/events" element={<ProtectedRoute><EventsAdmin /></ProtectedRoute>} />
         <Route path="/achievers-lobby" element={<ProtectedRoute><AchieversLobbyAdmin /></ProtectedRoute>} />
         <Route path="/advertisements" element={<ProtectedRoute><AdvertisementsAdmin /></ProtectedRoute>} />
+        <Route path="/database-backup" element={<ProtectedRoute><DatabaseBackup /></ProtectedRoute>} />
 
         <Route path="/transactions" element={<ProtectedRoute><TransactionsHub /></ProtectedRoute>} />
         <Route path="/transactions/income-expense" element={<ProtectedRoute><IncomeExpenseEntry /></ProtectedRoute>} />

@@ -1,9 +1,19 @@
-import { useMemo, useState, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { Search, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 /** Client-side search + sort + paginate for transaction lists. */
-export function useTxnList(rows, { searchKeys = [], defaultSort = 'date_desc', pageSize: initialSize = 20 } = {}) {
+export function useTxnList(
+  rows,
+  {
+    searchKeys = [],
+    defaultSort = 'date_desc',
+    pageSize: initialSize = 20,
+    /** When set, enables exact name select (typeahead) filtering on this field. */
+    nameKey = null,
+  } = {}
+) {
   const [q, setQ] = useState('');
+  const [selectedName, setSelectedName] = useState('');
   const [sort, setSort] = useState(defaultSort);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialSize);
@@ -11,7 +21,22 @@ export function useTxnList(rows, { searchKeys = [], defaultSort = 'date_desc', p
 
   useEffect(() => {
     setPage(1);
-  }, [q, sort, pageSize, filterType, rows]);
+  }, [q, selectedName, sort, pageSize, filterType, rows]);
+
+  const nameSuggestions = useMemo(() => {
+    if (!nameKey) return [];
+    const needle = q.trim().toLowerCase();
+    if (!needle || selectedName) return [];
+    const seen = new Map();
+    for (const row of rows || []) {
+      const name = String(pick(row, nameKey) ?? '').trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (!key.includes(needle)) continue;
+      if (!seen.has(key)) seen.set(key, name);
+    }
+    return [...seen.values()].sort((a, b) => a.localeCompare(b)).slice(0, 12);
+  }, [rows, q, selectedName, nameKey]);
 
   const filtered = useMemo(() => {
     let list = Array.isArray(rows) ? [...rows] : [];
@@ -24,23 +49,45 @@ export function useTxnList(rows, { searchKeys = [], defaultSort = 'date_desc', p
         return t === filterType.toLowerCase();
       });
     }
-    if (needle && searchKeys.length) {
+    if (nameKey && selectedName) {
+      // Exact person filter after picking a name from suggestions.
+      const want = selectedName.trim().toLowerCase();
+      list = list.filter((r) => String(pick(r, nameKey) ?? '').trim().toLowerCase() === want);
+    } else if (!nameKey && needle && searchKeys.length) {
+      // Free-text search for pages without name select.
       list = list.filter((r) =>
         searchKeys.some((k) => String(pick(r, k) ?? '').toLowerCase().includes(needle))
       );
     }
     list.sort((a, b) => compareRows(a, b, sort));
     return list;
-  }, [rows, q, sort, filterType, searchKeys]);
+  }, [rows, q, selectedName, sort, filterType, searchKeys, nameKey]);
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
   const safePage = Math.min(page, totalPages);
   const paged = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
+  const selectName = (name) => {
+    const next = String(name || '').trim();
+    setSelectedName(next);
+    setQ(next);
+  };
+
+  const clearName = () => {
+    setSelectedName('');
+    setQ('');
+  };
+
   return {
     q,
     setQ,
+    selectedName,
+    setSelectedName,
+    selectName,
+    clearName,
+    nameKey,
+    nameSuggestions,
     sort,
     setSort,
     page: safePage,
@@ -101,16 +148,89 @@ export function TxnToolbar({
   ],
   filterOptions = null,
   filterLabel = 'Type',
+  /** Show typeahead so user can pick an exact name, then filter the grid. */
+  nameSelect = false,
 }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const suggestions = nameSelect ? (list.nameSuggestions || []) : [];
+  const showSuggest = nameSelect && open && !list.selectedName && suggestions.length > 0;
+
+  useEffect(() => {
+    if (!nameSelect || !open) return undefined;
+    const close = (event) => {
+      if (wrapRef.current && !wrapRef.current.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [nameSelect, open]);
+
   return (
     <div className="txn-toolbar">
-      <div className="sr-search">
+      <div className={`sr-search txn-name-search${nameSelect ? ' is-suggest' : ''}`} ref={wrapRef}>
         <Search size={16} />
         <input
           value={list.q}
-          onChange={(e) => list.setQ(e.target.value)}
-          placeholder={placeholder}
+          onChange={(e) => {
+            const next = e.target.value;
+            list.setQ(next);
+            if (list.selectedName && next.trim().toLowerCase() !== list.selectedName.trim().toLowerCase()) {
+              list.setSelectedName('');
+            }
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setOpen(false);
+            if (e.key === 'Enter' && suggestions.length === 1) {
+              e.preventDefault();
+              list.selectName(suggestions[0]);
+              setOpen(false);
+            }
+          }}
+          placeholder={nameSelect ? 'Type a name, then select…' : placeholder}
+          aria-autocomplete={nameSelect ? 'list' : undefined}
+          aria-expanded={nameSelect ? showSuggest : undefined}
         />
+        {(list.q || list.selectedName) && (
+          <button
+            type="button"
+            className="txn-name-clear"
+            title="Clear"
+            aria-label="Clear search"
+            onClick={() => {
+              if (typeof list.clearName === 'function') list.clearName();
+              else list.setQ('');
+              setOpen(false);
+            }}
+          >
+            <X size={14} />
+          </button>
+        )}
+        {list.selectedName && (
+          <span className="txn-name-chip" title="Filtering by selected name">
+            Selected
+          </span>
+        )}
+        {showSuggest && (
+          <ul className="txn-name-suggest" role="listbox">
+            {suggestions.map((name) => (
+              <li key={name}>
+                <button
+                  type="button"
+                  role="option"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    list.selectName(name);
+                    setOpen(false);
+                  }}
+                >
+                  {name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       {filterOptions && (
         <select value={list.filterType} onChange={(e) => list.setFilterType(e.target.value)} aria-label={filterLabel}>

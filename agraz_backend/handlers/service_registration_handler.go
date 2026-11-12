@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"strings"
 
 	"erp.local/backend/models"
 	"github.com/gofiber/fiber/v2"
@@ -133,11 +134,25 @@ func GetServiceRegistrations(c *fiber.Ctx) error {
 		q = q.Where("approved = ?", true)
 	}
 
-	if m := c.Query("mobile"); m != "" {
+	if m := strings.TrimSpace(c.Query("mobile")); m != "" {
 		q = q.Where("mobile = ?", m)
 	}
-	if mc := c.Query("main_category"); mc != "" {
+	if mc := strings.TrimSpace(c.Query("main_category")); mc != "" {
 		q = q.Where("main_category ILIKE ?", "%"+mc+"%")
+	}
+	// name: typeahead / filter by owner name or business name.
+	// exact=1 → exact match after the user picks a suggestion.
+	if name := strings.TrimSpace(c.Query("name")); name != "" {
+		if c.Query("exact") == "1" {
+			want := strings.ToLower(name)
+			q = q.Where(
+				"LOWER(TRIM(name)) = ? OR LOWER(TRIM(business_name)) = ?",
+				want, want,
+			)
+		} else {
+			like := "%" + name + "%"
+			q = q.Where("name ILIKE ? OR business_name ILIKE ?", like, like)
+		}
 	}
 	if err := q.Count(&total).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})

@@ -56,13 +56,37 @@ export function money(v) {
   return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 }
 
+function roleNames(user) {
+  const roles = user?.Roles || user?.roles || [];
+  return roles.map((r) => (r?.RoleName || r?.role_name || r || '').toString());
+}
+
 export function isStaffUser(user) {
   if (!user) return false;
-  const roles = user.Roles || user.roles || [];
-  return roles.some((r) => {
-    const n = (r?.RoleName || r?.role_name || r || '').toString();
-    return n === 'Super Admin' || n === 'Admin';
-  });
+  return roleNames(user).some((n) => n === 'Super Admin' || n === 'Admin');
+}
+
+/** Super Admin role only. The Admin role does not qualify. */
+export function isSuperAdminUser(user) {
+  if (!user) return false;
+  return roleNames(user).some((n) => n === 'Super Admin');
+}
+
+/** Walk paginated `{ data, total }` list endpoints until every row is loaded. */
+export async function fetchAllPages(request, pageSize = 500) {
+  const all = [];
+  let page = 1;
+  let total = Infinity;
+  while (all.length < total && page <= 40) {
+    const res = await request({ page, limit: pageSize });
+    const batch = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+    const reported = Number(res?.total);
+    total = Number.isFinite(reported) ? reported : all.length + batch.length;
+    all.push(...batch);
+    if (!batch.length || batch.length < pageSize) break;
+    page += 1;
+  }
+  return all;
 }
 
 export function readStoredUser() {

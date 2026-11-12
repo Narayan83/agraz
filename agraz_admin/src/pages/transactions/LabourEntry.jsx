@@ -1,10 +1,43 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Briefcase, Loader2, Plus, Trash2 } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Briefcase, Download, Loader2, Plus, Trash2 } from 'lucide-react';
 import { getMyLabors, createMyLabor, deleteMyLabor } from '../../api/api';
-import { LABOR_CATEGORIES, LABOR_SHIFTS, todayIso, money } from '../../lib/transactions';
+import { LABOR_CATEGORIES, LABOR_SHIFTS, todayIso, money, fetchAllPages } from '../../lib/transactions';
+import { downloadExcel, isoToDisplay } from '../../lib/excel';
+import { blankMoney, labourLedger } from '../../lib/ledger';
 import { useTxnList, TxnToolbar, TxnPager, TxnModal } from './txnList.jsx';
 import '../ServiceRegistrations.css';
 import './Transactions.css';
+
+const LABOUR_HEADERS = ['Date', 'Name', 'Category', 'Shift', 'Rate', 'Qty', 'Amount', 'Payable', 'Payment', 'Balance', 'Narration'];
+
+function exportLabourExcel(rows) {
+  const ledger = labourLedger(rows);
+  const ordered = [...(rows || [])].sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || (a.id || 0) - (b.id || 0));
+  const data = ordered.map((row) => {
+    const cell = ledger.byId.get(row.id) || {};
+    return [
+      isoToDisplay(row.date),
+      row.name || '',
+      row.category || '',
+      row.shift || '',
+      blankMoney(cell.rate),
+      blankMoney(cell.qty),
+      blankMoney(cell.amount),
+      blankMoney(cell.payable),
+      blankMoney(cell.payment),
+      cell.balance ?? 0,
+      row.narration || '',
+    ];
+  });
+  data.push(['', '', '', '', '', '', 'Total', ledger.payable, ledger.payment, ledger.balance, '']);
+  downloadExcel(`labour_${todayIso()}.xlsx`, [{ name: 'Labour', headers: LABOUR_HEADERS, rows: data }]);
+}
+
+function formatQty(cell) {
+  if (cell.qty == null) return '—';
+  if (cell.people > 1) return `${cell.days} × ${cell.people}`;
+  return String(cell.qty);
+}
 
 const emptyForm = () => ({
   name: '', mobile: '', category: 'Plucking', shift: 'fullday', gender: 'Male',
@@ -22,14 +55,15 @@ const LabourEntry = () => {
   const [error, setError] = useState('');
   const list = useTxnList(rows, {
     searchKeys: ['name', 'mobile', 'category', 'narration', 'entry_kind', 'shift'],
-    defaultSort: 'date_desc',
+    defaultSort: 'date_asc',
+    nameKey: 'name',
   });
+  const ledger = useMemo(() => labourLedger(list.filtered), [list.filtered]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getMyLabors({ page: 1, limit: 200 });
-      setRows(data.data || data || []);
+      setRows(await fetchAllPages((params) => getMyLabors(params)));
     } catch (e) {
       console.error(e);
       setRows([]);
@@ -79,16 +113,28 @@ const LabourEntry = () => {
       <div className="sr-page-header">
         <div className="title-area">
           <h1><Briefcase size={22} style={{ marginRight: 8, verticalAlign: -4 }} />Labour Entry</h1>
-          <p>Daily wages, contract work, and payments.</p>
+          <p>One running balance for all labour, in date order. Payable adds, payment subtracts.</p>
         </div>
-        <button type="button" className="sr-btn sr-btn-primary" onClick={() => { setForm(emptyForm()); setError(''); setModalOpen(true); }}>
-          <Plus size={16} /> Add labour
-        </button>
+        <div className="txn-header-actions">
+          <button
+            type="button"
+            className="sr-btn sr-btn-ghost"
+            disabled={loading || list.total === 0}
+            title="Download the rows matching the current search and filters"
+            onClick={() => exportLabourExcel(list.filtered)}
+          >
+            <Download size={16} /> Export Excel
+          </button>
+          <button type="button" className="sr-btn sr-btn-primary" onClick={() => { setForm(emptyForm()); setError(''); setModalOpen(true); }}>
+            <Plus size={16} /> Add labour
+          </button>
+        </div>
       </div>
 
       <TxnToolbar
         list={list}
-        placeholder="Search name, category, narration…"
+        nameSelect
+        placeholder="Type a name, then select…"
         filterOptions={[
           { id: 'payable', label: 'Work (payable)' },
           { id: 'payment', label: 'Payment' },
@@ -97,6 +143,14 @@ const LabourEntry = () => {
         ]}
         filterLabel="Kind"
       />
+
+      {!loading && (
+        <div className="txn-totals">
+          <div className="txn-total"><span>Payable</span><strong className="txn-out">{money(ledger.payable)}</strong></div>
+          <div className="txn-total"><span>Payment</span><strong className="txn-in">{money(ledger.payment)}</strong></div>
+          <div className="txn-total"><span>Balance</span><strong className={ledger.balance > 0 ? 'txn-out' : 'txn-in'}>{money(ledger.balance)}</strong></div>
+        </div>
+      )}
 
       <div className="sr-list-card">
         {loading ? (
@@ -108,17 +162,36 @@ const LabourEntry = () => {
             <div className="sr-table-wrap">
               <table className="sr-table">
                 <thead>
-                  <tr><th>Date</th><th>Name</th><th>Category</th><th>Shift</th><th>Wage</th><th>Kind</th><th>Narration</th><th /></tr>
+                  <tr>
+                    <th>Date</th><th>Name</th><th>Category</th><th>Shift</th>
+                    <th className="txn-num">Rate</th>
+                    <th className="txn-num">Qty</th>
+                    <th className="txn-num">Amount</th>
+                    <th className="txn-num">Payable</th>
+                    <th className="txn-num">Payment</th>
+                    <th className="txn-num">Balance</th>
+                    <th>Narration</th><th />
+                  </tr>
                 </thead>
                 <tbody>
-                  {list.paged.map((r) => (
+                  {list.paged.map((r) => {
+                    const cell = ledger.byId.get(r.id) || {};
+                    const kind = String(r.entry_kind || 'payable').toLowerCase();
+                    return (
                     <tr key={r.id}>
                       <td>{String(r.date || '').slice(0, 10)}</td>
-                      <td>{r.name}</td>
+                      <td>
+                        {r.name}
+                        {(kind === 'opening' || kind === 'tally') && <div className="txn-kind">{kind}</div>}
+                      </td>
                       <td>{r.category}</td>
                       <td>{r.shift}</td>
-                      <td>{money(r.wage)}</td>
-                      <td>{r.entry_kind || 'payable'}</td>
+                      <td className="txn-num">{cell.rate == null ? '—' : money(cell.rate)}</td>
+                      <td className="txn-num">{cell.qty == null ? '—' : formatQty(cell)}</td>
+                      <td className="txn-num">{cell.amount == null ? '—' : money(cell.amount)}</td>
+                      <td className="txn-num txn-out">{cell.payable == null ? '—' : money(cell.payable)}</td>
+                      <td className="txn-num txn-in">{cell.payment == null ? '—' : money(cell.payment)}</td>
+                      <td className={`txn-num ${cell.balance > 0 ? 'txn-out' : 'txn-in'}`}>{money(cell.balance || 0)}</td>
                       <td>{r.narration || '—'}</td>
                       <td>
                         <button type="button" className="sr-btn sr-btn-ghost" onClick={async () => {
@@ -128,7 +201,8 @@ const LabourEntry = () => {
                         }}><Trash2 size={14} /></button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

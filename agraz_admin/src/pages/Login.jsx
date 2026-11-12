@@ -259,7 +259,7 @@ const Login = () => {
         <div className="login-footer">
           <p>
             Register a business without signing in:{' '}
-            <Link to="/register-service">Service registration</Link>
+            <Link to="/service_registration">Service registration</Link>
           </p>
           <p>Platform admin: <b>admin@admin.com</b> / <b>admin123</b></p>
           <p>Sample vendor: <b>vendor@admin.com</b> / <b>admin123</b></p>

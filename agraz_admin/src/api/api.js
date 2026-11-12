@@ -900,4 +900,52 @@ export const updateMyEvent = async (id, data) =>
 export const deleteMyEvent = async (id) =>
   (await api.delete(`/events/${id}`)).data;
 
+export const downloadSqlBackup = async () => {
+  let response;
+  try {
+    response = await api.get('/admin/sql-backup', { responseType: 'blob' });
+  } catch (err) {
+    const data = err.response?.data;
+    if (data instanceof Blob) {
+      const text = await data.text();
+      let message = 'Backup failed';
+      try {
+        message = JSON.parse(text).error || message;
+      } catch {
+        if (text) message = text.slice(0, 180);
+      }
+      throw new Error(message);
+    }
+    throw new Error(err.response?.data?.error || err.message || 'Backup failed');
+  }
+  const blob = response.data;
+  const type = String(blob?.type || '');
+  if (type.includes('json')) {
+    const text = await blob.text();
+    let message = 'Backup failed';
+    try { message = JSON.parse(text).error || message; } catch { /* keep default */ }
+    throw new Error(message);
+  }
+  const name = filenameFrom(response, 'agraz-backup.sql');
+  triggerBlobDownload(blob, name);
+  return name;
+};
+
+function filenameFrom(response, fallback) {
+  const dispo = response.headers?.['content-disposition'] || '';
+  const match = /filename="?([^"]+)"?/i.exec(dispo);
+  return match?.[1] || fallback;
+}
+
+function triggerBlobDownload(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export default api;

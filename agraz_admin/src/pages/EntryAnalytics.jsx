@@ -77,6 +77,7 @@ const EntryAnalytics = () => {
   const [recent, setRecent] = useState([]);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   const [drill, setDrill] = useState(null); // { menu, user_id?, user_name? }
   const [entries, setEntries] = useState([]);
@@ -94,11 +95,16 @@ const EntryAnalytics = () => {
       if (from) params.from = from;
       if (to) params.to = to;
       const data = await getAdminEntryAnalytics(params);
+      setLoadError("");
       setTotals(data.totals || { labors: 0, income_expenses: 0, feedbacks: 0, by_menu: {} });
       setByUser(data.by_user || []);
       setRecent(data.recent || []);
+      if (Array.isArray(data.warnings) && data.warnings.length > 0) {
+        setLoadError(data.warnings.join(" "));
+      }
     } catch (e) {
       console.error(e);
+      setLoadError(e?.response?.data?.error || "Failed to load entry analytics");
       setTotals({ labors: 0, income_expenses: 0, feedbacks: 0, by_menu: {} });
       setByUser([]);
       setRecent([]);
@@ -256,6 +262,12 @@ const EntryAnalytics = () => {
           )}
         </div>
       </div>
+
+      {loadError && (
+        <div className="sr-list-card" style={{ padding: "0.85rem 1.25rem", color: "#b45309" }}>
+          {loadError}
+        </div>
+      )}
 
       {loading ? (
         <div className="sr-empty" style={{ padding: "2rem", display: "flex", justifyContent: "center" }}>

@@ -1,27 +1,22 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
-  Building2,
   CheckCircle2,
+  Download,
   Folder,
   Loader2,
-  Mail,
   NotebookPen,
   Phone,
-  Store,
   User,
 } from "lucide-react";
 import { registerBusinessPublic } from "../api/api";
-import { MAIN_CATEGORIES, SERVICE_CATEGORIES } from "../lib/serviceCategories";
+import { MAIN_CATEGORIES } from "../lib/serviceCategories";
 import "./PublicServiceRegister.css";
 
 const emptyForm = () => ({
   name: "",
   mobile: "",
-  email: "",
   main_category: "",
-  sub_category: "",
-  business_name: "",
-  remarks: "",
+  description: "",
 });
 
 const PublicServiceRegister = () => {
@@ -31,17 +26,8 @@ const PublicServiceRegister = () => {
   const [submitError, setSubmitError] = useState("");
   const [done, setDone] = useState(false);
 
-  const subCategories = useMemo(() => {
-    if (!form.main_category) return [];
-    return SERVICE_CATEGORIES[form.main_category] || [];
-  }, [form.main_category]);
-
   const setField = (key, value) => {
-    setForm((prev) => {
-      const next = { ...prev, [key]: value };
-      if (key === "main_category") next.sub_category = "";
-      return next;
-    });
+    setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: "" }));
     setSubmitError("");
   };
@@ -52,10 +38,8 @@ const PublicServiceRegister = () => {
     const mobile = form.mobile.trim();
     if (!mobile) next.mobile = "Required";
     else if (!/^\d{10}$/.test(mobile)) next.mobile = "Enter a 10-digit mobile number";
-    if (form.email.trim() && !form.email.includes("@")) next.email = "Enter a valid email";
     if (!form.main_category) next.main_category = "Required";
-    if (!form.sub_category) next.sub_category = "Required";
-    if (!form.business_name.trim()) next.business_name = "Required";
+    if (!form.description.trim()) next.description = "Required";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -67,15 +51,14 @@ const PublicServiceRegister = () => {
     setSubmitting(true);
     setSubmitError("");
     try {
+      const name = form.name.trim();
       const payload = {
         mobile: form.mobile.trim(),
-        name: form.name.trim(),
+        name,
         main_category: form.main_category,
-        sub_category: form.sub_category,
-        business_name: form.business_name.trim(),
+        business_name: name,
+        remarks: form.description.trim(),
       };
-      if (form.email.trim()) payload.email = form.email.trim();
-      if (form.remarks.trim()) payload.remarks = form.remarks.trim();
 
       const data = await registerBusinessPublic(payload);
       if (data?.success === false) {
@@ -100,8 +83,8 @@ const PublicServiceRegister = () => {
       <header className="psr-hero">
         <div className="psr-logo">Ag</div>
         <div>
-          <h1>Register your Business or Service</h1>
-          <p>Fill in the details below. No login needed — same listing as the AgRaz app.</p>
+          <h1>Register your service</h1>
+          <p>No login needed.</p>
         </div>
       </header>
 
@@ -121,21 +104,14 @@ const PublicServiceRegister = () => {
           {submitError && <div className="psr-alert">{submitError}</div>}
 
           <section className="psr-card">
-            <div className="psr-card-title">
-              <Phone size={18} />
-              <div>
-                <h2>Contact Info</h2>
-                <p>How can we reach you?</p>
-              </div>
-            </div>
             <label className="psr-field">
-              <span>Full Name <em>*</em></span>
+              <span>Name <em>*</em></span>
               <div className="psr-input">
                 <User size={18} />
                 <input
                   value={form.name}
                   onChange={(e) => setField("name", e.target.value)}
-                  placeholder="Full Name"
+                  placeholder="Name"
                   autoComplete="name"
                 />
               </div>
@@ -156,30 +132,6 @@ const PublicServiceRegister = () => {
               {errors.mobile && <small>{errors.mobile}</small>}
             </label>
             <label className="psr-field">
-              <span>Email Address</span>
-              <div className="psr-input">
-                <Mail size={18} />
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setField("email", e.target.value)}
-                  placeholder="Optional"
-                  autoComplete="email"
-                />
-              </div>
-              {errors.email && <small>{errors.email}</small>}
-            </label>
-          </section>
-
-          <section className="psr-card">
-            <div className="psr-card-title">
-              <Folder size={18} />
-              <div>
-                <h2>Service Category</h2>
-                <p>Choose the best match</p>
-              </div>
-            </div>
-            <label className="psr-field">
               <span>Main Category <em>*</em></span>
               <div className="psr-input">
                 <Folder size={18} />
@@ -196,65 +148,17 @@ const PublicServiceRegister = () => {
               {errors.main_category && <small>{errors.main_category}</small>}
             </label>
             <label className="psr-field">
-              <span>Sub Category <em>*</em></span>
-              <div className="psr-input">
-                <Store size={18} />
-                <select
-                  value={form.sub_category}
-                  onChange={(e) => setField("sub_category", e.target.value)}
-                  disabled={!form.main_category}
-                >
-                  <option value="">
-                    {form.main_category ? "Select sub category" : "Select main category first"}
-                  </option>
-                  {subCategories.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-              {errors.sub_category && <small>{errors.sub_category}</small>}
-            </label>
-          </section>
-
-          <section className="psr-card">
-            <div className="psr-card-title">
-              <Building2 size={18} />
-              <div>
-                <h2>Business Name</h2>
-                <p>Name shown to farmers</p>
-              </div>
-            </div>
-            <label className="psr-field">
-              <span>Business Name <em>*</em></span>
-              <div className="psr-input">
-                <Store size={18} />
-                <input
-                  value={form.business_name}
-                  onChange={(e) => setField("business_name", e.target.value)}
-                  placeholder="Business Name"
-                  autoComplete="organization"
+              <span>Description <em>*</em></span>
+              <div className="psr-input psr-input-top">
+                <NotebookPen size={18} />
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setField("description", e.target.value)}
+                  placeholder="Describe the service"
+                  rows={2}
                 />
               </div>
-              {errors.business_name && <small>{errors.business_name}</small>}
-            </label>
-          </section>
-
-          <section className="psr-card">
-            <div className="psr-card-title">
-              <NotebookPen size={18} />
-              <div>
-                <h2>Remarks</h2>
-                <p>Anything else we should know?</p>
-              </div>
-            </div>
-            <label className="psr-field">
-              <span>Remarks</span>
-              <textarea
-                value={form.remarks}
-                onChange={(e) => setField("remarks", e.target.value)}
-                placeholder="Optional notes"
-                rows={3}
-              />
+              {errors.description && <small>{errors.description}</small>}
             </label>
           </section>
 
@@ -269,6 +173,16 @@ const PublicServiceRegister = () => {
           </button>
         </form>
       )}
+
+      <a
+        className="psr-download"
+        href="https://play.google.com/store/apps/details?id=com.agraz.app"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <Download size={18} />
+        Download app
+      </a>
     </div>
   );
 };

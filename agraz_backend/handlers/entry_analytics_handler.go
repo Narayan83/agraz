@@ -107,6 +107,7 @@ func AdminEntryAnalytics(c *fiber.Ctx) error {
 	fbQ := applyEntryAnalyticsFilters(feedbackDB.Model(&models.AppFeedback{}), "created_at", filterUID, fromT, hasFrom, toT, hasTo)
 
 	var laborCount, ieCount, fbCount int64
+	var warnings []string
 	if menuFilter == "" || menuFilter == "labor" {
 		if err := laborQ.Count(&laborCount).Error; err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -117,9 +118,13 @@ func AdminEntryAnalytics(c *fiber.Ctx) error {
 			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 		}
 	}
+	feedbackOK := true
 	if menuFilter == "" || menuFilter == "feedback" {
 		if err := fbQ.Count(&fbCount).Error; err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+			// A feedback schema problem must not hide labour and income totals.
+			feedbackOK = false
+			fbCount = 0
+			warnings = append(warnings, "feedback: "+err.Error())
 		}
 	}
 
@@ -160,15 +165,18 @@ func AdminEntryAnalytics(c *fiber.Ctx) error {
 			uidSet[r.UserID] = struct{}{}
 		}
 	}
-	if menuFilter == "" || menuFilter == "feedback" {
+	if feedbackOK && (menuFilter == "" || menuFilter == "feedback") {
 		var rows []uidCount
 		fq := applyEntryAnalyticsFilters(feedbackDB.Model(&models.AppFeedback{}), "created_at", filterUID, fromT, hasFrom, toT, hasTo)
 		if err := fq.Select("user_id, COUNT(*) as cnt").Group("user_id").Scan(&rows).Error; err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
-		}
-		for _, r := range rows {
-			fbByUser[r.UserID] = r.Cnt
-			uidSet[r.UserID] = struct{}{}
+			fbCount = 0
+			byMenu["feedback"] = fbCount
+			warnings = append(warnings, "feedback: "+err.Error())
+		} else {
+			for _, r := range rows {
+				fbByUser[r.UserID] = r.Cnt
+				uidSet[r.UserID] = struct{}{}
+			}
 		}
 	}
 
@@ -303,7 +311,7 @@ func AdminEntryAnalytics(c *fiber.Ctx) error {
 		recent = recent[:50]
 	}
 
-	return c.JSON(fiber.Map{
+	payload := fiber.Map{
 		"totals": fiber.Map{
 			"labors":          laborCount,
 			"income_expenses": ieCount,
@@ -312,7 +320,11 @@ func AdminEntryAnalytics(c *fiber.Ctx) error {
 		},
 		"by_user": byUser,
 		"recent":  recent,
-	})
+	}
+	if len(warnings) > 0 {
+		payload["warnings"] = warnings
+	}
+	return c.JSON(payload)
 }
 
 // AdminEntryAnalyticsEntries handles GET /api/admin/entry-analytics/entries

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   ClipboardList,
   Edit,
@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   CircleDashed,
   Smartphone,
+  Search,
   Building2,
   Tag,
   Upload,
@@ -121,6 +122,12 @@ const ServiceRegistrations = () => {
   const [approval, setApproval] = useState("all");
   const [mobileFilter, setMobileFilter] = useState("");
   const [mobileFilterDebounced, setMobileFilterDebounced] = useState("");
+  const [nameQuery, setNameQuery] = useState("");
+  const [nameQueryDebounced, setNameQueryDebounced] = useState("");
+  const [selectedName, setSelectedName] = useState("");
+  const [nameSuggestOpen, setNameSuggestOpen] = useState(false);
+  const [nameSuggestRows, setNameSuggestRows] = useState([]);
+  const nameSearchRef = useRef(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -138,11 +145,20 @@ const ServiceRegistrations = () => {
     return () => clearTimeout(t);
   }, [mobileFilter]);
 
+  useEffect(() => {
+    const t = setTimeout(() => setNameQueryDebounced(nameQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [nameQuery]);
+
   const fetchRows = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, limit, approval };
       if (mobileFilterDebounced) params.mobile = mobileFilterDebounced;
+      if (selectedName) {
+        params.name = selectedName;
+        params.exact = "1";
+      }
       const data = await getServiceRegistrations(params);
       setRows(data.data || []);
       setTotal(data.total ?? 0);
@@ -152,11 +168,78 @@ const ServiceRegistrations = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, approval, mobileFilterDebounced]);
+  }, [page, approval, mobileFilterDebounced, selectedName]);
 
   useEffect(() => {
     fetchRows();
   }, [fetchRows]);
+
+  // Load name suggestions while typing (before a name is selected).
+  useEffect(() => {
+    let cancelled = false;
+    const loadSuggest = async () => {
+      if (selectedName || !nameQueryDebounced) {
+        setNameSuggestRows([]);
+        return;
+      }
+      try {
+        const data = await getServiceRegistrations({
+          page: 1,
+          limit: 50,
+          approval,
+          name: nameQueryDebounced,
+        });
+        if (!cancelled) setNameSuggestRows(data.data || []);
+      } catch {
+        if (!cancelled) setNameSuggestRows([]);
+      }
+    };
+    loadSuggest();
+    return () => { cancelled = true; };
+  }, [nameQueryDebounced, selectedName, approval]);
+
+  const nameSuggestions = useMemo(() => {
+    if (selectedName || !nameQueryDebounced) return [];
+    const needle = nameQueryDebounced.toLowerCase();
+    const seen = new Map();
+    for (const row of nameSuggestRows) {
+      for (const label of [row.name, row.business_name]) {
+        const text = String(label || "").trim();
+        if (!text) continue;
+        const key = text.toLowerCase();
+        if (!key.includes(needle)) continue;
+        if (!seen.has(key)) seen.set(key, text);
+      }
+    }
+    return [...seen.values()].sort((a, b) => a.localeCompare(b)).slice(0, 12);
+  }, [nameSuggestRows, nameQueryDebounced, selectedName]);
+
+  useEffect(() => {
+    if (!nameSuggestOpen) return undefined;
+    const close = (event) => {
+      if (nameSearchRef.current && !nameSearchRef.current.contains(event.target)) {
+        setNameSuggestOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [nameSuggestOpen]);
+
+  const selectNameFilter = (name) => {
+    const next = String(name || "").trim();
+    setSelectedName(next);
+    setNameQuery(next);
+    setNameSuggestOpen(false);
+    setPage(1);
+  };
+
+  const clearNameFilter = () => {
+    setSelectedName("");
+    setNameQuery("");
+    setNameSuggestRows([]);
+    setNameSuggestOpen(false);
+    setPage(1);
+  };
 
   const totalPages = Math.max(1, Math.ceil(total / limit) || 1);
 
@@ -442,7 +525,7 @@ const ServiceRegistrations = () => {
             <h1>Service registrations</h1>
             <p>
               Review, approve, edit, and manage service provider sign-ups. Public form (no login):{" "}
-              <Link to="/register-service">/register-service</Link>
+              <Link to="/service_registration">/service_registration</Link>
             </p>
           </div>
         </div>
@@ -466,6 +549,61 @@ const ServiceRegistrations = () => {
               {label}
             </button>
           ))}
+        </div>
+        <div className="sr-search sr-name-search" ref={nameSearchRef}>
+          <Search size={18} />
+          <input
+            type="text"
+            placeholder="Type a name, then select…"
+            value={nameQuery}
+            onChange={(e) => {
+              const next = e.target.value;
+              setNameQuery(next);
+              if (selectedName && next.trim().toLowerCase() !== selectedName.trim().toLowerCase()) {
+                setSelectedName("");
+              }
+              setNameSuggestOpen(true);
+              setPage(1);
+            }}
+            onFocus={() => setNameSuggestOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setNameSuggestOpen(false);
+              if (e.key === "Enter" && nameSuggestions.length === 1) {
+                e.preventDefault();
+                selectNameFilter(nameSuggestions[0]);
+              }
+            }}
+            aria-autocomplete="list"
+            aria-expanded={nameSuggestOpen && !selectedName && nameSuggestions.length > 0}
+          />
+          {(nameQuery || selectedName) && (
+            <button
+              type="button"
+              className="sr-name-clear"
+              title="Clear name filter"
+              aria-label="Clear name filter"
+              onClick={clearNameFilter}
+            >
+              <X size={14} />
+            </button>
+          )}
+          {selectedName && <span className="sr-name-chip">Selected</span>}
+          {nameSuggestOpen && !selectedName && nameSuggestions.length > 0 && (
+            <ul className="sr-name-suggest" role="listbox">
+              {nameSuggestions.map((name) => (
+                <li key={name}>
+                  <button
+                    type="button"
+                    role="option"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => selectNameFilter(name)}
+                  >
+                    {name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <div className="sr-search">
           <Smartphone size={18} />
